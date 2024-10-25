@@ -192,7 +192,7 @@ static std::map<std::string, int> item_name_to_id_map = {
 	{ "coral_mantis", 323 },
 	{ "coral_stone_archway", 324 },
 	{ "corn", 329 },
-	{ "cosmetic", 330 },
+	//{ "cosmetic", 330 },
 	{ "cosmos", 331 },
 	{ "cow_milk", 358 },
 	{ "cozy_kitchen", 359 },
