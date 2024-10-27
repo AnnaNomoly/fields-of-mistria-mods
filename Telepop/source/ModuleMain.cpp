@@ -2,6 +2,8 @@
 using namespace Aurie;
 using namespace YYTK;
 
+static const char* const VERSION = "1.0.1";
+
 static const int INVALID_ITEM_ID = -1;
 static const int BLACKBERRY_JAM_ITEM_ID = 113;
 static const int BLUEBERRY_JAM_ITEM_ID = 116;
@@ -62,7 +64,14 @@ void ObjectCallback(
 		teleport_ari = false;
 		reposition_ari = true;
 
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop] - Ari teleported to Town!");
+		if (telepop_destination_id == MINES_LOCATION_ID)
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to Mines!", VERSION);
+		if (telepop_destination_id == BEACH_LOCATION_ID)
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to Beach!", VERSION);
+		if (telepop_destination_id == TOWN_LOCATION_ID)
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to Town!", VERSION);
+		if (telepop_destination_id == FARM_LOCATION_ID)
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to Farm!", VERSION);
 	}
 	else if (reposition_ari && room_loaded) {
 		RValue x;
@@ -230,7 +239,7 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop] - Failed to get script (gml_Script_held_item@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (gml_Script_held_item@Ari@Ari)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -244,7 +253,7 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop] - Failed to hook script (gml_Script_held_item@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (gml_Script_held_item@Ari@Ari)!", VERSION);
 	}
 }
 
@@ -258,7 +267,7 @@ void CreateHookGmlScriptModifyStamina(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop] - Failed to get script (gml_Script_modify_stamina@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (gml_Script_modify_stamina@Ari@Ari)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -271,34 +280,34 @@ void CreateHookGmlScriptModifyStamina(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop] - Failed to hook script (gml_Script_modify_stamina@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (gml_Script_modify_stamina@Ari@Ari)!", VERSION);
 	}
 }
 
 void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 {
-	CScript* gml_script_modify_stamina = nullptr;
+	CScript* gml_script_show_room_title = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
 		"gml_Script_show_room_title",
-		(PVOID*)&gml_script_modify_stamina
+		(PVOID*)&gml_script_show_room_title
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop] - Failed to get script (gml_Script_show_room_title)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (gml_Script_show_room_title)!", VERSION);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
 		"gml_Script_show_room_title",
-		gml_script_modify_stamina->m_Functions->m_ScriptFunction,
+		gml_script_show_room_title->m_Functions->m_ScriptFunction,
 		GmlScriptShowRoomTitleCallback,
 		nullptr
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop] - Failed to hook script (gml_Script_show_room_title)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (gml_Script_show_room_title)!", VERSION);
 	}
 }
 
@@ -312,7 +321,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -326,7 +335,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
 	}
 }
 
@@ -347,7 +356,7 @@ EXPORTED AurieStatus ModuleInitialize(
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop] - Plugin starting...");
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[Telepop %s] - Plugin starting...", VERSION);
 	
 	g_ModuleInterface->CreateCallback(
 		g_ArSelfModule,
@@ -359,31 +368,31 @@ EXPORTED AurieStatus ModuleInitialize(
 	CreateHookGmlScriptHeldItem(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptModifyStamina(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptShowRoomTitle(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop] - Plugin started!");
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Plugin started!", VERSION);
 	return AURIE_SUCCESS;
 }
