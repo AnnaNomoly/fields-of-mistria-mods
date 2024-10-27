@@ -3,6 +3,7 @@
 using namespace Aurie;
 using namespace YYTK;
 
+static const char* const VERSION = "1.0.0";
 static const int FULL_RESTORE_SPELL_ID = 0;
 static const int GROWTH_SPELL_ID = 1;
 static const int SUMMON_RAIN_SPELL_ID = 2;
@@ -14,7 +15,6 @@ static int pinned_spell = -1;
 static int flash_frames = 0;
 static int rumble_frames = 0;
 static int quake_magnitude = 0;
-static int monster_kill_counter = 0;
 static bool quake_spell_active = false;
 static bool room_loaded = false;
 static bool modify_mana = false;
@@ -49,7 +49,6 @@ void FrameCallback(FWFrame& FrameContext)
 			{
 				PlaySoundEffect("snd_AriLowHealthWarning", 100);
 			}
-
 			screen_flash = false;
 			flash_frames = 0;
 		}
@@ -62,7 +61,6 @@ void FrameCallback(FWFrame& FrameContext)
 	{
 		if (rumble_frames > 120)
 		{
-			quake_spell_active = false;
 			rumble_sound = false;
 			rumble_frames = 0;
 		}
@@ -92,13 +90,10 @@ void ObjectCallback(
 
 	if (quake_spell_active && strstr(self->m_Object->m_Name, "obj_monster"))
 	{
-		if (monster_kill_counter < quake_magnitude) {
-			RValue hit_points = self->at("hit_points");
-			if (hit_points.m_Kind != VALUE_UNSET && hit_points.m_Kind != VALUE_UNDEFINED)
-			{
-				self->at("hit_points").m_Real = 0;
-			}
-			monster_kill_counter++;
+		RValue hit_points = self->at("hit_points");
+		if (hit_points.m_Kind != VALUE_UNSET && hit_points.m_Kind != VALUE_UNDEFINED)
+		{
+			self->at("hit_points").m_Real = 0;
 		}
 	}
 
@@ -127,7 +122,7 @@ void ObjectCallback(
 		delete health_penalty;
 		modify_health = false;
 
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell] - Ari took %d damage from the quake!", quake_magnitude * 10);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Ari took %d damage from the quake!", VERSION, quake_magnitude * 10);
 	}
 }
 
@@ -208,7 +203,7 @@ RValue& GmlScriptCastSpell(
 		screen_flash = true;
 		rumble_sound = true;
 		quake_spell_active = true;
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell] - Quake spell cast! Magnitude: %d", quake_magnitude);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Quake spell cast! Magnitude: %d", VERSION, quake_magnitude);
 		return Result;
 	}
 
@@ -235,7 +230,6 @@ RValue& GmlScriptSetupMainScreenCallback(
 	ari_current_mana = -1.0;
 	pinned_spell = -1;
 	quake_magnitude = 0;
-	monster_kill_counter = 0;
 	flash_frames = 0;
 	rumble_frames = 0;
 	screen_flash = false;
@@ -267,7 +261,6 @@ RValue& GmlScriptNewDayCallback(
 )
 {
 	quake_magnitude = 0;
-	monster_kill_counter = 0;
 	flash_frames = 0;
 	rumble_frames = 0;
 	screen_flash = false;
@@ -437,7 +430,6 @@ RValue& GmlScriptFadeOutCallback(
 )
 {
 	quake_magnitude = 0;
-	monster_kill_counter = 0;
 	flash_frames = 0;
 	rumble_frames = 0;
 	screen_flash = false;
@@ -471,7 +463,7 @@ void CreateFrameCallback(AurieModule* Module, AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook (EVENT_FRAME)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook (EVENT_FRAME)!", VERSION);
 	}
 }
 
@@ -486,7 +478,7 @@ void CreateObjectCallback(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook (EVENT_OBJECT_CALL)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook (EVENT_OBJECT_CALL)!", VERSION);
 	}
 }
 
@@ -500,7 +492,7 @@ void CreateHookGmlScriptSetPinnedSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_set_pinned_spell@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_set_pinned_spell@Ari@Ari)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -513,7 +505,7 @@ void CreateHookGmlScriptSetPinnedSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_set_pinned_spell@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_set_pinned_spell@Ari@Ari)!", VERSION);
 	}
 }
 
@@ -527,7 +519,7 @@ void CreateHookGmlScriptCanCastSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_can_cast_spell)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_can_cast_spell)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -540,7 +532,7 @@ void CreateHookGmlScriptCanCastSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_can_cast_spell)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_can_cast_spell)!", VERSION);
 	}
 }
 
@@ -554,7 +546,7 @@ void CreateHookGmlScriptCastSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_cast_spell)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_cast_spell)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -567,7 +559,7 @@ void CreateHookGmlScriptCastSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_enchantern_state_to_string)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_enchantern_state_to_string)!", VERSION);
 	}
 }
 
@@ -581,7 +573,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -595,7 +587,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
 	}
 }
 
@@ -609,7 +601,7 @@ void CreateHookGmlScriptNewDay(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_new_day)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_new_day)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -623,7 +615,7 @@ void CreateHookGmlScriptNewDay(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_new_day)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_new_day)!", VERSION);
 	}
 }
 
@@ -637,7 +629,7 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_show_room_title)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_show_room_title)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -650,7 +642,7 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_show_room_title)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_show_room_title)!", VERSION);
 	}
 }
 
@@ -664,7 +656,7 @@ void CreateHookGmlScriptGetMana(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_get_mana@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_get_mana@Ari@Ari)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -677,7 +669,7 @@ void CreateHookGmlScriptGetMana(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_get_mana@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_get_mana@Ari@Ari)!", VERSION);
 	}
 }
 
@@ -691,7 +683,7 @@ void CreateHookGmlScriptModifyMana(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_modify_mana@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_modify_mana@Ari@Ari)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -704,7 +696,7 @@ void CreateHookGmlScriptModifyMana(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_modify_mana@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_modify_mana@Ari@Ari)!", VERSION);
 	}
 }
 
@@ -718,7 +710,7 @@ void CreateHookGmlScriptOnDrawGui(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_on_draw_gui@Display@Display)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_on_draw_gui@Display@Display)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -731,7 +723,7 @@ void CreateHookGmlScriptOnDrawGui(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_on_draw_gui@Display@Display)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_on_draw_gui@Display@Display)!", VERSION);
 	}
 }
 
@@ -745,7 +737,7 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_try_location_id_to_string)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_try_location_id_to_string)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -758,7 +750,7 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_try_location_id_to_string)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_try_location_id_to_string)!", VERSION);
 	}
 }
 
@@ -772,7 +764,7 @@ void CreateHookGmlScriptFadeOut(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to get script (gml_Script_fade_out@ScreenFaderMenu@ScreenFaderMenu)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_fade_out@ScreenFaderMenu@ScreenFaderMenu)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -785,7 +777,7 @@ void CreateHookGmlScriptFadeOut(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Failed to hook script (gml_Script_fade_out@ScreenFaderMenu@ScreenFaderMenu)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_fade_out@ScreenFaderMenu@ScreenFaderMenu)!", VERSION);
 	}
 }
 
@@ -802,99 +794,99 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell] - Plugin starting...");
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[QuakeSpell %s] - Plugin starting...", VERSION);
 
 	CreateFrameCallback(Module, status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateObjectCallback(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetPinnedSpell(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptCanCastSpell(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptCastSpell(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptNewDay(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptShowRoomTitle(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptGetMana(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptModifyMana(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptOnDrawGui(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptTryLocationIdToString(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptFadeOut(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell] - Plugin started!");
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Plugin started!", VERSION);
 	return AURIE_SUCCESS;
 }
