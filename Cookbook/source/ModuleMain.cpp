@@ -34,7 +34,7 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 			{
 				"Input the desired recipe's internal name.\r\n"
 				"(Ex.: rosehip_jam)\r\n"
-				"More Info: https://github.com/AnnaNomoly/YYToolkit/tree/stable/DigUpAnything",
+				"More Info: https://github.com/AnnaNomoly/YYToolkit/tree/stable/Cookbook",
 				"rosehip_jam"
 			}
 		);
