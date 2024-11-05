@@ -33,6 +33,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "QuakeSpell", "QuakeSpell\Qu
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Cookbook", "Cookbook\Cookbook.vcxproj", "{2E2F636B-8DF5-49BF-8782-A1CBF8760DA2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Wardrobe", "Wardrobe\Wardrobe.vcxproj", "{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -161,6 +163,14 @@ Global
 		{2E2F636B-8DF5-49BF-8782-A1CBF8760DA2}.Release|x64.Build.0 = Release|x64
 		{2E2F636B-8DF5-49BF-8782-A1CBF8760DA2}.Release|x86.ActiveCfg = Release|Win32
 		{2E2F636B-8DF5-49BF-8782-A1CBF8760DA2}.Release|x86.Build.0 = Release|Win32
+		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Debug|x64.ActiveCfg = Debug|x64
+		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Debug|x64.Build.0 = Debug|x64
+		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Debug|x86.ActiveCfg = Debug|Win32
+		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Debug|x86.Build.0 = Debug|Win32
+		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Release|x64.ActiveCfg = Release|x64
+		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Release|x64.Build.0 = Release|x64
+		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Release|x86.ActiveCfg = Release|Win32
+		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
