@@ -1,4 +1,4 @@
-# Cookbook
+# Wardrobe
 A YYTK plugin for FieldsOfMistria that allows you to **unlock any cosmetic** in the game, including **modded ones**. This works on __existing__ saves!
 
 ## Instructions
