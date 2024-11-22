@@ -4,16 +4,15 @@ using namespace YYTK;
 
 static const char* const VERSION = "1.0.1";
 
-static const int INVALID_ITEM_ID = -1;
-static const int BLACKBERRY_JAM_ITEM_ID = 113;
-static const int BLUEBERRY_JAM_ITEM_ID = 116;
-static const int MARMALADE_ITEM_ID = 798;
-static const int ROSEHIP_JAM_ITEM_ID = 1047;
-
-static const int MINES_LOCATION_ID = 46;
-static const int BEACH_LOCATION_ID = 8;
-static const int TOWN_LOCATION_ID = 56;
-static const int FARM_LOCATION_ID = 25;
+static const int INVALID_ID = -1;
+static int BLACKBERRY_JAM_ITEM_ID = INVALID_ID;
+static int BLUEBERRY_JAM_ITEM_ID = INVALID_ID;
+static int MARMALADE_ITEM_ID = INVALID_ID;
+static int ROSEHIP_JAM_ITEM_ID = INVALID_ID;
+static int MINES_LOCATION_ID = INVALID_ID;
+static int BEACH_LOCATION_ID = INVALID_ID;
+static int TOWN_LOCATION_ID = INVALID_ID;
+static int FARM_LOCATION_ID = INVALID_ID;
 
 static const std::tuple<int, int> MINES_TELEPORT_POINT = std::make_tuple(216, 198);
 static const std::tuple<int, int> BEACH_TELEPORT_POINT = std::make_tuple(1722, 505);
@@ -21,11 +20,12 @@ static const std::tuple<int, int> TOWN_TELEPORT_POINT = std::make_tuple(1097, 13
 static const std::tuple<int, int> FARM_TELEPORT_POINT = std::make_tuple(809, 306);
 
 static YYTKInterface* g_ModuleInterface = nullptr;
-static int held_item_id = INVALID_ITEM_ID;
-static int telepop_destination_id = INVALID_ITEM_ID;
+static int held_item_id = INVALID_ID;
+static int telepop_destination_id = INVALID_ID;
 static bool teleport_ari = false;
 static bool reposition_ari = false;
 static bool room_loaded = false;
+static bool load_on_start = true;
 
 void ObjectCallback(
 	IN FWCodeEvent& CodeEvent
@@ -100,8 +100,8 @@ void ObjectCallback(
 		g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, x);
 		g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, y);
 
-		held_item_id = INVALID_ITEM_ID;
-		telepop_destination_id = INVALID_ITEM_ID;
+		held_item_id = INVALID_ID;
+		telepop_destination_id = INVALID_ID;
 
 		reposition_ari = false;
 		room_loaded = false;
@@ -136,7 +136,7 @@ RValue& GmlScriptHeldItemCallback(
 	return Result;
 }
 
-RValue& GmlScriptModifyStaminaCallback(
+RValue& GmlScriptModifyHealthCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
 	OUT RValue& Result,
@@ -147,28 +147,28 @@ RValue& GmlScriptModifyStaminaCallback(
 	if (held_item_id == BLACKBERRY_JAM_ITEM_ID) {
 		teleport_ari = true;
 		telepop_destination_id = MINES_LOCATION_ID;
-		held_item_id = INVALID_ITEM_ID;
+		held_item_id = INVALID_ID;
 	}
 
 	if (held_item_id == BLUEBERRY_JAM_ITEM_ID) {
 		teleport_ari = true;
 		telepop_destination_id = BEACH_LOCATION_ID;
-		held_item_id = INVALID_ITEM_ID;
+		held_item_id = INVALID_ID;
 	}
 
 	if (held_item_id == MARMALADE_ITEM_ID) {
 		teleport_ari = true;
 		telepop_destination_id = TOWN_LOCATION_ID;
-		held_item_id = INVALID_ITEM_ID;
+		held_item_id = INVALID_ID;
 	}
 
 	if (held_item_id == ROSEHIP_JAM_ITEM_ID) {
 		teleport_ari = true;
 		telepop_destination_id = FARM_LOCATION_ID;
-		held_item_id = INVALID_ITEM_ID;
+		held_item_id = INVALID_ID;
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_modify_stamina@Ari@Ari"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_modify_health@Ari@Ari"));
 	original(
 		Self,
 		Other,
@@ -212,10 +212,83 @@ RValue& GmlScriptSetupMainScreenCallback(
 	IN RValue** Arguments
 )
 {
-	held_item_id = INVALID_ITEM_ID;
-	telepop_destination_id = INVALID_ITEM_ID;
+	held_item_id = INVALID_ID;
+	telepop_destination_id = INVALID_ID;
 	teleport_ari = false;
 	room_loaded = false;
+
+	if (load_on_start)
+	{
+		// Load item IDs.
+		CScript* gml_script_try_string_to_item_id = nullptr;
+		g_ModuleInterface->GetNamedRoutinePointer(
+			"gml_Script_try_string_to_item_id",
+			(PVOID*)&gml_script_try_string_to_item_id
+		);
+
+		std::vector<const char*> item_names = {"blackberry_jam", "blueberry_jam", "marmalade", "rosehip_jam"};
+		for (size_t i = 0; i < item_names.size(); i++)
+		{
+			RValue* item_name = new RValue(item_names[i]);
+			RValue item_id;
+			gml_script_try_string_to_item_id->m_Functions->m_ScriptFunction(
+				Self,
+				Other,
+				item_id,
+				1,
+				{ &item_name }
+			);
+			delete item_name;
+
+			if (strcmp(item_names[i], "blackberry_jam") == 0)
+				BLACKBERRY_JAM_ITEM_ID = item_id.m_i64;
+			if (strcmp(item_names[i], "blueberry_jam") == 0)
+				BLUEBERRY_JAM_ITEM_ID = item_id.m_i64;
+			if (strcmp(item_names[i], "marmalade") == 0)
+				MARMALADE_ITEM_ID = item_id.m_i64;
+			if (strcmp(item_names[i], "rosehip_jam") == 0)
+				ROSEHIP_JAM_ITEM_ID = item_id.m_i64;
+		}
+
+		if (BLACKBERRY_JAM_ITEM_ID == INVALID_ID || BLUEBERRY_JAM_ITEM_ID == INVALID_ID || MARMALADE_ITEM_ID == INVALID_ID || ROSEHIP_JAM_ITEM_ID == INVALID_ID)
+			g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to load item IDs!", VERSION);
+
+		// Load location IDs.
+		CScript* gml_script_try_string_to_location_id = nullptr;
+		g_ModuleInterface->GetNamedRoutinePointer(
+			"gml_Script_try_string_to_location_id",
+			(PVOID*)&gml_script_try_string_to_location_id
+		);
+
+		std::vector<const char*> location_names = { "mines_entry", "beach", "town", "farm" };
+		for (size_t i = 0; i < location_names.size(); i++)
+		{
+			RValue* location_name = new RValue(location_names[i]);
+			RValue location_id;
+			gml_script_try_string_to_location_id->m_Functions->m_ScriptFunction(
+				Self,
+				Other,
+				location_id,
+				1,
+				{ &location_name }
+			);
+			delete location_name;
+
+			if (strcmp(location_names[i], "mines_entry") == 0)
+				MINES_LOCATION_ID = location_id.m_i64;
+			if (strcmp(location_names[i], "beach") == 0)
+				BEACH_LOCATION_ID = location_id.m_i64;
+			if (strcmp(location_names[i], "town") == 0)
+				TOWN_LOCATION_ID = location_id.m_i64;
+			if (strcmp(location_names[i], "farm") == 0)
+				FARM_LOCATION_ID = location_id.m_i64;
+		}
+
+		if (MINES_LOCATION_ID == INVALID_ID || BEACH_LOCATION_ID == INVALID_ID || TOWN_LOCATION_ID == INVALID_ID || FARM_LOCATION_ID == INVALID_ID)
+			g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to location IDs!", VERSION);
+
+		load_on_start = false;
+	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
 	original(
@@ -257,30 +330,30 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptModifyStamina(AurieStatus& status)
+void CreateHookGmlScriptModifyHealth(AurieStatus& status)
 {
 	CScript* gml_script_modify_stamina = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_modify_stamina@Ari@Ari",
+		"gml_Script_modify_health@Ari@Ari",
 		(PVOID*)&gml_script_modify_stamina
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (gml_Script_modify_stamina@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (gml_Script_modify_health@Ari@Ari)!", VERSION);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_modify_stamina@Ari@Ari",
+		"gml_Script_modify_health@Ari@Ari",
 		gml_script_modify_stamina->m_Functions->m_ScriptFunction,
-		GmlScriptModifyStaminaCallback,
+		GmlScriptModifyHealthCallback,
 		nullptr
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (gml_Script_modify_stamina@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (gml_Script_modify_health@Ari@Ari)!", VERSION);
 	}
 }
 
@@ -372,7 +445,7 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
-	CreateHookGmlScriptModifyStamina(status);
+	CreateHookGmlScriptModifyHealth(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Exiting due to failure on start!", VERSION);
