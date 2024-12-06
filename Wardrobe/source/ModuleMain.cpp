@@ -61,7 +61,6 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 			RValue __ari = global_instance->at("__ari").m_Object;
 			RValue cosmetic_unlocks = __ari.at("cosmetic_unlocks");
 			RValue inner = cosmetic_unlocks.at("inner");
-			RValue target_cosmetic = inner.at(user_input_string.AsString().data());
 
 			RValue cosmetic_unlocked = g_ModuleInterface->CallBuiltin(
 				"struct_exists", {
@@ -77,10 +76,10 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 						inner, user_input_string.AsString().data(), zero
 					}
 				);
-				g_ModuleInterface->Print(CM_LIGHTGREEN, "[Wardrobe %s] - Unlocked recipe: %s", VERSION, user_input_string.AsString().data());
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[Wardrobe %s] - Unlocked cosmetic: %s", VERSION, user_input_string.AsString().data());
 			}
 			else {
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Wardrobe %s] - Ignoring already known recipe: %s", VERSION, user_input_string.AsString().data());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Wardrobe %s] - Ignoring already obtained cosmetic: %s", VERSION, user_input_string.AsString().data());
 			}
 		}
 		else {
@@ -116,7 +115,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 			g_ModuleInterface->Print(CM_LIGHTGREEN, "[Wardrobe %s] - Loaded data for %d cosmetics!", VERSION, cosmetic_names.size());
 		}
 		else {
-			g_ModuleInterface->Print(CM_LIGHTRED, "[Wardrobe %s] - Failed to load data for recipes!", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTRED, "[Wardrobe %s] - Failed to load data for cosmetics!", VERSION);
 		}
 
 		load_items = false;
