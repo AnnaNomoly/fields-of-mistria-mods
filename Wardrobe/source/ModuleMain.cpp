@@ -52,7 +52,6 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 			}
 		);
 
-		//const char* user_input = user_input_string.AsString().data();
 		auto it = std::find(cosmetic_names.begin(), cosmetic_names.end(), user_input_string.AsString().data());
 		if (it != cosmetic_names.end())
 		{
@@ -62,12 +61,22 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 			RValue __ari = global_instance->at("__ari").m_Object;
 			RValue cosmetic_unlocks = __ari.at("cosmetic_unlocks");
 			RValue inner = cosmetic_unlocks.at("inner");
-
 			RValue target_cosmetic = inner.at(user_input_string.AsString().data());
-			if (target_cosmetic.m_Kind == VALUE_UNSET || target_cosmetic.m_Kind == VALUE_UNDEFINED || target_cosmetic.m_Kind == VALUE_NULL)
+
+			RValue cosmetic_unlocked = g_ModuleInterface->CallBuiltin(
+				"struct_exists", {
+					inner, user_input_string.AsString().data()
+				}
+			);
+			
+			if(cosmetic_unlocked.m_Kind == VALUE_BOOL && cosmetic_unlocked.m_Real == 0)
 			{
-				RValue unlock_cosmetic = 0.0;
-				inner[user_input_string.AsString().data()] = unlock_cosmetic;
+				RValue zero = 0.0;
+				g_ModuleInterface->CallBuiltin(
+					"struct_set", {
+						inner, user_input_string.AsString().data(), zero
+					}
+				);
 				g_ModuleInterface->Print(CM_LIGHTGREEN, "[Wardrobe %s] - Unlocked recipe: %s", VERSION, user_input_string.AsString().data());
 			}
 			else {
