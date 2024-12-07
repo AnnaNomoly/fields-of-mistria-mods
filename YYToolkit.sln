@@ -35,6 +35,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Cookbook", "Cookbook\Cookbo
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Wardrobe", "Wardrobe\Wardrobe.vcxproj", "{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "AnimalFriends", "AnimalFriends\AnimalFriends.vcxproj", "{0DD7BE66-4E14-4475-8395-7A51460423C0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -171,6 +173,14 @@ Global
 		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Release|x64.Build.0 = Release|x64
 		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Release|x86.ActiveCfg = Release|Win32
 		{33CF5D19-D926-46AD-8EB6-6CDD55E2CCB9}.Release|x86.Build.0 = Release|Win32
+		{0DD7BE66-4E14-4475-8395-7A51460423C0}.Debug|x64.ActiveCfg = Debug|x64
+		{0DD7BE66-4E14-4475-8395-7A51460423C0}.Debug|x64.Build.0 = Debug|x64
+		{0DD7BE66-4E14-4475-8395-7A51460423C0}.Debug|x86.ActiveCfg = Debug|Win32
+		{0DD7BE66-4E14-4475-8395-7A51460423C0}.Debug|x86.Build.0 = Debug|Win32
+		{0DD7BE66-4E14-4475-8395-7A51460423C0}.Release|x64.ActiveCfg = Release|x64
+		{0DD7BE66-4E14-4475-8395-7A51460423C0}.Release|x64.Build.0 = Release|x64
+		{0DD7BE66-4E14-4475-8395-7A51460423C0}.Release|x86.ActiveCfg = Release|Win32
+		{0DD7BE66-4E14-4475-8395-7A51460423C0}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
