@@ -170,18 +170,6 @@ static std::string gift_npc = "";
 static std::vector<std::string> gift_items = {};
 static std::map<std::string, int> item_name_to_id_map = {};
 
-// DEBUG ONLY ---------------------------------------------------------------
-static int debug_counter = 0;
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
-}
-//---------------------------------------------------------------------------
-
 void UnlockGifts(CInstance* self)
 {
 	RValue me_exists = g_ModuleInterface->CallBuiltin(
@@ -212,6 +200,7 @@ void UnlockGifts(CInstance* self)
 						inner, std::to_string(item_name_to_id_map[gift_items[i]]), zero
 					}
 				);
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[ThePerfectGift %s] - Learned gift preference for %s: %s", VERSION, gift_npc.c_str(), gift_items[i].c_str());
 			}
 		}
 
@@ -349,15 +338,6 @@ RValue& GmlScriptTranslateCallback(
 	IN RValue** Arguments
 )
 {
-	// DEBUG ----------------------------------------------------------------------------------------
-	//if (debug_counter == 0)
-	//{
-		RValue test = "Conversations/Bank/Josephine/Market Lines/market_darcy_1/market_darcy_1/init";
-		Arguments[0] = &test;
-	//}
-	//debug_counter++;
-	// ----------------------------------------------------------------------------------------------
-
 	std::string dialog_string = Arguments[0]->AsString().data();
 	if (GIFT_DIALOG_MAP.count(dialog_string) > 0)
 	{
