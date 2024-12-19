@@ -4,6 +4,8 @@ using namespace YYTK;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 
+static const char* const VERSION = "1.0.0";
+
 RValue& GmlScriptHeldItemCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -14,7 +16,7 @@ RValue& GmlScriptHeldItemCallback(
 {
 	if (GetAsyncKeyState(VK_F12) & 1)
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[MillAnywhere] - Opening Mill menu!");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[MillAnywhere %s] - Opening Mill menu!", VERSION);
 
 		CScript* gml_script_mill_menu = nullptr;
 		g_ModuleInterface->GetNamedRoutinePointer(
@@ -54,7 +56,7 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[MillAnywhere] - Failed to get script (gml_Script_held_item@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[MillAnywhere %s] - Failed to get script (gml_Script_held_item@Ari@Ari)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -67,7 +69,7 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[MillAnywhere] - Failed to hook script (gml_Script_held_item@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[MillAnywhere %s] - Failed to hook script (gml_Script_held_item@Ari@Ari)!", VERSION);
 	}
 }
 
@@ -84,15 +86,15 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[MillAnywhere] - Plugin loading...");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[MillAnywhere %s] - Plugin loading...", VERSION);
 	
 	CreateHookGmlScriptHeldItem(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[MillAnywhere] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[MillAnywhere %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[MillAnywhere] - Plugin loaded!");
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[MillAnywhere %s] - Plugin loaded!", VERSION);
 	return AURIE_SUCCESS;
 }
