@@ -2,6 +2,8 @@
 using namespace Aurie;
 using namespace YYTK;
 
+static const char* const VERSION = "1.0.0";
+
 static const double INVALID_COORD = -1.0;
 static const double DEFAULT_MOVE_MODIFIER = 1.0;
 
@@ -189,7 +191,7 @@ void CreateHookGmlScriptGetMoveSpeed(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Zoomies] - Failed to get script (gml_Script_get_move_speed@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Zoomies %s] - Failed to get script (gml_Script_get_move_speed@Ari@Ari)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -202,7 +204,7 @@ void CreateHookGmlScriptGetMoveSpeed(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Zoomies] - Failed to hook script (gml_Script_get_move_speed@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Zoomies %s] - Failed to hook script (gml_Script_get_move_speed@Ari@Ari)!", VERSION);
 	}
 }
 
@@ -223,7 +225,7 @@ EXPORTED AurieStatus ModuleInitialize(
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Zoomies] - Plugin starting...");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Zoomies %s] - Plugin starting...", VERSION);
 	
 	g_ModuleInterface->CreateCallback(
 		g_ArSelfModule,
@@ -235,10 +237,10 @@ EXPORTED AurieStatus ModuleInitialize(
 	CreateHookGmlScriptGetMoveSpeed(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Zoomies] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Zoomies %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[Zoomies] - Plugin started!");
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[Zoomies %s] - Plugin started!", VERSION);
 	return AURIE_SUCCESS;
 }
