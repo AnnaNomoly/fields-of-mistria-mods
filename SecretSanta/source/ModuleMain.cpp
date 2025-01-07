@@ -299,20 +299,260 @@ RValue& GmlScriptPlayConversationCallback(
 					is_secret_santa_gift = true;
 				}
 
-				// Speaker is Adeline.
-				if (strstr(conversation_name, "Conversations/Bank/Adeline"))
+				if (is_secret_santa_gift)
 				{
-					if (is_secret_santa_gift)
+					// Speaker is Adeline.
+					if (strstr(conversation_name, "Conversations/Bank/Adeline"))
 					{
 						// Override the gift dialog.
 						RValue custom_dialog = "Conversations/Bank/Adeline/Secret Santa/init";
 						RValue* custom_dialog_ptr = &custom_dialog;
 						Arguments[0] = custom_dialog_ptr;
 					}
-				}
 
-				if (is_secret_santa_gift)
-				{
+					// Speaker is Balor.
+					if (strstr(conversation_name, "Conversations/Bank/Balor"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Balor/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Celine.
+					if (strstr(conversation_name, "Conversations/Bank/Celine"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Celine/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Darcy.
+					if (strstr(conversation_name, "Conversations/Bank/Darcy"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Darcy/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Dell.
+					if (strstr(conversation_name, "Conversations/Bank/Dell"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Dell/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Dozy.
+					if (strstr(conversation_name, "Conversations/Bank/Dozy"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Dozy/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Eiland.
+					if (strstr(conversation_name, "Conversations/Bank/Eiland"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Eiland/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Elsie.
+					if (strstr(conversation_name, "Conversations/Bank/Elsie"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Elsie/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Errol.
+					if (strstr(conversation_name, "Conversations/Bank/Errol"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Errol/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Hayden.
+					if (strstr(conversation_name, "Conversations/Bank/Hayden"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Hayden/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Hemlock.
+					if (strstr(conversation_name, "Conversations/Bank/Hemlock"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Hemlock/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Henrietta.
+					if (strstr(conversation_name, "Conversations/Bank/Henrietta"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Henrietta/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Holt.
+					if (strstr(conversation_name, "Conversations/Bank/Holt"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Holt/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Josephine.
+					if (strstr(conversation_name, "Conversations/Bank/Josephine"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Josephine/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Juniper.
+					if (strstr(conversation_name, "Conversations/Bank/Juniper"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Juniper/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Landen.
+					if (strstr(conversation_name, "Conversations/Bank/Landen"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Landen/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Luc.
+					if (strstr(conversation_name, "Conversations/Bank/Luc"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Luc/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Louis.
+					if (strstr(conversation_name, "Conversations/Bank/Louis"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Louis/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Maple.
+					if (strstr(conversation_name, "Conversations/Bank/Maple"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Maple/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is March.
+					if (strstr(conversation_name, "Conversations/Bank/March"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/March/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Merri.
+					if (strstr(conversation_name, "Conversations/Bank/Merri"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Merri/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Olric.
+					if (strstr(conversation_name, "Conversations/Bank/Olric"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Olric/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Nora.
+					if (strstr(conversation_name, "Conversations/Bank/Nora"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Nora/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Reina.
+					if (strstr(conversation_name, "Conversations/Bank/Reina"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Reina/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Ryis.
+					if (strstr(conversation_name, "Conversations/Bank/Ryis"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Ryis/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Terithia.
+					if (strstr(conversation_name, "Conversations/Bank/Terithia"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Terithia/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Valen.
+					if (strstr(conversation_name, "Conversations/Bank/Valen"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Valen/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
+					// Speaker is Vera.
+					if (strstr(conversation_name, "Conversations/Bank/Vera"))
+					{
+						// Override the gift dialog.
+						RValue custom_dialog = "Conversations/Bank/Vera/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[0] = custom_dialog_ptr;
+					}
+
 					// Increase heart points.
 					AddHeartPoints(secret_santa_recipient);
 				}
