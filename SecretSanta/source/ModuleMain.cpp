@@ -40,6 +40,7 @@ static const std::string TERITHIA = "terithia";
 static const std::string VALEN = "valen";
 static const std::string VERA = "vera";
 static const double UNSET_DOUBLE = -1.0;
+static const std::string GIFTS[] = {"berry_bowl", "beet_soup", "fried_rice", "vegetable_pot_pie", "floral_tea", "tulip_cake", "sushi_platter", "lobster_roll", "summer_salad", "vegetable_quiche"};
 static const std::string NPC_NAMES[] = { 
 	ADELINE, BALOR, CELINE, DARCY, DELL, DOZY, EILAND,
 	ELSIE, ERROL, HAYDEN, HEMLOCK, HENRIETTA, HOLT, JOSEPHINE,
@@ -52,10 +53,6 @@ static const std::string SENDER_KEY = "sender";
 static const std::string RECIPIENT_KEY = "recipient";
 static const std::string MAIL_SENT_KEY = "mail_sent";
 static const std::string GIFT_GIVEN_KEY = "gift_given";
-static const std::string ADELINE_GIFTS_KEY = "adeline_gifts";
-
-// JSON default values
-static const std::vector<std::string> DEFAULT_ADELINE_GIFTS = {"berry_bowl", "beet_soup", "fried_rice", "vegetable_pot_pie", "floral_tea", "tulip_cake", "sushi_platter", "lobster_roll", "summer_salad", "vegetable_quiche"};
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
@@ -67,19 +64,7 @@ static std::string save_file = "";
 static std::string config_file = "";
 static std::string secret_santa_sender = "";
 static std::string secret_santa_recipient = "";
-static std::vector<std::string> adeline_gifts = DEFAULT_ADELINE_GIFTS;
 static json json_object = json::object();
-
-// DEBUG--------------------------------------------------------------------
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
-}
-//--------------------------------------------------------------------------
 
 void handle_eptr(std::exception_ptr eptr)
 {
@@ -124,9 +109,7 @@ std::string FormatDateString(int day, int season, int year)
 
 void CreateDefaultJson()
 {
-	json default_json = {
-		{ADELINE_GIFTS_KEY, DEFAULT_ADELINE_GIFTS}
-	};
+	json default_json = {};
 	json_object = default_json;
 }
 
@@ -192,49 +175,49 @@ void ObjectCallback(
 	if (!self->m_Object)
 		return;
 
-	if (strstr(self->m_Object->m_Name, "obj_ari"))
-	{
-		if (GetAsyncKeyState(VK_F1) & 1)
-		{
-			CInstance* global_instance = nullptr;
-			g_ModuleInterface->GetGlobalInstance(&global_instance);
+	//if (strstr(self->m_Object->m_Name, "obj_ari"))
+	//{
+	//	if (GetAsyncKeyState(VK_F1) & 1)
+	//	{
+	//		CInstance* global_instance = nullptr;
+	//		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-			RValue __ari = global_instance->at("__ari").m_Object;
-			RValue inbox = __ari.at("inbox");
-			RValue contents = inbox.at("contents");
-			RValue contents_buffer = contents.at("__buffer");
+	//		RValue __ari = global_instance->at("__ari").m_Object;
+	//		RValue inbox = __ari.at("inbox");
+	//		RValue contents = inbox.at("contents");
+	//		RValue contents_buffer = contents.at("__buffer");
 
-			RValue mail;
-			RValue mail_items_taken = false;
-			RValue mail_name = "ari_birthday_celine";
-			RValue mail_read = false;
-			g_ModuleInterface->GetRunnerInterface().StructCreate(&mail);
-			g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "items_taken", &mail_items_taken);
-			g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "name", &mail_name);
-			g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "read", &mail_read);
+	//		RValue mail;
+	//		RValue mail_items_taken = false;
+	//		RValue mail_name = "ari_birthday_celine";
+	//		RValue mail_read = false;
+	//		g_ModuleInterface->GetRunnerInterface().StructCreate(&mail);
+	//		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "items_taken", &mail_items_taken);
+	//		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "name", &mail_name);
+	//		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "read", &mail_read);
 
-			g_ModuleInterface->CallBuiltin(
-				"array_push",
-				{ contents_buffer, mail }
-			);
+	//		g_ModuleInterface->CallBuiltin(
+	//			"array_push",
+	//			{ contents_buffer, mail }
+	//		);
 
-			RValue size = g_ModuleInterface->CallBuiltin(
-				"struct_get",
-				{ contents, "__count" }
-			);
-			RValue new_size = 1.0 + size.m_Real;
+	//		RValue size = g_ModuleInterface->CallBuiltin(
+	//			"struct_get",
+	//			{ contents, "__count" }
+	//		);
+	//		RValue new_size = 1.0 + size.m_Real;
 
-			g_ModuleInterface->CallBuiltin(
-				"struct_set",
-				{ contents, "__count", new_size }
-			);
-			g_ModuleInterface->CallBuiltin(
-				"struct_set",
-				{ contents, "__internal_size", new_size }
-			);
-		}
-		
-	}
+	//		g_ModuleInterface->CallBuiltin(
+	//			"struct_set",
+	//			{ contents, "__count", new_size }
+	//		);
+	//		g_ModuleInterface->CallBuiltin(
+	//			"struct_set",
+	//			{ contents, "__internal_size", new_size }
+	//		);
+	//	}
+	//	
+	//}
 
 }
 
@@ -255,8 +238,12 @@ RValue& GmlScriptCalendarDayCallback(
 		Arguments
 	);
 
-	// Result is a VALUE_REAL that is the 0-indexed calendar day
-	day = Result.m_Real + 1;
+	if (mod_healthy)
+	{
+		// Result is a VALUE_REAL that is the 0-indexed calendar day
+		day = Result.m_Real + 1;
+	}
+
 	return Result;
 }
 
@@ -277,8 +264,12 @@ RValue& GmlScriptCalendarSeasonCallback(
 		Arguments
 	);
 
-	// Result is a VALUE_REAL that is the 0-indexed calendar season
-	season = Result.m_Real + 1;
+	if (mod_healthy)
+	{
+		// Result is a VALUE_REAL that is the 0-indexed calendar season
+		season = Result.m_Real + 1;
+	}
+
 	return Result;
 }
 
@@ -299,8 +290,12 @@ RValue& GmlScriptCalendarYearCallback(
 		Arguments
 	);
 
-	// Result is a VALUE_REAL that is the 0-indexed calendar year
-	year = Result.m_Real + 1;
+	if (mod_healthy)
+	{
+		// Result is a VALUE_REAL that is the 0-indexed calendar year
+		year = Result.m_Real + 1;
+	}
+
 	return Result;
 }
 
@@ -312,16 +307,48 @@ RValue& GmlScriptPlayConversationCallback(
 	IN RValue** Arguments
 )
 {
-	// "Conversations/Bank/Dell/Gift Lines/gift_lines/neutral_gift"
-	const char* conversation_name = Arguments[1]->AsString().data(); // debugging - possibly the name of the conversation
-	if (strstr(conversation_name, "Conversations/Bank/Celine"))
+	if (mod_healthy)
 	{
-		if (strstr(conversation_name, "gift_lines/neutral_gift"))
+		if (season == 4 && day == 28)
 		{
-			g_ModuleInterface->Print(CM_LIGHTPURPLE, "[Debug] - Detected netural gift for Celine.");
+			// "Conversations/Bank/Dell/Gift Lines/gift_lines/neutral_gift"
+			const char* conversation_name = Arguments[1]->AsString().data(); // debugging - possibly the name of the conversation
+			std::string conversation_name_str = conversation_name;
 
+			// Dialog involves the secret santa recipient.
+			if (conversation_name_str.find(secret_santa_recipient) != std::string::npos)
+			{
+				// Adeline
+				if (strstr(conversation_name, "Conversations/Bank/Adeline"))
+				{
+					bool override_dialog = false;
 
+					// Neutral Gift
+					if (strstr(conversation_name, "gift_lines/neutral_gift"))
+					{
+						override_dialog = true;
+					}
 
+					// Liked Gift
+					if (strstr(conversation_name, "gift_lines/liked_gift"))
+					{
+						override_dialog = true;
+					}
+
+					// Loved Gift
+					if (strstr(conversation_name, "gift_lines/loved_gift"))
+					{
+						override_dialog = true;
+					}
+
+					if (override_dialog)
+					{
+						RValue custom_dialog = "Conversations/Bank/Adeline/Secret Santa/init";
+						RValue* custom_dialog_ptr = &custom_dialog;
+						Arguments[1] = custom_dialog_ptr;
+					}
+				}
+			}
 		}
 	}
 
@@ -349,6 +376,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 	season = UNSET_DOUBLE;
 	year = UNSET_DOUBLE;
 	save_file = "";
+	secret_santa_sender = "";
+	secret_santa_recipient = "";
 
 	if (load_on_start)
 	{
@@ -387,34 +416,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 						try
 						{
 							json_object = json::parse(in_stream);
-
-							// Check if the json_object is empty.
-							if (json_object.empty())
-							{
-								g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - No values found in mod configuration file: %s!", VERSION, config_file.c_str());
-								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - Using default values.", VERSION);
-								CreateDefaultJson();
-							}
-							else
-							{
-								// Load Adeline gifts.
-								if (json_object.contains(ADELINE_GIFTS_KEY) && json_object[ADELINE_GIFTS_KEY].is_array())
-								{
-									adeline_gifts = json_object[ADELINE_GIFTS_KEY];
-									if (adeline_gifts.size() == 0)
-									{
-										json_object[ADELINE_GIFTS_KEY] = DEFAULT_ADELINE_GIFTS;
-										adeline_gifts = DEFAULT_ADELINE_GIFTS;
-									}
-								}
-								else
-								{
-									json_object[ADELINE_GIFTS_KEY] = DEFAULT_ADELINE_GIFTS;
-									adeline_gifts = DEFAULT_ADELINE_GIFTS;
-								}
-								
-								mod_healthy = true;
-							}
+							mod_healthy = true;
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - Loaded configuration file: %s", VERSION, config_file.c_str());
 						}
 						catch (...)
 						{
@@ -458,11 +461,11 @@ RValue& GmlScriptSetupMainScreenCallback(
 
 		if (!mod_healthy)
 		{
-			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - The mod has an unhealthy configuration and will not function!", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - The mod has an unhealthy configuration and will NOT function!", VERSION);
 		}
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_send@Inbox@Inbox"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
 	original(
 		Self,
 		Other,
@@ -482,183 +485,194 @@ RValue& GmlScriptOnNewDayCallback(
 	IN RValue** Arguments
 )
 {
-	// The hash value used to group different saves for the same playthrough.
-	std::string save_hash = GetSaveHash();
-
-	// Check if an entry for the save hash doesn't exist in the JSON.
-	if (!json_object.contains(save_hash))
+	if (mod_healthy)
 	{
-		// Randomly determine the secret santa sender and recipient.
-		std::random_device rd;
-		std::mt19937 gen(rd());
-		std::uniform_int_distribution<> distr(0, static_cast<int>(NPC_NAMES->size()));
-		int random_sender = distr(gen);
-		int random_recipient = distr(gen);
+		// The hash value used to group different saves for the same playthrough.
+		std::string save_hash = GetSaveHash();
 
-		secret_santa_sender = NPC_NAMES->at(random_sender);
-		secret_santa_recipient = NPC_NAMES->at(random_recipient);
+		// Check if an entry for the save hash doesn't exist in the JSON.
+		if (!json_object.contains(save_hash))
+		{
+			// Randomly determine the secret santa sender and recipient.
+			std::random_device rd;
+			std::mt19937 gen(rd());
+			std::uniform_int_distribution<> distr(0, static_cast<int>(NPC_NAMES->size()));
+			int random_sender = distr(gen);
+			int random_recipient = distr(gen);
 
-		// Create the date objects.
+			secret_santa_sender = NPC_NAMES[random_sender];
+			secret_santa_recipient = NPC_NAMES[random_recipient];
+
+			// Create the date objects.
+			std::string current_year_winter_21_date_string = FormatDateString(21, 4, year);
+			json current_year_winter_21_object = json::object();
+			current_year_winter_21_object[SENDER_KEY] = secret_santa_sender;
+			current_year_winter_21_object[RECIPIENT_KEY] = secret_santa_recipient;
+			current_year_winter_21_object[MAIL_SENT_KEY] = false;
+
+			std::string current_year_winter_27_date_string = FormatDateString(27, 4, year);
+			json current_year_winter_27_object = json::object();
+			current_year_winter_27_object[MAIL_SENT_KEY] = false;
+
+			std::string current_year_winter_28_date_string = FormatDateString(28, 4, year);
+			json current_year_winter_28_object = json::object();
+			current_year_winter_28_object[MAIL_SENT_KEY] = false;
+			current_year_winter_28_object[GIFT_GIVEN_KEY] = false;
+
+			// Create the save file object.
+			json save_file_object = json::object();
+			save_file_object[current_year_winter_21_date_string] = current_year_winter_21_object;
+			save_file_object[current_year_winter_27_date_string] = current_year_winter_27_object;
+			save_file_object[current_year_winter_28_date_string] = current_year_winter_28_object;
+
+			// Create the save hash object.
+			json save_hash_object = json::object();
+			save_hash_object[save_file] = save_file_object;
+
+			// Write values back.
+			json_object[save_hash] = save_hash_object;
+		}
+
+		json save_hash_object = json_object[save_hash];
 		std::string current_year_winter_21_date_string = FormatDateString(21, 4, year);
-		json current_year_winter_21_object = json::object();
-		current_year_winter_21_object[SENDER_KEY] = secret_santa_sender;
-		current_year_winter_21_object[RECIPIENT_KEY] = secret_santa_recipient;
-		current_year_winter_21_object[MAIL_SENT_KEY] = false;
-
 		std::string current_year_winter_27_date_string = FormatDateString(27, 4, year);
-		json current_year_winter_27_object = json::object();
-		current_year_winter_27_object[MAIL_SENT_KEY] = false;
-
 		std::string current_year_winter_28_date_string = FormatDateString(28, 4, year);
-		json current_year_winter_28_object = json::object();
-		current_year_winter_28_object[MAIL_SENT_KEY] = false;
-		current_year_winter_28_object[GIFT_GIVEN_KEY] = false;
 
-		// Create the save file object.
-		json save_file_object = json::object();
-		save_file_object[current_year_winter_21_date_string] = current_year_winter_21_object;
-		save_file_object[current_year_winter_27_date_string] = current_year_winter_27_object;
-		save_file_object[current_year_winter_28_date_string] = current_year_winter_28_object;
-
-		// Create the save hash object.
-		json save_hash_object = json::object();
-		save_hash_object[save_file] = save_file_object;
-
-		// Write values back.
-		json_object[save_hash] = save_hash_object;
-	}
-
-	json save_hash_object = json_object[save_hash];
-	std::string current_year_winter_21_date_string = FormatDateString(21, 4, year);
-	std::string current_year_winter_27_date_string = FormatDateString(27, 4, year);
-	std::string current_year_winter_28_date_string = FormatDateString(28, 4, year);
-
-	// Check if an entry for the save file didn't exist in the save hash object.
-	if (!save_hash_object.contains(save_file))
-	{
-		// Randomly determine the secret santa sender and recipient.
-		std::random_device rd;
-		std::mt19937 gen(rd());
-		std::uniform_int_distribution<> distr(0, static_cast<int>(NPC_NAMES->size()));
-		int random_sender = distr(gen);
-		int random_recipient = distr(gen);
-
-		secret_santa_sender = NPC_NAMES->at(random_sender);
-		secret_santa_recipient = NPC_NAMES->at(random_recipient);
-
-		// Create the date objects.
-		json current_year_winter_21_object = json::object();
-		current_year_winter_21_object[SENDER_KEY] = secret_santa_sender;
-		current_year_winter_21_object[RECIPIENT_KEY] = secret_santa_recipient;
-		current_year_winter_21_object[MAIL_SENT_KEY] = false;
-
-		json current_year_winter_27_object = json::object();
-		current_year_winter_27_object[MAIL_SENT_KEY] = false;
-
-		json current_year_winter_28_object = json::object();
-		current_year_winter_28_object[MAIL_SENT_KEY] = false;
-		current_year_winter_28_object[GIFT_GIVEN_KEY] = false;
-
-		// Create the save file object.
-		json save_file_object = json::object();
-		save_file_object[current_year_winter_21_date_string] = current_year_winter_21_object;
-		save_file_object[current_year_winter_27_date_string] = current_year_winter_27_object;
-		save_file_object[current_year_winter_28_date_string] = current_year_winter_28_object;
-
-		// Write values back.
-		save_hash_object[save_file] = save_file_object;
-		json_object[save_hash] = save_hash_object;
-	}
-
-	json save_file_object = save_hash_object[save_file]; // TODO: Write back
-
-	// Check if Winter 21 data for the current save file doesn't exist.
-	if (!save_file_object.contains(current_year_winter_21_date_string))
-	{
-		// Randomly determine the secret santa sender and recipient.
-		std::random_device rd;
-		std::mt19937 gen(rd());
-		std::uniform_int_distribution<> distr(0, static_cast<int>(NPC_NAMES->size()));
-		int random_sender = distr(gen);
-		int random_recipient = distr(gen);
-
-		secret_santa_sender = NPC_NAMES->at(random_sender);
-		secret_santa_recipient = NPC_NAMES->at(random_recipient);
-
-		// Create the date object.
-		json current_year_winter_21_object = json::object();
-		current_year_winter_21_object[SENDER_KEY] = secret_santa_sender;
-		current_year_winter_21_object[RECIPIENT_KEY] = secret_santa_recipient;
-		current_year_winter_21_object[MAIL_SENT_KEY] = false;
-
-		// Write values back.
-		save_file_object[current_year_winter_21_date_string] = current_year_winter_21_object;
-		save_hash_object[save_file] = save_file_object;
-		json_object[save_hash] = save_hash_object;
-	}
-
-	// Check if Winter 27 data for the current save file doesn't exist.
-	if (!save_file_object.contains(current_year_winter_27_date_string))
-	{
-		// Create the date object.
-		json current_year_winter_27_object = json::object();
-		current_year_winter_27_object[MAIL_SENT_KEY] = false;
-
-		// Write values back.
-		save_file_object[current_year_winter_27_date_string] = current_year_winter_27_object;
-		save_hash_object[save_file] = save_file_object;
-		json_object[save_hash] = save_hash_object;
-	}
-
-	// Check if Winter 28 data for the current save file doesn't exist.
-	if (!save_file_object.contains(current_year_winter_28_date_string))
-	{
-		// Create the date object.
-		json current_year_winter_28_object = json::object();
-		current_year_winter_28_object[MAIL_SENT_KEY] = false;
-		current_year_winter_28_object[GIFT_GIVEN_KEY] = false;
-
-		// Write values back.
-		save_file_object[current_year_winter_28_date_string] = current_year_winter_28_object;
-		save_hash_object[save_file] = save_file_object;
-		json_object[save_hash] = save_hash_object;
-	}
-
-	if (season == 4) // winter
-	{
-		if (day == 21)
+		// Check if an entry for the save file didn't exist in the save hash object.
+		if (!save_hash_object.contains(save_file))
 		{
-			bool mail_sent = json_object[save_hash][save_file][current_year_winter_21_date_string][MAIL_SENT_KEY];
-			if (!mail_sent)
-			{
-				std::string mail_name_str = "secret_santa_notice_" + secret_santa_recipient;
-				SendMail(mail_name_str);
+			// Randomly determine the secret santa sender and recipient.
+			std::random_device rd;
+			std::mt19937 gen(rd());
+			std::uniform_int_distribution<> distr(0, static_cast<int>(NPC_NAMES->size()));
+			int random_sender = distr(gen);
+			int random_recipient = distr(gen);
 
-				json_object[save_hash][save_file][current_year_winter_21_date_string][MAIL_SENT_KEY] = true;
-			}
+			secret_santa_sender = NPC_NAMES[random_sender];
+			secret_santa_recipient = NPC_NAMES[random_recipient];
+
+			// Create the date objects.
+			json current_year_winter_21_object = json::object();
+			current_year_winter_21_object[SENDER_KEY] = secret_santa_sender;
+			current_year_winter_21_object[RECIPIENT_KEY] = secret_santa_recipient;
+			current_year_winter_21_object[MAIL_SENT_KEY] = false;
+
+			json current_year_winter_27_object = json::object();
+			current_year_winter_27_object[MAIL_SENT_KEY] = false;
+
+			json current_year_winter_28_object = json::object();
+			current_year_winter_28_object[MAIL_SENT_KEY] = false;
+			current_year_winter_28_object[GIFT_GIVEN_KEY] = false;
+
+			// Create the save file object.
+			json save_file_object = json::object();
+			save_file_object[current_year_winter_21_date_string] = current_year_winter_21_object;
+			save_file_object[current_year_winter_27_date_string] = current_year_winter_27_object;
+			save_file_object[current_year_winter_28_date_string] = current_year_winter_28_object;
+
+			// Write values back.
+			save_hash_object[save_file] = save_file_object;
+			json_object[save_hash] = save_hash_object;
 		}
 
-		if (day == 27)
-		{
-			bool mail_sent = json_object[save_hash][save_file][current_year_winter_27_date_string][MAIL_SENT_KEY];
-			if (!mail_sent)
-			{
-				std::string mail_name_str = "secret_santa_reminder_" + secret_santa_recipient;
-				SendMail(mail_name_str);
+		json save_file_object = save_hash_object[save_file]; // TODO: Write back
 
-				json_object[save_hash][save_file][current_year_winter_27_date_string][MAIL_SENT_KEY] = true;
-			}
+		// Check if Winter 21 data for the current save file doesn't exist.
+		if (!save_file_object.contains(current_year_winter_21_date_string))
+		{
+			// Randomly determine the secret santa sender and recipient.
+			std::random_device rd;
+			std::mt19937 gen(rd());
+			std::uniform_int_distribution<> distr(0, static_cast<int>(NPC_NAMES->size()));
+			int random_sender = distr(gen);
+			int random_recipient = distr(gen);
+
+			secret_santa_sender = NPC_NAMES[random_sender];
+			secret_santa_recipient = NPC_NAMES[random_recipient];
+
+			// Create the date object.
+			json current_year_winter_21_object = json::object();
+			current_year_winter_21_object[SENDER_KEY] = secret_santa_sender;
+			current_year_winter_21_object[RECIPIENT_KEY] = secret_santa_recipient;
+			current_year_winter_21_object[MAIL_SENT_KEY] = false;
+
+			// Write values back.
+			save_file_object[current_year_winter_21_date_string] = current_year_winter_21_object;
+			save_hash_object[save_file] = save_file_object;
+			json_object[save_hash] = save_hash_object;
 		}
 
-		if (day == 28)
+		// Check if Winter 27 data for the current save file doesn't exist.
+		if (!save_file_object.contains(current_year_winter_27_date_string))
 		{
-			bool mail_sent = json_object[save_hash][save_file][current_year_winter_28_date_string][MAIL_SENT_KEY];
-			if (!mail_sent)
-			{
-				std::string mail_name_str = "secret_santa_" + secret_santa_sender + ;
-				SendMail(mail_name_str);
+			// Create the date object.
+			json current_year_winter_27_object = json::object();
+			current_year_winter_27_object[MAIL_SENT_KEY] = false;
 
-				json_object[save_hash][save_file][current_year_winter_28_date_string][MAIL_SENT_KEY] = true;
+			// Write values back.
+			save_file_object[current_year_winter_27_date_string] = current_year_winter_27_object;
+			save_hash_object[save_file] = save_file_object;
+			json_object[save_hash] = save_hash_object;
+		}
+
+		// Check if Winter 28 data for the current save file doesn't exist.
+		if (!save_file_object.contains(current_year_winter_28_date_string))
+		{
+			// Create the date object.
+			json current_year_winter_28_object = json::object();
+			current_year_winter_28_object[MAIL_SENT_KEY] = false;
+			current_year_winter_28_object[GIFT_GIVEN_KEY] = false;
+
+			// Write values back.
+			save_file_object[current_year_winter_28_date_string] = current_year_winter_28_object;
+			save_hash_object[save_file] = save_file_object;
+			json_object[save_hash] = save_hash_object;
+		}
+
+		if (season == 4) // winter
+		{
+			if (day == 21)
+			{
+				bool mail_sent = json_object[save_hash][save_file][current_year_winter_21_date_string][MAIL_SENT_KEY];
+				if (!mail_sent)
+				{
+					std::string mail_name_str = "secret_santa_notice_" + secret_santa_recipient;
+					SendMail(mail_name_str);
+
+					json_object[save_hash][save_file][current_year_winter_21_date_string][MAIL_SENT_KEY] = true;
+				}
+			}
+
+			if (day == 27)
+			{
+				bool mail_sent = json_object[save_hash][save_file][current_year_winter_27_date_string][MAIL_SENT_KEY];
+				if (!mail_sent)
+				{
+					std::string mail_name_str = "secret_santa_reminder_" + secret_santa_recipient;
+					SendMail(mail_name_str);
+
+					json_object[save_hash][save_file][current_year_winter_27_date_string][MAIL_SENT_KEY] = true;
+				}
+			}
+
+			if (day == 28)
+			{
+				bool mail_sent = json_object[save_hash][save_file][current_year_winter_28_date_string][MAIL_SENT_KEY];
+				if (!mail_sent)
+				{
+					// Randomly select a gift.
+					std::random_device rd;
+					std::mt19937 gen(rd());
+					std::uniform_int_distribution<> distr(0, static_cast<int>(GIFTS->size()));
+					int random_gift = distr(gen);
+
+					auto random_gift_str = GIFTS[random_gift];
+
+					std::string mail_name_str = "secret_santa_" + secret_santa_sender + "_" + random_gift_str;
+					SendMail(mail_name_str);
+
+					json_object[save_hash][save_file][current_year_winter_28_date_string][MAIL_SENT_KEY] = true;
+				}
 			}
 		}
 	}
@@ -683,10 +697,13 @@ RValue& GmlScriptLoadGameCallback(
 	IN RValue** Arguments
 )
 {
-	// Get the file name of the save.
-	std::string arg0_str = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
-	std::size_t index = arg0_str.find_last_of("/");
-	save_file = arg0_str.substr(index + 1);
+	if (mod_healthy)
+	{
+		// Get the file name of the save.
+		std::string arg0_str = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
+		std::size_t index = arg0_str.find_last_of("/");
+		save_file = arg0_str.substr(index + 1);
+	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_load_game"));
 	original(
@@ -696,6 +713,34 @@ RValue& GmlScriptLoadGameCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	return Result;
+}
+
+RValue& GmlScriptSaveGameCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_save_game"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (mod_healthy)
+	{
+		// Update the config file.
+		std::ofstream out_stream(config_file);
+		out_stream << std::setw(4) << json_object << std::endl;
+		out_stream.close();
+	}
 
 	return Result;
 }
@@ -910,6 +955,33 @@ void CreateHookGmlScriptLoadGame(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptSaveGame(AurieStatus& status)
+{
+	CScript* gml_script_save_game = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_save_game",
+		(PVOID*)&gml_script_save_game
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_save_game)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_save_game",
+		gml_script_save_game->m_Functions->m_ScriptFunction,
+		GmlScriptSaveGameCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_save_game)!", VERSION);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path& ModulePath) {
 	UNREFERENCED_PARAMETER(ModulePath);
 
@@ -967,7 +1039,21 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		return status;
 	}
 
+	CreateHookGmlScriptOnNewDay(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
 	CreateHookGmlScriptLoadGame(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptSaveGame(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
