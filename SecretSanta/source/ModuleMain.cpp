@@ -12,6 +12,7 @@ using json = nlohmann::json;
 
 static const char* const VERSION = "1.0.0";
 static const double MAX_HEART_POINTS = 705; // 6 hearts is the current max friendship as of v0.12. See "misc/npc_heart_point_table" in fiddle file for heart points per level.
+static const double UNSET_INT = -1;
 static const double UNSET_DOUBLE = -1.0;
 static const std::string GIFTS[] = {
 	"berry_bowl", "beet_soup", "fried_rice", "vegetable_pot_pie", "floral_tea", 
@@ -36,6 +37,7 @@ static bool mod_healthy = false;
 static int day = UNSET_DOUBLE;
 static int season = UNSET_DOUBLE;
 static int year = UNSET_DOUBLE;
+static int stinky_stamina_potion_id = UNSET_INT;
 static std::string save_file = "";
 static std::string config_file = "";
 static std::string secret_santa_sender = "";
@@ -160,13 +162,13 @@ int GetNpcId(std::string npc_name)
 		}
 	}
 	
-	return -1;
+	return UNSET_INT;
 }
 
 void AddHeartPoints(std::string npc_name)
 {
 	int npc_id = GetNpcId(npc_name);
-	if (npc_id != -1)
+	if (npc_id != UNSET_INT)
 	{
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
@@ -192,6 +194,30 @@ void AddHeartPoints(std::string npc_name)
 		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - Unable to lookup ID for NPC: %s", VERSION, npc_name.c_str());
 	}
 
+}
+
+int GetItemId(CInstance* self, CInstance* other, std::string item_name)
+{
+	CScript* gml_script_try_string_to_item_id = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_try_string_to_item_id",
+		(PVOID*)&gml_script_try_string_to_item_id
+	);
+
+	RValue result;
+	RValue argument = item_name;
+	RValue* argument_ptr = &argument;
+	gml_script_try_string_to_item_id->m_Functions->m_ScriptFunction(
+		self,
+		other,
+		result,
+		1,
+		{ &argument_ptr }
+	);
+
+	if (result.m_Kind == VALUE_INT64)
+		return result.m_i64;
+	return UNSET_INT;
 }
 
 RValue& GmlScriptCalendarDayCallback(
@@ -665,6 +691,17 @@ RValue& GmlScriptSetupMainScreenCallback(
 			handle_eptr(eptr);
 		}
 
+		int item_id = GetItemId(Self, Other, "stinky_stamina_potion");
+		if (item_id != UNSET_INT)
+		{
+			stinky_stamina_potion_id = item_id;
+		}
+		else
+		{
+			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to look up item ID for: stinky_stamina_potion.", VERSION);
+			mod_healthy = false;
+		}
+
 		load_on_start = false;
 
 		if (!mod_healthy)
@@ -962,6 +999,44 @@ RValue& GmlScriptSaveGameCallback(
 	return Result;
 }
 
+RValue& GmlScriptChooseRandomArtifactCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_choose_random_artifact@Archaeology@Archaeology"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (mod_healthy)
+	{
+		if (season == 4) // winter
+		{
+			// Randomly roll 1/20 chance to get a Magical Snowflake item.
+			std::random_device rd;
+			std::mt19937 gen(rd());
+			std::uniform_int_distribution<> distr(1, 10);
+			int random_int = distr(gen);
+
+			if (random_int == 7)
+			{
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - You found a Magical Snowflake!", VERSION);
+				Result.m_i64 = stinky_stamina_potion_id;
+			}
+		}
+	}
+
+	return Result;
+}
+
 void CreateHookGmlScriptCalendarDay(AurieStatus& status)
 {
 	CScript* gml_script_calendar_day = nullptr;
@@ -1184,6 +1259,34 @@ void CreateHookGmlScriptSaveGame(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptChooseRandomArtifact(AurieStatus& status)
+{
+	CScript* gml_script_choose_random_artifact = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_choose_random_artifact@Archaeology@Archaeology",
+		(PVOID*)&gml_script_choose_random_artifact
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_choose_random_artifact@Archaeology@Archaeology)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_choose_random_artifact@Archaeology@Archaeology",
+		gml_script_choose_random_artifact->m_Functions->m_ScriptFunction,
+		GmlScriptChooseRandomArtifactCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_choose_random_artifact@Archaeology@Archaeology)!", VERSION);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path& ModulePath) {
 	UNREFERENCED_PARAMETER(ModulePath);
 
@@ -1249,6 +1352,13 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptSaveGame(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptChooseRandomArtifact(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
