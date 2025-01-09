@@ -135,6 +135,9 @@ void ObjectCallback(
 									{
 										// Increase the animal's heart points.
 										RValue new_heart_points = original_heart_points.m_Real + (5 * friendship_multiplier);
+										if (new_heart_points.m_Real > 1800.0)
+											new_heart_points.m_Real = 1800.0;
+
 										g_ModuleInterface->CallBuiltin(
 											"struct_set", {
 												entry, "heart_points", new_heart_points
@@ -179,6 +182,9 @@ void ObjectCallback(
 									{
 										// Increase the animal's heart points.
 										RValue new_heart_points = original_heart_points.m_Real + (5 * friendship_multiplier);
+										if (new_heart_points.m_Real > 1800.0)
+											new_heart_points.m_Real = 1800.0;
+
 										g_ModuleInterface->CallBuiltin(
 											"struct_set", {
 												entry, "heart_points", new_heart_points
