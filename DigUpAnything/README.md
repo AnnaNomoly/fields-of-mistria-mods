@@ -1,5 +1,5 @@
 # DigUpAnything
-A YYTK plugin for FieldsOfMistria that allows you to modify what **item** Ari will dig up from the next **artifact spot**.
+A YYTK plugin for Fields Of Mistria that allows you to modify what **item** Ari will dig up from the next **artifact spot**.
 
 ## Instructions
 1. Press `F11` to open the input dialog where you can specify one of the **item names** from the table below.
@@ -7,6 +7,20 @@ A YYTK plugin for FieldsOfMistria that allows you to modify what **item** Ari wi
 > **NOTE**: The item name must be formatted *exactly* as shown in the table below!
 
 2. Dig up an artifact spot! The item uncovered will be what you input. Any subsequent artifact spots will behave as normal until you repeat step #1.
+
+## About "Internal Item Names"
+Items in Fields of Mistria have what I generally refer to as an "internal name" that uniquely identifies them. Unlike their ID (number) that CAN change with each update, the internal name is NOT meant to change, and is therefore an easy way for the developers and us to identify an item.
+
+### Looking Up Internal Names
+You may know the name of an item you wish to obtain using this mod, but don't see it in the list below. That's because the *actual* item name is NOT always the same as its *internal* name. Let's use `Shiny Bead`, the item animals reward you with, as an example. In the list below we see I made a note indicating that the *internal* item name for it is actually `animal_currency`.
+
+But how did I figure that out? By looking in the game's **localization** file: `localization.json`. This JSON file contains all of the game's translated text for items, conversations, and more! By searching for `"Shiny Bead"` in the file I arrived at the line shown below:
+```
+"items/other/ranching/animal_currency/name": "Shiny Bead",
+```
+
+The `animal_currency` portion of that text is the item's *internal name*. If you check other files for the game, such as the `fiddle.json`, you will also see the *internal names* used as well!
+
 
 ## Item Table (FoM v0.12.0)
 * Anything marked **DISABLED** is not supported, as it would crash the game when trying to create the item.
@@ -260,7 +274,7 @@ A YYTK plugin for FieldsOfMistria that allows you to modify what **item** Ari wi
 | 243 | cauliflower |
 | 244 | cauliflower_curry |
 | 245 | cave_eel |
-| 246 | cave_kelp |
+| 246 | cave_kelp | Jade Dulce |
 | 247 | cave_shark |
 | 248 | cave_shrimp |
 | 249 | cavern_crystal_lamp_green |
