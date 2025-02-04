@@ -10,6 +10,10 @@ using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
+static const char* const YYTK_KEY = "__YYTK";
+static const char* const DIG_UP_ANYTHING_KEY = "DigUpAnything";
+static const char* const SECRET_SANTA_KEY = "SecretSanta";
+static const char* const IGNORE_NEXT_DIG_SPOT_KEY = "ignore_next_dig_spot";
 static const char* const VERSION = "1.0.0";
 static const double MAX_HEART_POINTS = 705; // 6 hearts is the current max friendship as of v0.12. See "misc/npc_heart_point_table" in fiddle file for heart points per level.
 static const double UNSET_INT = -1;
@@ -32,6 +36,7 @@ static const std::string MAIL_SENT_KEY = "mail_sent";
 static const std::string GIFT_GIVEN_KEY = "gift_given";
 
 static YYTKInterface* g_ModuleInterface = nullptr;
+static RValue __YYTK;
 static bool load_on_start = true;
 static bool mod_healthy = false;
 static int day = UNSET_DOUBLE;
@@ -141,6 +146,32 @@ void SendMail(std::string mail_name_str)
 	);
 }
 
+bool MailExists(std::string mail_name_str)
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue inbox = __ari.at("inbox");
+	RValue contents = inbox.at("contents");
+	RValue contents_buffer = contents.at("__buffer");
+
+	size_t size = 0;
+	g_ModuleInterface->GetArraySize(contents_buffer, size);
+
+	for (size_t i = 0; i < size; i++)
+	{
+		RValue* entry = nullptr;
+		g_ModuleInterface->GetArrayEntry(contents_buffer, i, entry);
+
+		RValue name = entry->at("name");
+		if (strstr(name.AsString().data(), mail_name_str.c_str()))
+			return true;
+	}
+
+	return false;
+}
+
 int GetNpcId(std::string npc_name)
 {
 	CInstance* global_instance = nullptr;
@@ -218,6 +249,109 @@ int GetItemId(CInstance* self, CInstance* other, std::string item_name)
 	if (result.m_Kind == VALUE_INT64)
 		return result.m_i64;
 	return UNSET_INT;
+}
+
+bool RValueAsBool(RValue value)
+{
+	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
+		return true;
+	return false;
+}
+
+bool GlobalVariableExists(const char* variable_name)
+{
+	RValue global_variable_exists = g_ModuleInterface->CallBuiltin(
+		"variable_global_exists",
+		{ variable_name }
+	);
+
+	return RValueAsBool(global_variable_exists);
+}
+
+RValue GlobalVariableGet(const char* variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_get",
+		{ variable_name }
+	);
+}
+
+RValue GlobalVariableSet(const char* variable_name, RValue value)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_set",
+		{ variable_name, value }
+	);
+}
+
+bool StructVariableExists(RValue the_struct, const char* variable_name)
+{
+	RValue struct_exists = g_ModuleInterface->CallBuiltin(
+		"struct_exists",
+		{ the_struct, variable_name }
+	);
+
+	return RValueAsBool(struct_exists);
+}
+
+RValue StructVariableGet(RValue the_struct, const char* variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"struct_get",
+		{ the_struct, variable_name }
+	);
+}
+
+RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue value)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"struct_set",
+		{ the_struct, variable_name, value }
+	);
+}
+
+void CreateOrGetGlobalYYTKVariable()
+{
+	if (!GlobalVariableExists(YYTK_KEY))
+	{
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&__YYTK);
+		GlobalVariableSet(YYTK_KEY, __YYTK);
+	}
+	else
+		__YYTK = GlobalVariableGet(YYTK_KEY);
+}
+
+void CreateModInfoInGlobalYYTKVariable()
+{
+	if (!StructVariableExists(__YYTK, SECRET_SANTA_KEY))
+	{
+		RValue SecretSanta;
+		RValue version = VERSION;
+		RValue ignore_next_dig_spot = false;
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&SecretSanta);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&SecretSanta, "version", &version);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&SecretSanta, IGNORE_NEXT_DIG_SPOT_KEY, &ignore_next_dig_spot);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&__YYTK, SECRET_SANTA_KEY, &SecretSanta);
+	}
+}
+
+bool IgnoreNextDigSpot()
+{
+	if (GlobalVariableExists(YYTK_KEY))
+	{
+		RValue __YYTK = GlobalVariableGet(YYTK_KEY);
+		if (StructVariableExists(__YYTK, SECRET_SANTA_KEY))
+		{
+			RValue SecretSanta = StructVariableGet(__YYTK, SECRET_SANTA_KEY);
+			if (StructVariableExists(SecretSanta, IGNORE_NEXT_DIG_SPOT_KEY))
+			{
+				RValue ignore_next_dig_spot = StructVariableGet(SecretSanta, IGNORE_NEXT_DIG_SPOT_KEY);
+				return RValueAsBool(ignore_next_dig_spot);
+			}
+		}
+	}
+
+	return false;
 }
 
 RValue& GmlScriptCalendarDayCallback(
@@ -615,6 +749,9 @@ RValue& GmlScriptSetupMainScreenCallback(
 
 	if (load_on_start)
 	{
+		CreateOrGetGlobalYYTKVariable();
+		CreateModInfoInGlobalYYTKVariable();
+
 		std::exception_ptr eptr;
 		try
 		{
@@ -731,7 +868,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	return Result;
 }
 
-RValue& GmlScriptOnNewDayCallback(
+RValue& GmlScriptShowRoomTitleCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
 	OUT RValue& Result,
@@ -885,6 +1022,9 @@ RValue& GmlScriptOnNewDayCallback(
 
 		if (season == 4) // winter
 		{
+			if (!MailExists("secret_santa_first_year"))
+				SendMail("secret_santa_first_year");
+
 			if (day == 20)
 			{
 				bool mail_sent = json_object[save_hash][save_file][current_year_winter_20_date_string][MAIL_SENT_KEY];
@@ -1018,19 +1158,28 @@ RValue& GmlScriptChooseRandomArtifactCallback(
 
 	if (mod_healthy)
 	{
-		if (season == 4) // winter
+		if(!IgnoreNextDigSpot())
 		{
-			// Randomly roll 1/20 chance to get a Magical Snowflake item.
-			std::random_device rd;
-			std::mt19937 gen(rd());
-			std::uniform_int_distribution<> distr(1, 10);
-			int random_int = distr(gen);
-
-			if (random_int == 7)
+			if (season == 4) // winter
 			{
-				g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - You found a Magical Snowflake!", VERSION);
-				Result.m_i64 = stinky_stamina_potion_id;
+				// Randomly roll 1/20 chance to get a Magical Snowflake item.
+				std::random_device rd;
+				std::mt19937 gen(rd());
+				std::uniform_int_distribution<> distr(1, 10);
+				int random_int = distr(gen);
+
+				if (random_int == 7)
+				{
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - You found a Magical Snowflake!", VERSION);
+					Result.m_i64 = stinky_stamina_potion_id;
+				}
 			}
+		}
+		else
+		{
+			RValue SecretSanta = StructVariableGet(__YYTK, "SecretSanta");
+			RValue ignore_next_dig_spot = false;
+			StructVariableSet(SecretSanta, "ignore_next_dig_spot", ignore_next_dig_spot);
 		}
 	}
 
@@ -1177,7 +1326,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptOnNewDay(AurieStatus& status)
+void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 {
 	CScript* gml_Script_on_new_day = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
@@ -1194,7 +1343,7 @@ void CreateHookGmlScriptOnNewDay(AurieStatus& status)
 		g_ArSelfModule,
 		"gml_Script_show_room_title",
 		gml_Script_on_new_day->m_Functions->m_ScriptFunction,
-		GmlScriptOnNewDayCallback,
+		GmlScriptShowRoomTitleCallback,
 		nullptr
 	);
 
@@ -1337,7 +1486,7 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		return status;
 	}
 
-	CreateHookGmlScriptOnNewDay(status);
+	CreateHookGmlScriptShowRoomTitle(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
@@ -1364,7 +1513,7 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
-	
+
 	g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - Plugin started!", VERSION);
 	return AURIE_SUCCESS;
 }
