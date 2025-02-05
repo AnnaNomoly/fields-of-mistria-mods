@@ -27,7 +27,7 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 		Arguments
 	);
 
-	if (GetAsyncKeyState(VK_F4) & 1)
+	if (GetAsyncKeyState(VK_F8) & 1)
 	{
 		RValue user_input_string = g_ModuleInterface->CallBuiltin(
 			"get_string",
