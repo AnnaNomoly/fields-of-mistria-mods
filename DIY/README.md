@@ -2,7 +2,7 @@
 A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recipe** in the game. This works on __existing__ saves!
 
 ## Instructions
-1. Press `F??` to open the input dialog where you can specify one of the **furniture recipe names** from the table below.
+1. Press `F8` to open the input dialog where you can specify one of the **furniture recipe names** from the table below.
 
 > **NOTE**: The recipe name must be formatted *exactly* as shown in the table below!
 

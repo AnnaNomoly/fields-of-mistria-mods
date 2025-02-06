@@ -34,7 +34,7 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 			{
 				"Input the desired furniture's internal name.\r\n"
 				"(Ex.: summer_bed)\r\n"
-				"More Info: https://github.com/AnnaNomoly/YYToolkit/tree/stable/Cookbook",
+				"More Info: https://github.com/AnnaNomoly/YYToolkit/tree/stable/DIY",
 				"summer_bed"
 			}
 		);
