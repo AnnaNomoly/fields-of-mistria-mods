@@ -110,23 +110,6 @@ void GetDirectionalValues()
 
 void FaceDir(CInstance* Self, CInstance* Other)
 {
-	//CScript* gml_script_face_dir = nullptr;
-	//g_ModuleInterface->GetNamedRoutinePointer(
-	//	"gml_Script_face_dir@gml_Object_obj_ari_Create_0",
-	//	(PVOID*)&gml_script_face_dir
-	//);
-
-	//RValue result;
-	//RValue argument = face_dir_override;
-	//RValue* argument_ptr = &argument;
-	//gml_script_face_dir->m_Functions->m_ScriptFunction(
-	//	Self,
-	//	Other,
-	//	result,
-	//	1,
-	//	{ &argument_ptr }
-	//);
-
 	if (face_dir_override != UNSET_FACE_DIR_OVERRIDE)
 	{
 		CInstance* global_instance = nullptr;
@@ -145,8 +128,6 @@ void FaceDir(CInstance* Self, CInstance* Other)
 		gml_script_face_dir->m_Functions->m_ScriptFunction(
 			ari,
 			Other,
-			//global_instance->at("__ari").m_Object,
-			//ari,
 			result,
 			1,
 			{ &argument_ptr }
@@ -157,25 +138,6 @@ void FaceDir(CInstance* Self, CInstance* Other)
 
 void SetCardinal(CInstance* Self, CInstance* Other)
 {
-	//CScript* gml_script_set_cardinal = nullptr;
-	//g_ModuleInterface->GetNamedRoutinePointer(
-	//	"gml_Script_set_cardinal@gml_Object_obj_ari_Create_0",
-	//	(PVOID*)&gml_script_set_cardinal
-	//);
-
-	//RValue result;
-	//RValue argument = cardinal_override;
-	//argument.m_i64 = cardinal_override;
-	//argument.m_Kind = VALUE_INT64;
-	//RValue* argument_ptr = &argument;
-	//gml_script_set_cardinal->m_Functions->m_ScriptFunction(
-	//	Self,
-	//	Other,
-	//	result,
-	//	1,
-	//	{ &argument_ptr }
-	//);
-
 	if (cardinal_override != UNSET_CARDINAL_OVERRIDE)
 	{
 		CInstance* global_instance = nullptr;
@@ -196,8 +158,6 @@ void SetCardinal(CInstance* Self, CInstance* Other)
 		gml_script_set_cardinal->m_Functions->m_ScriptFunction(
 			ari,
 			Other,
-			//global_instance->at("__ari").m_Object,
-			//ari,
 			result,
 			1,
 			{ &argument_ptr }
@@ -227,112 +187,6 @@ void ObjectCallback(
 		if(exists.m_Kind == VALUE_BOOL && exists.m_Real == 1.0)
 			ari = self;
 	}
-}
-
-RValue& GmlScriptFaceDirCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	if (face_dir_override != UNSET_FACE_DIR_OVERRIDE)
-	{
-		Arguments[0]->m_Real = face_dir_override;
-	}
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_face_dir@gml_Object_obj_ari_Create_0"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
-}
-
-RValue& GmlScriptSetCardinalCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	if (cardinal_override != UNSET_CARDINAL_OVERRIDE)
-	{
-		Arguments[0]->m_i64 = cardinal_override;
-	}
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_set_cardinal@gml_Object_obj_ari_Create_0"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
-}
-
-RValue& GmlScriptSetAnimationCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	if (Arguments[0]->m_i64 == 7) // Attack 1 Animation
-		GetDirectionalValues();
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_set_animation@gml_Object_obj_ari_Create_0"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	if (Arguments[0]->m_i64 != 7 && Arguments[0]->m_i64 != 8 && Arguments[0]->m_i64 != 9 && Arguments[0]->m_i64 != 24) // Attack 1,2,3 Animations and Fishing Line Cast Animation 
-	{
-		cardinal_override = UNSET_CARDINAL_OVERRIDE;
-		face_dir_override = UNSET_FACE_DIR_OVERRIDE;
-	}
-
-	return Result;
-}
-
-RValue& GmlScriptNetCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	GetDirectionalValues();
-	FaceDir(Self, Other);
-	SetCardinal(Self, Other);
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_net@anon@73046@AriFsm@AriFsm"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	cardinal_override = UNSET_CARDINAL_OVERRIDE;
-	face_dir_override = UNSET_FACE_DIR_OVERRIDE;
-
-	return Result;
 }
 
 RValue& GmlScriptHeldItemCallback(
@@ -393,28 +247,6 @@ RValue& GmlScriptUseItemCallback(
 	cardinal_override = UNSET_CARDINAL_OVERRIDE;
 	face_dir_override = UNSET_FACE_DIR_OVERRIDE;
 
-	return Result;
-}
-
-RValue& GmlScriptMoveAriCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	if (cardinal_override != UNSET_CARDINAL_OVERRIDE && face_dir_override != UNSET_FACE_DIR_OVERRIDE)
-		return Result;
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_move_ari"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
 	return Result;
 }
 
@@ -492,114 +324,6 @@ void CreateObjectCallback(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptFaceDir(AurieStatus& status)
-{
-	CScript* gml_script_face_dir = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_face_dir@gml_Object_obj_ari_Create_0",
-		(PVOID*)&gml_script_face_dir
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to get script (gml_Script_face_dir@gml_Object_obj_ari_Create_0)!", VERSION);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_face_dir@gml_Object_obj_ari_Create_0",
-		gml_script_face_dir->m_Functions->m_ScriptFunction,
-		GmlScriptFaceDirCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook script (gml_Script_face_dir@gml_Object_obj_ari_Create_0)!", VERSION);
-	}
-}
-
-void CreateHookGmlScriptSetCardinal(AurieStatus& status)
-{
-	CScript* gml_script_set_cardinal = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_set_cardinal@gml_Object_obj_ari_Create_0",
-		(PVOID*)&gml_script_set_cardinal
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to get script (gml_Script_set_cardinal@gml_Object_obj_ari_Create_0)!", VERSION);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_set_cardinal@gml_Object_obj_ari_Create_0",
-		gml_script_set_cardinal->m_Functions->m_ScriptFunction,
-		GmlScriptSetCardinalCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook script (gml_Script_set_cardinal@gml_Object_obj_ari_Create_0)!", VERSION);
-	}
-}
-
-void CreateHookGmlScriptSetAnimation(AurieStatus& status)
-{
-	CScript* gml_script_set_animation = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_set_animation@gml_Object_obj_ari_Create_0",
-		(PVOID*)&gml_script_set_animation
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to get script (gml_Script_set_animation@gml_Object_obj_ari_Create_0)!", VERSION);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_set_animation@gml_Object_obj_ari_Create_0",
-		gml_script_set_animation->m_Functions->m_ScriptFunction,
-		GmlScriptSetAnimationCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook script (gml_Script_set_animation@gml_Object_obj_ari_Create_0)!", VERSION);
-	}
-}
-
-void CreateHookGmlScriptNet(AurieStatus& status)
-{
-	CScript* gml_script_net = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_net@anon@73046@AriFsm@AriFsm",
-		(PVOID*)&gml_script_net
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to get script (gml_Script_net@anon@73046@AriFsm@AriFsm)!", VERSION);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_net@anon@73046@AriFsm@AriFsm",
-		gml_script_net->m_Functions->m_ScriptFunction,
-		GmlScriptNetCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook script (gml_Script_net@anon@73046@AriFsm@AriFsm)!", VERSION);
-	}
-}
-
 void CreateHookGmlScriptHeldItem(AurieStatus& status)
 {
 	CScript* gml_script_held_item = nullptr;
@@ -655,33 +379,6 @@ void CreateHookGmlScriptUseItem(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptMoveAri(AurieStatus& status)
-{
-	CScript* gml_script_on_draw_gui = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_move_ari",
-		(PVOID*)&gml_script_on_draw_gui
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to get script (gml_Script_move_ari)!", VERSION);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_move_ari",
-		gml_script_on_draw_gui->m_Functions->m_ScriptFunction,
-		GmlScriptMoveAriCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook script (gml_Script_move_ari)!", VERSION);
-	}
-}
-
 void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 {
 	CScript* gml_script_setup_main_screen = nullptr;
@@ -732,34 +429,6 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		return status;
 	}
 
-	//CreateHookGmlScriptFaceDir(status);
-	//if (!AurieSuccess(status))
-	//{
-	//	g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
-	//	return status;
-	//}
-
-	//CreateHookGmlScriptSetCardinal(status);
-	//if (!AurieSuccess(status))
-	//{
-	//	g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
-	//	return status;
-	//}
-
-	//CreateHookGmlScriptSetAnimation(status);
-	//if (!AurieSuccess(status))
-	//{
-	//	g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
-	//	return status;
-	//}
-
-	//CreateHookGmlScriptNet(status);
-	//if (!AurieSuccess(status))
-	//{
-	//	g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
-	//	return status;
-	//}
-
 	CreateHookGmlScriptHeldItem(status);
 	if (!AurieSuccess(status))
 	{
@@ -773,13 +442,6 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
-
-	//CreateHookGmlScriptMoveAri(status);
-	//if (!AurieSuccess(status))
-	//{
-	//	g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
-	//	return status;
-	//}
 
 	CreateHookGmlScriptSetupMainScreen(status);
 	if (!AurieSuccess(status))
