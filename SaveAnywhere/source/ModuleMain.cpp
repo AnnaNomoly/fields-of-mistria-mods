@@ -1,3 +1,4 @@
+#include <map>
 #include <iostream>
 #include <fstream>
 #include <codecvt>
@@ -7,21 +8,179 @@
 using namespace Aurie;
 using namespace YYTK;
 
-static YYTKInterface* g_ModuleInterface = nullptr;
+static const char* const VERSION = "1.0.0";
+static const double UNSET_INT = -1;
 
-static int ari_x;
-static int ari_y;
-static int ari_room_id;
-static int saved_x;
-static int saved_y;
-static int saved_room_id;
-static bool modded_save = false;
-static bool room_changed = false;
+static YYTKInterface* g_ModuleInterface = nullptr;
+static bool load_on_start = true;
+static bool mod_healthy = false;
+static int ari_x = UNSET_INT;
+static int ari_y = UNSET_INT;
+static int ari_room_id = UNSET_INT;
+static int saved_x = UNSET_INT;
+static int saved_y = UNSET_INT;
+static int saved_room_id = UNSET_INT;
 static bool wait_to_teleport_ari = false;
 static bool ready_to_teleport_ari = false;
 static bool wait_to_reposition_ari = false;
 static bool ready_to_reposition_ari = false;
-static std::string loaded_save;
+static std::string save_prefix = "";
+static std::string save_folder = "";
+static std::string mod_folder = "";
+static int mines_entry_location_id = UNSET_INT;
+static std::map<int, const char*> location_id_to_name_map = {};
+
+void ResetVars()
+{
+	ari_x = UNSET_INT;
+	ari_y = UNSET_INT;
+	ari_room_id = UNSET_INT;
+	saved_x = UNSET_INT;
+	saved_y = UNSET_INT;
+	saved_room_id = UNSET_INT;
+	wait_to_teleport_ari = false;
+	ready_to_teleport_ari = false;
+	wait_to_reposition_ari = false;
+	ready_to_reposition_ari = false;
+}
+
+void WriteModFile()
+{
+	std::string file_name = mod_folder + "\\" + save_prefix + "autosave.sav";
+	std::ofstream outfile(file_name, std::ios::out);
+	if (outfile.is_open())
+	{
+		bool dungeon_location_override = false;
+		if (location_id_to_name_map.count(ari_room_id) > 0)
+		{
+			if (std::strcmp(location_id_to_name_map[ari_room_id], "dungeon") == 0)
+			{
+				dungeon_location_override = true;
+			}
+
+			if (std::strcmp(location_id_to_name_map[ari_room_id], "earth_seal") == 0)
+			{
+				dungeon_location_override = true;
+			}
+
+			if (std::strcmp(location_id_to_name_map[ari_room_id], "fire_seal") == 0)
+			{
+				dungeon_location_override = true;
+			}
+
+			if (std::strcmp(location_id_to_name_map[ari_room_id], "water_seal") == 0)
+			{
+				dungeon_location_override = true;
+			}
+		}
+
+		if (dungeon_location_override)
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SaveAnywhere %s] - You are currently in the dungeon! Your location will be saved as \"mines_entry\" to avoid errors.", VERSION);
+			outfile << std::to_string(mines_entry_location_id) + " " + std::to_string(216) + " " + std::to_string(198);
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Saved your game at the fallback location: \"mines_entry\".", VERSION);
+		}
+		else {
+			outfile << std::to_string(ari_room_id) + " " + std::to_string(ari_x) + " " + std::to_string(ari_y);
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Saved your game at your current location: \"%s\".", VERSION, location_id_to_name_map[ari_room_id]);
+		}
+	}
+	outfile.close();
+}
+
+void SaveGame(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_save_game = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_save_game",
+		(PVOID*)&gml_script_save_game
+	);
+
+	std::string file_name = save_folder + "\\" + save_prefix + "autosave.sav";
+	RValue result;
+	RValue argument = file_name;
+	RValue* argument_ptr = &argument;
+
+	gml_script_save_game->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &argument_ptr }
+	);
+}
+
+void DisplaySaveNotification(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_save_game_notification = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_create_save_notification",
+		(PVOID*)&gml_script_save_game_notification
+	);
+
+	RValue result2;
+	gml_script_save_game_notification->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result2,
+		0,
+		nullptr
+	);
+}
+
+bool LoadLocationIds(CInstance* Self, CInstance* Other)
+{
+	for (double i = 0; i < 200; i++)
+	{
+		CScript* gml_script_try_location_id_to_string = nullptr;
+		g_ModuleInterface->GetNamedRoutinePointer(
+			"gml_Script_try_location_id_to_string",
+			(PVOID*)&gml_script_try_location_id_to_string
+		);
+
+		RValue location_name;
+		RValue location_id = i;
+		RValue* location_id_ptr = &location_id;
+		gml_script_try_location_id_to_string->m_Functions->m_ScriptFunction(
+			Self,
+			Other,
+			location_name,
+			1,
+			{ &location_id_ptr }
+		);
+
+		if (location_name.m_Kind != VALUE_NULL && location_name.m_Kind != VALUE_UNSET && location_name.m_Kind != VALUE_UNDEFINED)
+		{
+			if (location_id_to_name_map.count(i) <= 0)
+			{
+				location_id_to_name_map[i] = location_name.AsString().data();
+				if(std::strcmp(location_name.AsString().data(), "mines_entry") == 0)
+					mines_entry_location_id = i;
+			}
+		}
+	}
+
+	if (location_id_to_name_map.size() > 0)
+	{
+		return true;
+	}
+	else {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Failed to load location IDs!", VERSION);
+		return false;
+	}
+}
+
+void handle_eptr(std::exception_ptr eptr)
+{
+	try {
+		if (eptr) {
+			std::rethrow_exception(eptr);
+		}
+	}
+	catch (const std::exception& e) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Error: %s", VERSION, e.what());
+	}
+}
 
 std::string wstr_to_string(std::wstring wstr)
 {
@@ -46,44 +205,52 @@ void ObjectCallback(
 	if (!strstr(self->m_Object->m_Name, "obj_ari"))
 		return;
 
-	RValue x;
-	g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
-	ari_x = x.m_Real;
-
-	RValue y;
-	g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
-	ari_y = y.m_Real;
-
-	if (wait_to_teleport_ari && ready_to_teleport_ari)
+	if (mod_healthy)
 	{
-		CScript* gml_script_goto_location_id = nullptr;
-		g_ModuleInterface->GetNamedRoutinePointer(
-			"gml_Script_goto_location_id",
-			(PVOID*)&gml_script_goto_location_id
-		);
+		RValue x;
+		g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
+		ari_x = x.m_Real;
 
-		RValue retval;
-		RValue* location_id = new RValue(saved_room_id);
-		gml_script_goto_location_id->m_Functions->m_ScriptFunction(
-			self,
-			other,
-			retval,
-			1,
-			{ &location_id }
-		);
-		delete location_id;
+		RValue y;
+		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
+		ari_y = y.m_Real;
 
-		wait_to_teleport_ari = false;
-		ready_to_teleport_ari = false;
-		wait_to_reposition_ari = true;
-	}
-	else if (wait_to_reposition_ari && ready_to_reposition_ari) {
-		RValue x = saved_x;
-		RValue y = saved_y;
-		g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, x);
-		g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, y);
-		wait_to_reposition_ari = false;
-		ready_to_reposition_ari = false;
+		if (wait_to_teleport_ari && ready_to_teleport_ari)
+		{
+			CScript* gml_script_goto_location_id = nullptr;
+			g_ModuleInterface->GetNamedRoutinePointer(
+				"gml_Script_goto_location_id",
+				(PVOID*)&gml_script_goto_location_id
+			);
+
+			RValue result;
+			RValue location_id = saved_room_id;
+			RValue* location_id_ptr = &location_id;
+			gml_script_goto_location_id->m_Functions->m_ScriptFunction(
+				self,
+				other,
+				result,
+				1,
+				{ &location_id_ptr }
+			);
+
+			saved_room_id = UNSET_INT;
+			wait_to_teleport_ari = false;
+			ready_to_teleport_ari = false;
+			wait_to_reposition_ari = true;
+		}
+		else if (wait_to_reposition_ari && ready_to_reposition_ari) {
+			RValue x = saved_x;
+			RValue y = saved_y;
+
+			g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, x);
+			g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, y);
+
+			saved_x = UNSET_INT;
+			saved_y = UNSET_INT;
+			wait_to_reposition_ari = false;
+			ready_to_reposition_ari = false;
+		}
 	}
 }
 
@@ -95,157 +262,33 @@ RValue& GmlScriptLoadGameCallback(
 	IN RValue** Arguments
 )
 {
-	std::string arg0_str = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
-	std::size_t index = arg0_str.find_last_of("/");
-	loaded_save = arg0_str.substr(index + 1);
-
-	wchar_t* localAppDataFolder;
-	if (SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, NULL, &localAppDataFolder) == S_OK)
+	if (mod_healthy)
 	{
-		// Check if the SaveAnywhere mod directory exists.
-		std::string mod_data_folder = wstr_to_string(localAppDataFolder) + "\\FieldsOfMistria\\mod_data\\SaveAnywhere\\";
-		if (std::filesystem::exists(mod_data_folder))
+		// Get the save file name.
+		std::string arg0_str = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
+		std::size_t index = arg0_str.find_last_of("/");
+		std::string save_name = arg0_str.substr(index + 1);
+
+		// Get the save prefix.
+		index = save_name.find_last_of("-");
+		save_prefix = save_name.substr(0, index + 1);
+
+		if (save_name.find("autosave") != std::string::npos)
 		{
 			// Read from the save file in mod_data.
-			std::ifstream file(mod_data_folder + "\\" + loaded_save);
+			std::ifstream file(mod_folder + "\\" + save_name);
 			if (file.good())
 			{
 				file >> saved_room_id >> saved_x >> saved_y;
 				wait_to_teleport_ari = true;
+
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Loaded your saved location: \"%s\".", VERSION, location_id_to_name_map[saved_room_id]);
 			}
 			file.close();
 		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_load_game"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
-}
-
-RValue& GmlScriptSaveGameCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	if (!modded_save)
-	{
-		wchar_t* localAppDataFolder;
-		if (SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, NULL, &localAppDataFolder) == S_OK)
-		{
-			std::string file_name = wstr_to_string(localAppDataFolder) + "\\FieldsOfMistria\\mod_data\\SaveAnywhere\\" + loaded_save;
-			std::remove(file_name.c_str());
-		}
-	}
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_save_game"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
-}
-
-RValue& GmlScriptHeldItemCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	if (GetAsyncKeyState(VK_HOME) & 1)
-	{
-		wchar_t* localAppDataFolder;
-		if (SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, NULL, &localAppDataFolder) == S_OK)
-		{
-			// Create the mods directory if it doesn't exist.
-			std::string mod_data_folder = wstr_to_string(localAppDataFolder) + "\\FieldsOfMistria\\mod_data\\";
-			if (!std::filesystem::exists(mod_data_folder))
-			{
-				std::filesystem::create_directories(mod_data_folder);
-
-				// Create the SaveAnywhere directory if it doesn't exist.
-				std::string save_anywhere_folder = mod_data_folder + "\\SaveAnywhere";
-				if (!std::filesystem::exists(save_anywhere_folder))
-				{
-					std::filesystem::create_directories(save_anywhere_folder);
-				}
-			}
-			else {
-				// Create the SaveAnywhere directory if it doesn't exist.
-				std::string save_anywhere_folder = mod_data_folder + "\\SaveAnywhere";
-				if (!std::filesystem::exists(save_anywhere_folder))
-				{
-					std::filesystem::create_directories(save_anywhere_folder);
-				}
-			}
-
-			// Write the file in mod_data.
-			std::string file_name = wstr_to_string(localAppDataFolder) + "\\FieldsOfMistria\\mod_data\\SaveAnywhere\\" + loaded_save;
-			std::ofstream outfile(file_name, std::ios::out);
-			if (outfile.is_open())
-			{
-				outfile << std::to_string(ari_room_id) + " " + std::to_string(ari_x) + " " + std::to_string(ari_y);
-			}
-			outfile.close();
-
-			// Save the game.
-			CScript* gml_script_save_game = nullptr;
-			g_ModuleInterface->GetNamedRoutinePointer(
-				"gml_Script_save_game",
-				(PVOID*)&gml_script_save_game
-			);
-
-			modded_save = true;
-			file_name = wstr_to_string(localAppDataFolder) + "\\FieldsOfMistria\\saves\\" + loaded_save;
-			RValue retval_1;
-			RValue* arg = new RValue(file_name);
-			gml_script_save_game->m_Functions->m_ScriptFunction(
-				Self,
-				Other,
-				retval_1,
-				1,
-				{
-					&arg
-				}
-			);
-
-			modded_save = false;
-			delete arg;
-
-			// Create save notification.
-			CScript* gml_script_save_game_notification = nullptr;
-			g_ModuleInterface->GetNamedRoutinePointer(
-				"gml_Script_create_save_notification",
-				(PVOID*)&gml_script_save_game_notification
-			);
-			
-			RValue retval_2;
-			gml_script_save_game_notification->m_Functions->m_ScriptFunction(
-				Self,
-				Other,
-				retval_2,
-				0,
-				nullptr
-			);
-		}
-	}
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_held_item@Ari@Ari"));
 	original(
 		Self,
 		Other,
@@ -265,12 +308,14 @@ RValue& GmlScriptShowRoomTitleCallback(
 	IN RValue** Arguments
 )
 {
-	room_changed = true;
-	if (wait_to_reposition_ari) {
-		ready_to_reposition_ari = true;
-	}
-	if (wait_to_teleport_ari) {
-		ready_to_teleport_ari = true;
+	if (mod_healthy)
+	{
+		if (wait_to_reposition_ari) {
+			ready_to_reposition_ari = true;
+		}
+		if (wait_to_teleport_ari) {
+			ready_to_teleport_ari = true;
+		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_show_room_title"));
@@ -293,13 +338,138 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 	IN RValue** Arguments
 )
 {
-	if (room_changed)
+	if (mod_healthy)
 	{
-		ari_room_id = Arguments[0]->m_Real;
-		room_changed = false;
+		if(Arguments[0]->m_Kind == VALUE_REAL)
+			ari_room_id = Arguments[0]->m_Real;
+		if (Arguments[0]->m_Kind == VALUE_INT64)
+			ari_room_id = Arguments[0]->m_i64;
+
+		if (GetAsyncKeyState(VK_HOME) & 1)
+		{
+			WriteModFile();
+			SaveGame(Self, Other);
+			DisplaySaveNotification(Self, Other);
+		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_try_location_id_to_string"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptEndDayCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (mod_healthy)
+	{
+		// Remove the mod file for this save (if one exists).
+		std::string file_name = mod_folder + "\\" + save_prefix + "autosave.sav";
+		std::remove(file_name.c_str());
+
+		ResetVars();
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_end_day"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptSetupMainScreenCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (load_on_start)
+	{
+		std::exception_ptr eptr;
+		try
+		{
+			// Try to find the AppData\Local directory.
+			wchar_t* localAppDataFolder;
+			if (SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, NULL, &localAppDataFolder) == S_OK)
+			{
+				// Try to find the AppData\Local\FieldsOfMistria directory.
+				std::string fields_of_mistria_folder = wstr_to_string(localAppDataFolder) + "\\FieldsOfMistria";
+				if (std::filesystem::exists(fields_of_mistria_folder))
+				{
+					// Try to find the AppData\Local\FieldsOfMistria\mod_data directory.
+					std::string mod_data_folder = fields_of_mistria_folder + "\\mod_data";
+					if (!std::filesystem::exists(mod_data_folder))
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SaveAnywhere %s] - The \"mod_data\" directory was not found. Creating directory: %s", VERSION, mod_data_folder.c_str());
+						std::filesystem::create_directory(mod_data_folder);
+					}
+
+					// Try to find the AppData\Local\FieldsOfMistria\mod_data\SaveAnywhere directory.
+					std::string save_anywhere_folder = mod_data_folder + "\\SaveAnywhere";
+					if (!std::filesystem::exists(save_anywhere_folder))
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SaveAnywhere %s] - The \"SaveAnywhere\" directory was not found. Creating directory: %s", VERSION, save_anywhere_folder.c_str());
+						std::filesystem::create_directory(save_anywhere_folder);
+					}
+
+					save_folder = fields_of_mistria_folder + "\\saves";
+					mod_folder = save_anywhere_folder;
+					mod_healthy = true;
+				}
+				else
+				{
+					g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Failed to find the \"%s\" directory.", VERSION, "AppData\\Local\\FieldsOfMistria");
+				}
+			}
+			else
+			{
+				g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Failed to find the \"%s\" directory.", VERSION, "AppData\\Local");
+			}
+		}
+		catch (...)
+		{
+			g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - An error occurred when locating the mod directory.", VERSION);
+
+			eptr = std::current_exception();
+			handle_eptr(eptr);
+		}
+
+		mod_healthy = mod_healthy && LoadLocationIds(Self, Other);
+		if (!mod_healthy)
+		{
+			g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - The mod is not healthy and will NOT function!", VERSION);
+		}
+
+		load_on_start = false;
+	}
+	else
+	{
+		if (mod_healthy)
+		{
+			ResetVars();
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
 	original(
 		Self,
 		Other,
@@ -322,7 +492,7 @@ void CreateHookObject(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere] - Failed to hook (ObjectCallback)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Failed to hook (ObjectCallback)!", VERSION);
 	}
 }
 
@@ -336,7 +506,7 @@ void CreateHookGmlScriptLoadGame(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere] - Failed to get script (gml_Script_load_game)!");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Failed to get script (gml_Script_load_game)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -349,61 +519,7 @@ void CreateHookGmlScriptLoadGame(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere] - Failed to hook script (gml_Script_load_game)!");
-	}
-}
-
-void CreateHookGmlScriptSaveGame(AurieStatus& status)
-{
-	CScript* gml_script_held_item = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_save_game",
-		(PVOID*)&gml_script_held_item
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere] - Failed to get script (gml_Script_create_save_notification)!");
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_save_game",
-		gml_script_held_item->m_Functions->m_ScriptFunction,
-		GmlScriptSaveGameCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere] - Failed to hook script (gml_Script_create_save_notification)!");
-	}
-}
-
-void CreateHookGmlScriptHeldItem(AurieStatus& status)
-{
-	CScript* gml_script_held_item = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_held_item@Ari@Ari",
-		(PVOID*)&gml_script_held_item
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere] - Failed to get script (gml_Script_held_item@Ari@Ari)!");
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_held_item@Ari@Ari",
-		gml_script_held_item->m_Functions->m_ScriptFunction,
-		GmlScriptHeldItemCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere] - Failed to hook script (gml_Script_held_item@Ari@Ari)!");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Failed to hook script (gml_Script_load_game)!", VERSION);
 	}
 }
 
@@ -417,7 +533,7 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere] - Failed to get script (gml_Script_show_room_title)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Failed to get script (gml_Script_show_room_title)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -430,7 +546,7 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere] - Failed to hook script (gml_Script_show_room_title)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Failed to hook script (gml_Script_show_room_title)!", VERSION);
 	}
 }
 
@@ -444,7 +560,7 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere] - Failed to get script (gml_Script_try_location_id_to_string)!");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Failed to get script (gml_Script_try_location_id_to_string)!", VERSION);
 	}
 
 	status = MmCreateHook(
@@ -457,7 +573,61 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere] - Failed to hook script (gml_Script_try_location_id_to_string)!");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Failed to hook script (gml_Script_try_location_id_to_string)!", VERSION);
+	}
+}
+
+void CreateHookGmlScriptEndDay(AurieStatus& status)
+{
+	CScript* gml_script_end_day = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_end_day",
+		(PVOID*)&gml_script_end_day
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Failed to get script (gml_Script_end_day)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_end_day",
+		gml_script_end_day->m_Functions->m_ScriptFunction,
+		GmlScriptEndDayCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Failed to hook script (gml_Script_end_day)!", VERSION);
+	}
+}
+
+void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
+{
+	CScript* gml_script_setup_main_screen = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		(PVOID*)&gml_script_setup_main_screen
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Failed to get script (gml_Script_setup_main_screen)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		gml_script_setup_main_screen->m_Functions->m_ScriptFunction,
+		GmlScriptSetupMainScreenCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Failed to hook script (gml_Script_setup_main_screen)!", VERSION);
 	}
 }
 
@@ -474,47 +644,47 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SaveAnywhere] - Plugin loading...");
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[SaveAnywhere %s] - Plugin starting...", VERSION);
 
 	CreateHookObject(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptLoadGame(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere] - Exiting due to failure on start!");
-		return status;
-	}
-
-	CreateHookGmlScriptSaveGame(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere] - Exiting due to failure on start!");
-		return status;
-	}
-
-	CreateHookGmlScriptHeldItem(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 	
 	CreateHookGmlScriptShowRoomTitle(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptTryLocationIdToString(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptEndDay(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptSetupMainScreen(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Exiting due to failure on start!", VERSION);
 		return status;
 	}
 
