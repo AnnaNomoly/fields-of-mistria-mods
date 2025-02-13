@@ -1,10 +1,11 @@
 #include <map>
-#include <cmath>
+#include <random>
 #include <YYToolkit/Shared.hpp>
 using namespace Aurie;
 using namespace YYTK;
 
 static const int SIX_AM_IN_SECONDS = 21600;
+static const int FIVE_MINUTES_IN_SECONDS = 300;
 static const int THIRY_MINUTES_IN_SECONDS = 1800;
 static const int HUNGER_LOST_PER_TICK = -1;
 static const int HEALTH_LOST_PER_TICK = -10;
@@ -15,6 +16,8 @@ static bool load_items = true;
 static int ari_hunger_value = STARTING_HUNGER_VALUE;
 static bool ari_is_hungry = false;
 static bool is_tracked_time_interval = false;
+static bool snapshot_position = false; // Indicates when to snapshot Ari's current position.
+static bool rollback_position = false; // Indicates when to rollback Ari's position.
 static int time_of_last_tick = 0; // TODO: Set this on file load.
 static int held_item_id = -1;
 static bool game_is_active = false;
@@ -24,6 +27,62 @@ static int hunger_stamina_health_penatly = 0;
 
 static std::map<std::string, int> item_name_to_restoration_map = {}; // Excludes cooked dishes
 static std::map<std::string, int> recipe_name_to_stars_map = {}; // Only cooked dishes
+
+// Random Noise
+static std::mt19937 generator(std::random_device{}());
+static std::uniform_int_distribution<int> distribution(1, 1000);
+//static std::vector<std::vector<bool>> noise_masks = {};
+static std::vector<std::vector<std::vector<int>>> noise_masks = {};
+static int total_noise_masks = 100;
+static int current_mask = 0;
+static int window_width = 0;
+static int window_height = 0;
+static size_t frame_counter = 0;
+
+// Position Rollback
+static int rollback_position_x = -1;
+static int rollback_position_y = -1;
+
+void FrameCallback(FWFrame& FrameContext)
+{
+	UNREFERENCED_PARAMETER(FrameContext);
+	frame_counter++;
+	if (frame_counter == 600)
+		frame_counter = 0;
+}
+
+//--------------------------------------------------------------------------
+bool EnumFunction(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
+	return false;
+}
+//--------------------------------------------------------------------------
+
+RValue ItemIdToString(CInstance* Self, CInstance* Other, int id)
+{
+	CScript* gml_script_item_id_to_name = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_item_id_to_string",
+		(PVOID*)&gml_script_item_id_to_name
+	);
+
+	RValue item_name;
+	RValue item_id = id;
+	RValue* item_id_ptr = &item_id;
+	gml_script_item_id_to_name->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		item_name,
+		1,
+		{ &item_id_ptr }
+	);
+
+	return item_name;
+}
 
 bool GameIsPaused()
 {
@@ -132,10 +191,34 @@ void ObjectCallback(
 	);
 
 	// Flag when the health bar is visible.
-	if (ari_current_health.m_Real < ari_max_health.m_Real)
+	if (ari_current_health.m_Real < ari_max_health.m_Real) // TODO: Add OR condition for if Ari is in the dungeon
 		health_bar_visible = true;
 	else
 		health_bar_visible = false;
+
+	// Randomly rollback Ari's position.
+	if (!GameIsPaused() && distribution(generator) % 1000 == 0)
+	{
+		RValue x = rollback_position_x;
+		g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, x);
+
+		RValue y = rollback_position_y;
+		g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, y);
+	}
+
+	// Snapshot Ari's current position.
+	if (!GameIsPaused() && snapshot_position)
+	{
+		RValue x;
+		g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
+		rollback_position_x = x.m_Real;
+
+		RValue y;
+		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
+		rollback_position_y = y.m_Real;
+
+		snapshot_position = false;
+	}
 }
 
 RValue& GmlScriptGetMinutesCallback(
@@ -168,6 +251,60 @@ RValue& GmlScriptGetMinutesCallback(
 		}
 	}
 
+	// Every 5m snapshot Ari's position.
+	if (Arguments[0]->m_i64 % FIVE_MINUTES_IN_SECONDS == 0)
+	{
+		snapshot_position = true;
+	}
+
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptModifyHealthCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
+	if (held_item_name.m_Kind == VALUE_STRING)
+	{
+		int hunger_modifier = 0;
+		if (recipe_name_to_stars_map.count(held_item_name.AsString().data()) > 0)
+		{
+			hunger_modifier = 2 * (recipe_name_to_stars_map[held_item_name.AsString().data()] * 10); // Testing 2x multiplier for balancing.
+		}
+		else if (item_name_to_restoration_map.count(held_item_name.AsString().data()) > 0)
+		{
+			hunger_modifier = item_name_to_restoration_map[held_item_name.AsString().data()];
+		}
+		//else
+		//{
+		//	hunger_modifier = 2 * Arguments[0]->m_Real; // Testing 2x multiplier for balancing.
+		//	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[DontStarve] - Item not in lookup dictionaries: (%d) %s", held_item_id, held_item_name.AsString().data());
+		//}
+
+		if (hunger_modifier > 0)
+		{
+			ari_hunger_value += hunger_modifier;
+			if (ari_hunger_value > 100) {
+				ari_hunger_value = 100;
+			}
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Increased hunger meter by %d!", hunger_modifier);
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_modify_health@Ari@Ari"));
 	original(
 		Self,
 		Other,
@@ -187,46 +324,31 @@ RValue& GmlScriptModifyStaminaCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_modify_stamina@Ari@Ari"));
 	if (Arguments[0]->m_Real >= 0) {
-		CScript* gml_script_item_id_to_name = nullptr;
-		g_ModuleInterface->GetNamedRoutinePointer(
-			"gml_Script_item_id_to_string",
-			(PVOID*)&gml_script_item_id_to_name
-		);
-
-		RValue item_name;
-		RValue item_id = held_item_id;
-		RValue* item_id_ptr = &item_id;
-		gml_script_item_id_to_name->m_Functions->m_ScriptFunction(
-			Self,
-			Other,
-			item_name,
-			1,
-			{ &item_id_ptr }
-		);
-
-		//if (item_name_to_stars_map.count(item_id_as_string.AsString().data()) > 0)
-		int modifier = 0;
-		if (recipe_name_to_stars_map.count(item_name.AsString().data()) > 0)
+		RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
+		if (held_item_name.m_Kind == VALUE_STRING)
 		{
-			modifier = 2 * (recipe_name_to_stars_map[item_name.AsString().data()] * 10); // Testing 2x multiplier for balancing.
-		}
-		else if (item_name_to_restoration_map.count(item_name.AsString().data()) > 0)
-		{
-			modifier = item_name_to_restoration_map[item_name.AsString().data()];
+			// The item is NOT a cooked dish or other edible.
+			if (recipe_name_to_stars_map.count(held_item_name.AsString().data()) <= 0 && item_name_to_restoration_map.count(held_item_name.AsString().data()) <= 0)
+			{
+				int modifier = 2 * Arguments[0]->m_Real; // Testing 2x multiplier for balancing.
+				ari_hunger_value += modifier;
+				if (ari_hunger_value > 100) {
+					ari_hunger_value = 100;
+				}
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[DontStarve] - Item not in lookup dictionaries: (%d) %s", held_item_id, held_item_name.AsString().data());
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Increased hunger meter by %d!", modifier);
+			}
 		}
 		else
 		{
-			modifier = 2 * Arguments[0]->m_Real; // Testing 2x multiplier for balancing.
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[DontStarve] - Item not in lookup dictionaries: (%d) %s", held_item_id, item_name.AsString().data());
+			int modifier = 2 * Arguments[0]->m_Real; // Testing 2x multiplier for balancing.
+			ari_hunger_value += modifier;
+			if (ari_hunger_value > 100) {
+				ari_hunger_value = 100;
+			}
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Increased hunger meter by %d!", modifier);
 		}
-
-		ari_hunger_value += modifier;
-		if (ari_hunger_value > 100) {
-			ari_hunger_value = 100;
-		}
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Increased hunger meter by %d!", modifier);
 	}
 	else {
 		int new_hunger_value = ari_hunger_value + Arguments[0]->m_Real;
@@ -242,6 +364,7 @@ RValue& GmlScriptModifyStaminaCallback(
 		}
 	}
 
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_modify_stamina@Ari@Ari"));
 	original(
 		Self,
 		Other,
@@ -355,7 +478,8 @@ RValue& GmlScriptOnDrawGuiCallback(
 		g_ModuleInterface->CallBuiltin(
 			"draw_set_color", {
 			 16777215  // c_white
-			});
+			}
+		);
 
 		g_ModuleInterface->CallBuiltin(
 			"draw_set_font",
@@ -369,6 +493,88 @@ RValue& GmlScriptOnDrawGuiCallback(
 				140, (118 + y_health_bar_offset), std::to_string(ari_hunger_value) + "%", 3, 3, 0
 			}
 		);
+
+
+
+	}
+
+	// Random Noise
+	if (game_is_active && frame_counter == 0)
+	{
+		// Draw semi-transparent overlay
+		g_ModuleInterface->CallBuiltin(
+			"draw_set_alpha",
+			{ 0.5 }
+		);
+
+		g_ModuleInterface->CallBuiltin(
+			"draw_set_color", {
+				4210752
+			}
+		);
+
+		g_ModuleInterface->CallBuiltin(
+			"draw_rectangle", 
+			{ 0, 0, window_width, window_height, false }
+		);
+
+
+		// GENERATE RANDOM NOISE
+		//RValue window_width = g_ModuleInterface->CallBuiltin(
+		//	"window_get_width",
+		//	{}
+		//);
+
+		//RValue window_height = g_ModuleInterface->CallBuiltin(
+		//	"window_get_height",
+		//	{}
+		//);
+
+		g_ModuleInterface->CallBuiltin(
+			"draw_set_alpha",
+			{ 1.0 }
+		);
+
+		g_ModuleInterface->CallBuiltin(
+			"draw_set_color", {
+			 0  // c_black
+			}
+		);
+
+		for (size_t x = 0; x < noise_masks[current_mask].size(); x++)
+		{
+			//g_ModuleInterface->CallBuiltin(
+			//	"draw_point",
+			//	{ noise_masks[current_mask][x][0], noise_masks[current_mask][x][1] }
+			//);
+
+			g_ModuleInterface->CallBuiltin(
+				"draw_rectangle", {
+					noise_masks[current_mask][x][0] - 2, noise_masks[current_mask][x][1] - 2, noise_masks[current_mask][x][0] + 2, noise_masks[current_mask][x][1] + 2, false
+				}
+			);
+		}
+
+		//int count = 0;
+		//for (int i = 0; i < window_width; i++)
+		//{
+		//	for (int j = 0; j < window_height; j++)
+		//	{
+		//		if (noise_masks[current_mask][count])
+		//		{
+		//			g_ModuleInterface->CallBuiltin(
+		//				"draw_point",
+		//				{ i, j }
+		//			);
+		//		}
+
+		//		count += 1;
+		//	}
+		//}
+
+		current_mask++;
+		if (current_mask == total_noise_masks)
+			current_mask = 0;
 	}
 
 	return Result;
@@ -398,6 +604,67 @@ RValue& GmlScriptHeldItemCallback(
 			held_item_id = Result.at("item_id").m_i64;
 		}
 	}
+
+	return Result;
+}
+
+RValue& GmlScriptInventoryRemoveCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	snapshot_position = true;
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_on_room_start@WeatherManager@Weather"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	// Function: gml_Script_pop@InventorySlot@Inventory
+	// Result: VALUE_OBJECT
+	/*
+		Member Name: auto_use
+		Member Name: cosmetic
+		Member Name: gold_to_gain
+		Member Name: animal_cosmetic
+		Member Name: item_id
+		Member Name: toString
+		Member Name: inner_item
+		Member Name: infusion
+		Member Name: prototype
+	*/
+	//g_ModuleInterface->EnumInstanceMembers(Result, EnumFunction);
+	return Result;
+}
+
+RValue& GmlScriptPlayConversationCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	// Override the dialog.
+	RValue custom_dialog = "Conversations/Mods/DontStarve/Cthuvian/1";
+	RValue* custom_dialog_ptr = &custom_dialog;
+	Arguments[0] = custom_dialog_ptr;
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_play_text@TextboxMenu@TextboxMenu"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
 
 	return Result;
 }
@@ -463,6 +730,38 @@ RValue& GmlScriptSetupMainScreenCallback(
 				}
 			}
 		}
+
+		// Generate noise masks.
+		RValue window_get_width = g_ModuleInterface->CallBuiltin(
+			"window_get_width",
+			{}
+		);
+		window_width = window_get_width.m_Real;
+
+		RValue window_get_height = g_ModuleInterface->CallBuiltin(
+			"window_get_height",
+			{}
+		);
+		window_height = window_get_height.m_Real;
+
+		for (int num_masks = 0; num_masks < total_noise_masks; num_masks++)
+		{
+			//std::vector<bool> noise = {};
+			std::vector<std::vector<int>> noise = {};
+			for (int i = 0; i < window_width; i++)
+			{
+				for (int j = 0; j < window_height; j++)
+				{
+					if (distribution(generator) == 1000)
+						noise.push_back({ i, j });
+					//	noise.push_back(true);
+					//else
+					//	noise.push_back(false);
+				}
+			}
+			noise_masks.push_back(noise);
+		}
+		//-------------------------------------------------
 
 		load_items = false;
 	}
@@ -581,6 +880,33 @@ void CreateHookGmlScriptGetMinutes(AurieStatus &status)
 	}
 }
 
+void CreateHookGmlScriptModifyHealth(AurieStatus& status)
+{
+	CScript* gml_script_modify_stamina = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_modify_health@Ari@Ari",
+		(PVOID*)&gml_script_modify_stamina
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_modify_health@Ari@Ari)!");
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_modify_health@Ari@Ari",
+		gml_script_modify_stamina->m_Functions->m_ScriptFunction,
+		GmlScriptModifyHealthCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_modify_health@Ari@Ari)!");
+	}
+}
+
 void CreateHookGmlScriptModifyStamina(AurieStatus &status)
 {
 	CScript* gml_script_modify_stamina = nullptr;
@@ -660,6 +986,62 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Failed to hook script (gml_Script_held_item@Ari@Ari)!");
+	}
+}
+
+void CreateHookGmlScriptInventoryRemove(AurieStatus& status)
+{
+	CScript* gml_script_held_item = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_on_room_start@WeatherManager@Weather",
+		(PVOID*)&gml_script_held_item
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Failed to get script (gml_Script_remove@anon@2174@__Inventory@Inventory)!");
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_on_room_start@WeatherManager@Weather",
+		gml_script_held_item->m_Functions->m_ScriptFunction,
+		GmlScriptInventoryRemoveCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Failed to hook script (gml_Script_remove@anon@2174@__Inventory@Inventory)!");
+	}
+}
+
+void CreateHookGmlScriptPlayConversation(AurieStatus& status)
+{
+	CScript* gml_script_play_conversation = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_play_text@TextboxMenu@TextboxMenu",
+		(PVOID*)&gml_script_play_conversation
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_play_conversation)!");
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_play_text@TextboxMenu@TextboxMenu",
+		gml_script_play_conversation->m_Functions->m_ScriptFunction,
+		GmlScriptPlayConversationCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_play_conversation)!");
 	}
 }
 
@@ -805,8 +1187,14 @@ EXPORTED AurieStatus ModuleInitialize(
 		0
 	);
 
-	
 	CreateHookGmlScriptGetMinutes(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
+	}
+
+	CreateHookGmlScriptModifyHealth(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
@@ -828,6 +1216,20 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptHeldItem(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
+	}
+
+	CreateHookGmlScriptInventoryRemove(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
+	}
+
+	CreateHookGmlScriptPlayConversation(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
