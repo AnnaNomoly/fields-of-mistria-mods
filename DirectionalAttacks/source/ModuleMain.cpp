@@ -1,4 +1,3 @@
-#include <map>
 #include <YYToolkit/Shared.hpp>
 using namespace Aurie;
 using namespace YYTK;
