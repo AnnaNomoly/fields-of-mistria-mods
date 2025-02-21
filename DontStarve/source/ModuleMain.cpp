@@ -1,11 +1,14 @@
 #include <map>
+//#include <cmath>
+#include <deque>
 #include <random>
 #include <YYToolkit/Shared.hpp>
 using namespace Aurie;
 using namespace YYTK;
 
 static const int SIX_AM_IN_SECONDS = 21600;
-static const int SEVEN_PM_IN_SECONDS = 68400;
+static const int EIGHT_PM_IN_SECONDS = 72000;
+static const int END_OF_DAY_IN_SECONDS = 93600;
 static const int FIVE_MINUTES_IN_SECONDS = 300;
 static const int TEN_MINUTES_IN_SECONDS = 600;
 static const int THIRY_MINUTES_IN_SECONDS = 1800;
@@ -13,8 +16,14 @@ static const int HUNGER_LOST_PER_TICK = -1;
 static const int SANITY_LOST_PER_TICK = -5;
 static const int HUNGER_HEALTH_LOST_PER_TICK = -10;
 static const int SANITY_HEALTH_LOST_PER_TICK = -5;
-static const int STARTING_HUNGER_VALUE = 100;
-static const int STARTING_SANITY_VALUE = 0; //100;
+static const int STARTING_HUNGER_VALUE = 40; //100;
+static const int STARTING_SANITY_VALUE = 100;
+static const int SPICE_OF_LIFE_QUEUE_SIZE = 10;
+static const char* DONT_STARVE_INTRODUCTION_LETTER = "dont_starve_introduction";
+static const std::string IGNORED_ITEMS[] = {
+	"balors_crate", "confiscated_coffee", "dungeon_fountain_health", "dungeon_fountain_stamina", "horse_potion", 
+	"lurid_colored_drink", "ryis_lumber", "soup_of_the_day", "soup_of_the_day_gold", "stinky_stamina_potion", "unusual_seed"
+};
 
 static std::map<std::string, bool> DUNGEON_LOCATIONS = {
 	{"deep_woods", true},
@@ -125,6 +134,9 @@ static size_t frame_counter = 0;
 static int rollback_position_x = -1;
 static int rollback_position_y = -1;
 
+// Spice of Life
+static std::deque<std::string> food_queue = {};
+
 //--------------------------------------------------------------------------
 bool EnumFunction(
 	IN const char* MemberName,
@@ -135,6 +147,55 @@ bool EnumFunction(
 	return false;
 }
 //--------------------------------------------------------------------------
+
+std::string FoodQueueToString()
+{
+	std::string food_queue_string = "[";
+	for (int i = 0; i < food_queue.size(); i++)
+	{
+		food_queue_string += food_queue[i];
+		if (i != food_queue.size() - 1)
+			food_queue_string += ", ";
+	}
+
+	food_queue_string += "]";
+	return food_queue_string;
+}
+
+void UpdateFoodQueue(std::string item_name)
+{
+	if (food_queue.size() == SPICE_OF_LIFE_QUEUE_SIZE)
+		food_queue.pop_front();
+	food_queue.push_back(item_name);
+
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Food queue updated: %s", FoodQueueToString().c_str());
+}
+
+int GetFoodQueueOccurrences(std::string item_name)
+{
+	return std::count(food_queue.begin(), food_queue.end(), item_name);
+}
+
+double GetFoodPenalty(std::string item_name)
+{
+	int occurrences = GetFoodQueueOccurrences(item_name);
+	double penalty;
+	if (occurrences <= 1)
+		penalty = 0.0;
+	if (occurrences == 2)
+		penalty = 0.1;
+	if (occurrences == 3)
+		penalty = 0.3;
+	if (occurrences == 4)
+		penalty = 0.5;
+	if (occurrences == 5)
+		penalty = 0.7;
+	if (occurrences >= 6)
+		penalty = 0.9;
+
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - The stamina restoration penalty for %s was %d percent!", item_name.c_str(), static_cast<int>(penalty * 100));
+	return penalty;
+}
 
 RValue GetMaxHealth(CInstance* Self, CInstance* Other)
 {
@@ -201,7 +262,7 @@ RValue ItemIdToString(CInstance* Self, CInstance* Other, int id)
 {
 	CScript* gml_script_item_id_to_name = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_item_id_to_string",
+		"gml_Script_try_item_id_to_string",
 		(PVOID*)&gml_script_item_id_to_name
 	);
 
@@ -219,6 +280,72 @@ RValue ItemIdToString(CInstance* Self, CInstance* Other, int id)
 	return item_name;
 }
 
+void SendMail(std::string mail_name_str)
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue inbox = __ari.at("inbox");
+	RValue contents = inbox.at("contents");
+	RValue contents_buffer = contents.at("__buffer");
+
+	RValue mail;
+	RValue mail_items_taken = false;
+	RValue mail_name = mail_name_str;
+	RValue mail_read = false;
+	g_ModuleInterface->GetRunnerInterface().StructCreate(&mail);
+	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "items_taken", &mail_items_taken);
+	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "name", &mail_name);
+	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "read", &mail_read);
+
+	g_ModuleInterface->CallBuiltin(
+		"array_push",
+		{ contents_buffer, mail }
+	);
+
+	RValue size = g_ModuleInterface->CallBuiltin(
+		"struct_get",
+		{ contents, "__count" }
+	);
+	RValue new_size = 1.0 + size.m_Real;
+
+	g_ModuleInterface->CallBuiltin(
+		"struct_set",
+		{ contents, "__count", new_size }
+	);
+	g_ModuleInterface->CallBuiltin(
+		"struct_set",
+		{ contents, "__internal_size", new_size }
+	);
+}
+
+bool MailExists(std::string mail_name_str)
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue inbox = __ari.at("inbox");
+	RValue contents = inbox.at("contents");
+	RValue contents_buffer = contents.at("__buffer");
+
+	size_t size = 0;
+	g_ModuleInterface->GetArraySize(contents_buffer, size);
+
+	for (size_t i = 0; i < size; i++)
+	{
+		RValue* entry = nullptr;
+		g_ModuleInterface->GetArrayEntry(contents_buffer, i, entry);
+
+		RValue name = entry->at("name");
+		if (strstr(name.AsString().data(), mail_name_str.c_str()))
+			return true;
+	}
+
+	return false;
+}
+
 bool AriIsInDungeonLocation()
 {
 	if (ari_current_location.length() > 0)
@@ -229,10 +356,9 @@ bool AriIsInDungeonLocation()
 
 bool IsNight(int clock_time)
 {
-	return true;
-	//if (clock_time >= SEVEN_PM_IN_SECONDS)
-	//	return true;
-	//return false;
+	if (clock_time >= EIGHT_PM_IN_SECONDS)
+		return true;
+	return false;
 }
 
 bool AriIsAtSanityLossLocation()
@@ -311,7 +437,7 @@ void ObjectCallback(
 
 	// Stamina used while Ari is hungry penalty.
 	//if (use_health_instead_of_stamina)
-	if(hunger_stamina_health_penatly > 0)
+	if(hunger_stamina_health_penatly < 0) // TODO: Check this is working with recent changes.
 	{
 		ModifyHealth(global_instance->at("__ari").m_Object, self, hunger_stamina_health_penatly);
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - You used stamina while your hunger meter is depleted! Decreased health by %d!", hunger_stamina_health_penatly);
@@ -382,11 +508,11 @@ RValue& GmlScriptGetMinutesCallback(
 {
 	if (game_is_active)
 	{
-		// Set the most recent ticks to 6AM on file load.
-		//if (time_of_last_hunger_tick == 0)
-		//	time_of_last_hunger_tick = SIX_AM_IN_SECONDS;
-		//if (time_of_last_sanity_tick == 0)
-		//	time_of_last_sanity_tick = SIX_AM_IN_SECONDS;
+		// Set the most recent ticks to 6AM after end of day.
+		if (time_of_last_hunger_tick == END_OF_DAY_IN_SECONDS)
+			time_of_last_hunger_tick = SIX_AM_IN_SECONDS;
+		if (time_of_last_sanity_tick == END_OF_DAY_IN_SECONDS)
+			time_of_last_sanity_tick = SIX_AM_IN_SECONDS;
 
 		// Hunger ticks every 30m.
 		if (Arguments[0]->m_i64 % THIRY_MINUTES_IN_SECONDS == 0 && !is_hunger_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_hunger_tick) >= THIRY_MINUTES_IN_SECONDS) {
@@ -459,28 +585,46 @@ RValue& GmlScriptModifyHealthCallback(
 		RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
 		if (held_item_name.m_Kind == VALUE_STRING)
 		{
-			int hunger_modifier = 0;
-			if (recipe_name_to_stars_map.count(held_item_name.AsString().data()) > 0)
-			{
-				hunger_modifier = 2 * (recipe_name_to_stars_map[held_item_name.AsString().data()] * 10); // Testing 2x multiplier for balancing.
-			}
-			else if (item_name_to_restoration_map.count(held_item_name.AsString().data()) > 0)
-			{
-				hunger_modifier = item_name_to_restoration_map[held_item_name.AsString().data()];
-			}
-			//else
-			//{
-			//	hunger_modifier = 2 * Arguments[0]->m_Real; // Testing 2x multiplier for balancing.
-			//	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[DontStarve] - Item not in lookup dictionaries: (%d) %s", held_item_id, held_item_name.AsString().data());
-			//}
+			std::string held_item_name_string = held_item_name.AsString().data();
 
-			if (hunger_modifier > 0)
+			// These are special items used by the mod for restoring mod-specific values.
+			if (held_item_name_string.compare("confiscated_coffee") == 0 || held_item_name_string.compare("lurid_colored_drink") == 0)
 			{
-				ari_hunger_value += hunger_modifier;
-				if (ari_hunger_value > 100)
-					ari_hunger_value = 100;
+				if (held_item_name_string.compare("confiscated_coffee") == 0)
+				{
+					ari_hunger_value += 35;
+					if (ari_hunger_value > 100)
+						ari_hunger_value = 100;
+				}
 
-				g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Increased hunger meter by %d!", hunger_modifier);
+				if (held_item_name_string.compare("lurid_colored_drink") == 0)
+				{
+					ari_sanity_value += 50;
+					if (ari_sanity_value > 100)
+						ari_sanity_value = 100;
+				}
+			}
+			// Any other items in the game.
+			else
+			{
+				int hunger_modifier = 0;
+				if (recipe_name_to_stars_map.count(held_item_name_string) > 0)
+				{
+					hunger_modifier = 2 * (recipe_name_to_stars_map[held_item_name_string] * 10); // Testing 2x multiplier for balancing.
+				}
+				else if (item_name_to_restoration_map.count(held_item_name_string) > 0)
+				{
+					hunger_modifier = 2 * item_name_to_restoration_map[held_item_name_string]; // Testing 2x multiplier for balancing.
+				}
+
+				if (hunger_modifier > 0)
+				{
+					ari_hunger_value += hunger_modifier;
+					if (ari_hunger_value > 100)
+						ari_hunger_value = 100;
+
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Increased hunger meter by %d!", hunger_modifier);
+				}
 			}
 		}
 	}
@@ -519,16 +663,33 @@ RValue& GmlScriptModifyStaminaCallback(
 		RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
 		if (held_item_name.m_Kind == VALUE_STRING)
 		{
+			std::string item_name_string = held_item_name.AsString().data();
+
 			// The item is NOT a cooked dish or other edible.
-			if (recipe_name_to_stars_map.count(held_item_name.AsString().data()) <= 0 && item_name_to_restoration_map.count(held_item_name.AsString().data()) <= 0)
+			if (recipe_name_to_stars_map.count(item_name_string) <= 0 && item_name_to_restoration_map.count(item_name_string) <= 0)
 			{
 				int modifier = 2 * Arguments[0]->m_Real; // Testing 2x multiplier for balancing.
 				ari_hunger_value += modifier;
 				if (ari_hunger_value > 100)
 					ari_hunger_value = 100;
 
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[DontStarve] - Item not in lookup dictionaries: (%d) %s", held_item_id, held_item_name.AsString().data());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[DontStarve] - Item not in lookup dictionaries: (%d) %s", held_item_id, item_name_string.c_str());
 				g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Increased hunger meter by %d!", modifier);
+			}
+			// The item IS a cooked dish or other edible.
+			else
+			{
+				auto disabled_item = std::find(std::begin(IGNORED_ITEMS), std::end(IGNORED_ITEMS), item_name_string);
+				if (disabled_item == std::end(IGNORED_ITEMS))
+				{
+					UpdateFoodQueue(item_name_string);
+					double food_penalty = GetFoodPenalty(item_name_string);
+					double penalty_multiplier = 1.0 - food_penalty;
+					double result = trunc(penalty_multiplier * Arguments[0]->m_Real);
+					if (result == 0)
+						result = 1.0; // Minimum stamina after penalty
+					Arguments[0]->m_Real = result;
+				}
 			}
 		}
 		else
@@ -1031,6 +1192,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		time_of_last_hunger_tick = 0;
 		time_of_last_sanity_tick = 0;
 		held_item_id = -1;
+		game_is_active = false;
 		health_bar_visible = false;
 		//use_health_instead_of_stamina = false;
 		hunger_stamina_health_penatly = 0;
@@ -1040,6 +1202,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		ari_current_location = "";
 		rollback_position_x = -1;
 		rollback_position_y = -1;
+		food_queue = {};
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
@@ -1062,7 +1225,13 @@ RValue& GmlScriptGetWeatherCallback(
 	IN RValue** Arguments
 )
 {
-	game_is_active = true;
+	if (!game_is_active)
+	{
+		game_is_active = true;
+
+		if (!MailExists(DONT_STARVE_INTRODUCTION_LETTER))
+			SendMail(DONT_STARVE_INTRODUCTION_LETTER);
+	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get_weather@WeatherManager@Weather"));
 	original(
@@ -1122,7 +1291,7 @@ RValue& GmlScriptEndDayCallback(
 	//use_health_instead_of_stamina = false;
 	//hunger_stamina_health_penatly = 0;
 	//ari_hunger_value = STARTING_HUNGER_VALUE;
-	//ari_sanity_value = STARTING_SANITY_VALUE;
+	ari_sanity_value = STARTING_SANITY_VALUE;
 	ari_current_location = "";
 	rollback_position_x = -1;
 	rollback_position_y = -1;
@@ -1159,6 +1328,37 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 	if (game_is_active)
 		if (Result.m_Kind == VALUE_STRING)
 			ari_current_location = Result.AsString().data();
+
+	return Result;
+}
+
+RValue& GmlScriptGetDisplayDescriptionCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get_display_description@anon@2798@LiveItem@LiveItem"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
+	if (held_item_name.m_Kind == VALUE_STRING)
+	{
+		int occurrences = GetFoodQueueOccurrences(held_item_name.AsString().data());
+		if (occurrences > 0)
+		{
+			std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.AsString().data();
+			Result = new_description;
+		}
+	}
 
 	return Result;
 }
@@ -1493,6 +1693,33 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptGetDisplayDescription(AurieStatus& status)
+{
+	CScript* gml_script_get_display_description = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_get_display_description@anon@2798@LiveItem@LiveItem",
+		(PVOID*)&gml_script_get_display_description
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_get_display_description@anon@2798@LiveItem@LiveItem)!");
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_get_display_description@anon@2798@LiveItem@LiveItem",
+		gml_script_get_display_description->m_Functions->m_ScriptFunction,
+		GmlScriptGetDisplayDescriptionCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_get_display_description@anon@2798@LiveItem@LiveItem)!");
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -1602,6 +1829,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptTryLocationIdToString(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
+	}
+
+	CreateHookGmlScriptGetDisplayDescription(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
