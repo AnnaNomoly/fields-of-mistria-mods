@@ -16,7 +16,7 @@ static const int HUNGER_LOST_PER_TICK = -1;
 static const int SANITY_LOST_PER_TICK = -5;
 static const int HUNGER_HEALTH_LOST_PER_TICK = -10;
 static const int SANITY_HEALTH_LOST_PER_TICK = -5;
-static const int STARTING_HUNGER_VALUE = 40; //100;
+static const int STARTING_HUNGER_VALUE = 15; //100;
 static const int STARTING_SANITY_VALUE = 100;
 static const int SPICE_OF_LIFE_QUEUE_SIZE = 10;
 static const char* DONT_STARVE_INTRODUCTION_LETTER = "dont_starve_introduction";
@@ -64,7 +64,7 @@ static std::map<std::string, bool> LOCATION_SANITY_LOSS_MAP = {
 	{"general_store_home", false},
 	{"general_store_store", false},
 	{"haydens_bedroom", false},
-	{"haydens_farm", false},
+	{"haydens_farm", true},
 	{"haydens_house", false},
 	{"holt_and_noras_bedroom", false},
 	{"inn", false},
@@ -1332,6 +1332,37 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 	return Result;
 }
 
+RValue& GmlScriptGetDisplayNameCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get_display_name@anon@1883@LiveItem@LiveItem"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	//RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
+	//if (held_item_name.m_Kind == VALUE_STRING)
+	//{
+	//	int occurrences = GetFoodQueueOccurrences(held_item_name.AsString().data());
+	//	if (occurrences > 0)
+	//	{
+	//		std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.AsString().data();
+	//		Result = new_description;
+	//	}
+	//}
+
+	return Result;
+}
+
 RValue& GmlScriptGetDisplayDescriptionCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -1349,16 +1380,16 @@ RValue& GmlScriptGetDisplayDescriptionCallback(
 		Arguments
 	);
 
-	RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
-	if (held_item_name.m_Kind == VALUE_STRING)
-	{
-		int occurrences = GetFoodQueueOccurrences(held_item_name.AsString().data());
-		if (occurrences > 0)
-		{
-			std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.AsString().data();
-			Result = new_description;
-		}
-	}
+	//RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
+	//if (held_item_name.m_Kind == VALUE_STRING)
+	//{
+	//	int occurrences = GetFoodQueueOccurrences(held_item_name.AsString().data());
+	//	if (occurrences > 0)
+	//	{
+	//		std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.AsString().data();
+	//		Result = new_description;
+	//	}
+	//}
 
 	return Result;
 }
@@ -1693,6 +1724,33 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptGetDisplayName(AurieStatus& status)
+{
+	CScript* gml_script_get_display_description = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_get_display_name@anon@1883@LiveItem@LiveItem",
+		(PVOID*)&gml_script_get_display_description
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_get_display_name@anon@1883@LiveItem@LiveItem)!");
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_get_display_name@anon@1883@LiveItem@LiveItem",
+		gml_script_get_display_description->m_Functions->m_ScriptFunction,
+		GmlScriptGetDisplayNameCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_get_display_name@anon@1883@LiveItem@LiveItem)!");
+	}
+}
+
 void CreateHookGmlScriptGetDisplayDescription(AurieStatus& status)
 {
 	CScript* gml_script_get_display_description = nullptr;
@@ -1829,6 +1887,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptTryLocationIdToString(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
+	}
+
+	CreateHookGmlScriptGetDisplayName(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
