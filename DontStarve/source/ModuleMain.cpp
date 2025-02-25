@@ -9,13 +9,14 @@ using namespace YYTK;
 static const int SIX_AM_IN_SECONDS = 21600;
 static const int EIGHT_PM_IN_SECONDS = 72000;
 static const int END_OF_DAY_IN_SECONDS = 93600;
+static const int ONE_MINUTE_IN_SECONDS = 60;
 static const int FIVE_MINUTES_IN_SECONDS = 300;
 static const int TEN_MINUTES_IN_SECONDS = 600;
 static const int THIRY_MINUTES_IN_SECONDS = 1800;
 static const int HUNGER_LOST_PER_TICK = -1;
-static const int SANITY_LOST_PER_TICK = -5;
+static const int SANITY_LOST_PER_TICK = -2; //-5;
 static const int HUNGER_HEALTH_LOST_PER_TICK = -10;
-static const int SANITY_HEALTH_LOST_PER_TICK = -5;
+static const int SANITY_HEALTH_LOST_PER_TICK = -1; //-5;
 static const int STARTING_HUNGER_VALUE = 15; //100;
 static const int STARTING_SANITY_VALUE = 100;
 static const int SPICE_OF_LIFE_QUEUE_SIZE = 10;
@@ -98,6 +99,253 @@ static std::map<std::string, bool> LOCATION_SANITY_LOSS_MAP = {
 	{"western_ruins", true}
 };
 
+// TODO: Look into building this map dynamically.
+static std::map<std::string, std::string> LOCALIZED_ITEM_NAME_TO_INTERNAL_NAME_MAP = {
+	{"Blackberry Jam", "blackberry_jam"},
+	{"Blueberry Jam", "blueberry_jam"},
+	{"Bread", "bread"},
+	{"Noodles", "noodles"},
+	{"Rose Hip Jam", "rosehip_jam"},
+	{"Wild Berry Jam", "wild_berry_jam"},
+	{"Marmalade", "marmalade"},
+	{"Canned Sardines", "canned_sardines"},
+	{"Crunchy Chickpeas", "crunchy_chickpeas"},
+	{"Deviled Eggs", "deviled_eggs"},
+	{"Dried Squid", "dried_squid"},
+	{"Hard Boiled Egg", "hard_boiled_egg"},
+	{"Pineshroom Toast", "pineshroom_toast"},
+	{"Roasted Chestnuts", "roasted_chestnuts"},
+	{"Spicy Cheddar Biscuit", "spicy_cheddar_biscuit"},
+	{"Spicy Water Chestnuts", "spicy_water_chestnuts"},
+	{"Toasted Sunflower Seeds", "toasted_sunflower_seeds"},
+	{"Trail Mix", "trail_mix"},
+	{"Water Chestnut Fritters", "water_chestnut_fritters"},
+	{"Crispy Fried Earthshroom", "crispy_fried_earthshroom"},
+	{"Berry Bowl", "berry_bowl"},
+	{"Beet Salad", "beet_salad"},
+	{"Braised Carrots", "braised_carrots"},
+	{"Broccoli Salad", "broccoli_salad"},
+	{"Cucumber Salad", "cucumber_salad"},
+	{"Grilled Corn", "grilled_corn"},
+	{"Herb Salad", "herb_salad"},
+	{"Sauteed Snow Peas", "sauteed_snow_peas"},
+	{"Sesame Broccoli", "sesame_broccoli"},
+	{"Sliced Turnip", "sliced_turnip"},
+	{"Buttered Peas", "buttered_peas"},
+	{"Cabbage Slaw", "cabbage_slaw"},
+	{"Spring Salad", "spring_salad"},
+	{"Seaweed Salad", "seaweed_salad"},
+	{"Summer Salad", "summer_salad"},
+	{"Turnip & Cabbage Salad", "turnip_and_cabbage_salad"},
+	{"Steamed Broccoli", "steamed_broccoli"},
+	{"Tide Salad", "tide_salad"},
+	{"Deep Sea Soup", "deep_sea_soup"},
+	{"Fish Stew", "fish_stew"},
+	{"Gazpacho", "gazpacho"},
+	{"Miner's Mushroom Stew", "miners_mushroom_stew"},
+	{"Onion Soup", "onion_soup"},
+	{"Potato Soup", "potato_soup"},
+	{"Pumpkin Stew", "pumpkin_stew"},
+	{"Smoked Trout Soup", "smoked_trout_soup"},
+	{"Tomato Soup", "tomato_soup"},
+	{"Vegetable Soup", "vegetable_soup"},
+	{"Winter Stew", "winter_stew"},
+	{"Clam Chowder", "clam_chowder"},
+	{"Baked Potato", "baked_potato"},
+	{"Baked Sweetroot", "baked_sweetroot"},
+	{"Braised Burdock", "braised_burdock"},
+	{"Breaded Catfish", "breaded_catfish"},
+	{"Crayfish Etouffee", "crayfish_etouffee"},
+	{"Chickpea Curry", "chickpea_curry"},
+	{"Cauliflower Curry", "cauliflower_curry"},
+	{"Deluxe Curry", "deluxe_curry"},
+	{"Fried Rice", "fried_rice"},
+	{"Jam Sandwich", "jam_sandwich"},
+	{"Loaded Baked Potato", "loaded_baked_potato"},
+	{"Mackerel Sashimi", "mackerel_sashimi"},
+	{"Mushroom Rice", "mushroom_rice"},
+	{"Pan-fried Salmon", "pan_fried_salmon"},
+	{"Pan-fried Snapper", "pan_fried_snapper"},
+	{"Quiche", "quiche"},
+	{"Red Snapper Sushi", "red_snapper_sushi"},
+	{"Rice Ball", "riceball"},
+	{"Roasted Cauliflower", "roasted_cauliflower"},
+	{"Roasted Sweet Potato", "roasted_sweet_potato"},
+	{"Rosemary Garlic Noodles", "rosemary_garlic_noodles"},
+	{"Salmon Sashimi", "salmon_sashimi"},
+	{"Simmered Daikon", "simmered_daikon"},
+	{"Sushi Platter", "sushi_platter"},
+	{"Tuna Sashimi", "tuna_sashimi"},
+	{"Vegetable Quiche", "vegetable_quiche"},
+	{"Apple Honey Curry", "apple_honey_curry"},
+	{"Chili Coconut Curry", "chili_coconut_curry"},
+	{"Beet Soup", "beet_soup"},
+	{"Harvest Plate", "harvest_plate"},
+	{"Seafood Boil", "seafood_boil"},
+	{"Seafood Snow Pea Noodles", "seafood_snow_pea_noodles"},
+	{"Spring Galette", "spring_galette"},
+	{"Veggie Sub Sandwich", "veggie_sub_sandwich"},
+	{"Cucumber Sandwich", "cucumber_sandwich"},
+	{"Crab Cakes", "crab_cakes"},
+	{"Fish Tacos", "fish_tacos"},
+	{"Cod with Thyme", "cod_with_thyme"},
+	{"Incredibly Hot Pot", "incredibly_hot_pot"},
+	{"Lobster Roll", "lobster_roll"},
+	{"Mushroom Steak Dinner", "mushroom_steak_dinner"},
+	{"Perch Risotto", "perch_risotto"},
+	{"Sea Bream Rice", "sea_bream_rice"},
+	{"Vegetable Pot Pie", "vegetable_pot_pie"},
+	{"Pizza", "pizza"},
+	{"Grilled Eel Rice Bowl", "grilled_eel_rice_bowl"},
+	{"Sesame Tuna Bowl", "sesame_tuna_bowl"},
+	{"Spicy Crab Sushi", "spicy_crab_sushi"},
+	{"Garlic Bread", "garlic_bread"},
+	{"Turnip & Potato Gratin", "turnip_and_potato_gratin"},
+	{"Grilled Cheese", "grilled_cheese"},
+	{"Fish Skewers", "fish_skewer"},
+	{"Pan Fried Bream", "pan_fried_bream"},
+	{"Spicy Corn", "spicy_corn"},
+	{"Horseradish Salmon", "horseradish_salmon"},
+	{"Herb Butter Pasta", "herb_butter_pasta"},
+	{"Omelet", "omelet"},
+	{"Monster Mash", "monster_mash"},
+	{"Berries and Cream", "berries_and_cream"},
+	{"Candied Lemon Peel", "candied_lemon_peel"},
+	{"Candied Strawberries", "candied_strawberries"},
+	{"Caramelized Moon Fruit", "caramelized_moon_fruit"},
+	{"Cherry Cobbler", "cherry_cobbler"},
+	{"Cherry Tart", "cherry_tart"},
+	{"Peaches and Cream", "peaches_and_cream"},
+	{"Chocolate Cake", "caldosian_chocolate_cake"},
+	{"Crystal Berry Pie", "crystal_berry_pie"},
+	{"Lemon Cake", "sour_lemon_cake"},
+	{"Lemon Pie", "lemon_pie"},
+	{"Pomegranate Sorbet", "pomegranate_sorbet"},
+	{"Pumpkin Pie", "pumpkin_pie"},
+	{"Strawberries and Cream", "strawberries_and_cream"},
+	{"Strawberry Shortcake", "strawberry_shortcake"},
+	{"Wild Berry Pie", "wildberry_pie"},
+	{"Wild Berry Scone", "wildberry_scone"},
+	{"Wintergreen Ice Cream", "wintergreen_ice_cream"},
+	{"Golden Cookies", "golden_cookies"},
+	{"Golden Cheesecake", "golden_cheesecake"},
+	{"Mont Blanc", "mont_blanc"},
+	{"Coconut Cream Pie", "coconut_cream_pie"},
+	{"Glowberry Cookies", "glowberry_cookies"},
+	{"Ice Cream Sundae", "ice_cream_sundae"},
+	{"Spell Fruit Parfait", "spell_fruit_parfait"},
+	{"Apple Pie", "apple_pie"},
+	{"Caramel Candy", "caramel_candy"},
+	{"Pudding", "pudding"},
+	{"Sweet Sesame Balls", "sweet_sesame_balls"},
+	{"Sweet Potato Pie", "sweet_potato_pie"},
+	{"Moon Fruit Cake", "moon_fruit_cake"},
+	{"Cranberry Orange Scone", "cranberry_orange_scone"},
+	{"Monster Cookies", "monster_cookie"},
+	{"Poached Pear", "poached_pear"},
+	{"Salted Watermelon", "salted_watermelon"},
+	{"Apple Juice", "apple_juice"},
+	{"Cherry Smoothie", "cherry_smoothie"},
+	{"Coconut Milk", "coconut_milk"},
+	{"Cranberry Juice", "cranberry_juice"},
+	{"Grape Juice", "grape_juice"},
+	{"Green Tea", "green_tea"},
+	{"Hot Chocolate", "hot_cocoa"},
+	{"Jasmine Tea", "jasmine_tea"},
+	{"Latte", "latte"},
+	{"Lemonade", "lemonade"},
+	{"Mocha", "mocha"},
+	{"Orange Juice", "orange_juice"},
+	{"Pomegranate Juice", "pomegranate_juice"},
+	{"Roasted Rice Tea", "roasted_rice_tea"},
+	{"Rose Tea", "rose_tea"},
+	{"Tea with Lemon", "cup_of_tea"},
+	{"Iced Coffee", "iced_coffee"},
+	{"Coffee", "coffee"},
+	{"Beer", "beer"},
+	{"Floral Tea", "floral_tea"},
+	{"Tulip Cake", "tulip_cake"},
+	{"Lavender Tea", "lavender_tea"},
+	{"Red Wine", "red_wine"},
+	{"White Wine", "white_wine"},
+	{"Mushroom Brew", "mushroom_brew"},
+	{"Hot Toddy", "hot_toddy"},
+	{"Twice-Baked Rations", "twice_baked_rations"},
+	{"Dragon Horn Mushroom with Thyme", "dragon_horn_mushroom_with_thyme"},
+	{"Bucket Brew", "bucket_brew"},
+	{"Mint Gimlet", "mint_gimlet"},
+	{"Heavy Mist", "heavy_mist"},
+	{"Humble Pie", "humble_pie"},
+	{"Confiscated Coffee", "confiscated_coffee"},
+	{"Mixed Fruit Juice", "mixed_fruit_juice"},
+	{"Big Cookie", "big_cookie"},
+	{"Honey Curry", "honey_curry"},
+	{"Espresso", "espresso"},
+	{"Turnip", "turnip"},
+	{"Potato", "potato"},
+	{"Cabbage", "cabbage"},
+	{"Strawberry", "strawberry"},
+	{"Carrot", "carrot"},
+	{"Peas", "peas"},
+	{"Cherry", "cherry"},
+	{"Chickpea", "chickpea"},
+	{"Wild Leek", "wild_leek"},
+	{"Lemon", "lemon"},
+	{"Morel Mushroom", "morel_mushroom"},
+	{"Fennel", "fennel"},
+	{"Fiddlehead", "fiddlehead"},
+	{"Nettle", "nettle"},
+	{"Wild Berries", "wild_berries"},
+	{"Blueberry", "blueberry"},
+	{"Cucumber", "cucumber"},
+	{"Tomato", "tomato"},
+	{"Corn", "corn"},
+	{"Chili Pepper", "chili_pepper"},
+	{"Watermelon", "watermelon"},
+	{"Sugar Cane", "sugar_cane"},
+	{"Tea", "tea"},
+	{"Peach", "peach"},
+	{"Pear", "pear"},
+	{"Rose", "rose"},
+	{"Dill", "dill"},
+	{"Sage", "sage"},
+	{"Sunflower", "sunflower"},
+	{"Sesame", "sesame"},
+	{"Coconut", "coconut"},
+	{"Thyme", "thyme"},
+	{"Oregano", "oregano"},
+	{"Basil", "basil"},
+	{"Wild Grapes", "wild_grapes"},
+	{"Sweet Potato", "sweet_potato"},
+	{"Broccoli", "broccoli"},
+	{"Pumpkin", "pumpkin"},
+	{"Onion", "onion"},
+	{"Cranberry", "cranberry"},
+	{"Moon Fruit", "moon_fruit"},
+	{"Rosemary", "rosemary"},
+	{"Orange", "orange"},
+	{"Apple", "apple"},
+	{"Chestnut", "chestnut"},
+	{"Garlic", "garlic"},
+	{"Horseradish", "horseradish"},
+	{"Blackberry", "blackberry"},
+	{"Cauliflower", "cauliflower"},
+	{"Daikon Radish", "daikon_radish"},
+	{"Burdock Root", "burdock_root"},
+	{"Snow Peas", "snow_peas"},
+	{"Beet", "beet"},
+	{"Pomegranate", "pomegranate"},
+	{"Jasmine", "jasmine"},
+	{"Pineshroom", "pineshroom"},
+	{"Glowberry", "glowberry"},
+	{"Oyster Mushroom", "oyster_mushroom"},
+	{"Ice Block", "ice_block"},
+	{"Rose Hip", "rose_hip"},
+	{"Wintergreen Berry", "wintergreen_berry"},
+	{"Acorn", "acorn"},
+	{"Water Chestnut", "water_chestnut"}
+};
+
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_items = true;
 static std::string ari_current_location = "";
@@ -136,6 +384,7 @@ static int rollback_position_y = -1;
 
 // Spice of Life
 static std::deque<std::string> food_queue = {};
+static std::string localized_item_name = "";
 
 //--------------------------------------------------------------------------
 bool EnumFunction(
@@ -526,7 +775,7 @@ RValue& GmlScriptGetMinutesCallback(
 		}
 
 		// Sanity ticks every 10m.
-		if (Arguments[0]->m_i64 % TEN_MINUTES_IN_SECONDS == 0 && !is_sanity_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_sanity_tick) >= TEN_MINUTES_IN_SECONDS)
+		if (Arguments[0]->m_i64 % ONE_MINUTE_IN_SECONDS /*TEN_MINUTES_IN_SECONDS*/ == 0 && !is_sanity_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_sanity_tick) >= ONE_MINUTE_IN_SECONDS /*TEN_MINUTES_IN_SECONDS*/)
 		{
 			is_sanity_tracked_time_interval = true;
 			time_of_last_sanity_tick = Arguments[0]->m_i64;
@@ -1203,6 +1452,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		rollback_position_x = -1;
 		rollback_position_y = -1;
 		food_queue = {};
+		localized_item_name = "";
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
@@ -1349,17 +1599,7 @@ RValue& GmlScriptGetDisplayNameCallback(
 		Arguments
 	);
 
-	//RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
-	//if (held_item_name.m_Kind == VALUE_STRING)
-	//{
-	//	int occurrences = GetFoodQueueOccurrences(held_item_name.AsString().data());
-	//	if (occurrences > 0)
-	//	{
-	//		std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.AsString().data();
-	//		Result = new_description;
-	//	}
-	//}
-
+	localized_item_name = Result.AsString().data();
 	return Result;
 }
 
@@ -1380,16 +1620,19 @@ RValue& GmlScriptGetDisplayDescriptionCallback(
 		Arguments
 	);
 
-	//RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
-	//if (held_item_name.m_Kind == VALUE_STRING)
-	//{
-	//	int occurrences = GetFoodQueueOccurrences(held_item_name.AsString().data());
-	//	if (occurrences > 0)
-	//	{
-	//		std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.AsString().data();
-	//		Result = new_description;
-	//	}
-	//}
+	if (localized_item_name.size() > 0)
+	{
+		if (LOCALIZED_ITEM_NAME_TO_INTERNAL_NAME_MAP.count(localized_item_name) > 0)
+		{
+			std::string internal_item_name = LOCALIZED_ITEM_NAME_TO_INTERNAL_NAME_MAP[localized_item_name];
+			int occurrences = GetFoodQueueOccurrences(internal_item_name);
+			if (occurrences > 0)
+			{
+				std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.AsString().data();
+				Result = new_description;
+			}
+		}
+	}
 
 	return Result;
 }
