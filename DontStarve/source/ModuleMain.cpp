@@ -1,5 +1,4 @@
 #include <map>
-//#include <cmath>
 #include <deque>
 #include <random>
 #include <YYToolkit/Shared.hpp>
@@ -9,24 +8,22 @@ using namespace YYTK;
 static const int SIX_AM_IN_SECONDS = 21600;
 static const int EIGHT_PM_IN_SECONDS = 72000;
 static const int END_OF_DAY_IN_SECONDS = 93600;
+static const int THIRTY_SECONDS = 30;
 static const int ONE_MINUTE_IN_SECONDS = 60;
-static const int FIVE_MINUTES_IN_SECONDS = 300;
-static const int TEN_MINUTES_IN_SECONDS = 600;
 static const int THIRY_MINUTES_IN_SECONDS = 1800;
 static const int HUNGER_LOST_PER_TICK = -1;
-static const int SANITY_LOST_PER_TICK = -2; //-5;
+static const int SANITY_LOST_PER_TICK = -1;
 static const int HUNGER_HEALTH_LOST_PER_TICK = -10;
-static const int SANITY_HEALTH_LOST_PER_TICK = -1; //-5;
+static const int SANITY_HEALTH_LOST_PER_TICK = -1;
 static const int STARTING_HUNGER_VALUE = 15; //100;
 static const int STARTING_SANITY_VALUE = 100;
 static const int SPICE_OF_LIFE_QUEUE_SIZE = 10;
 static const char* DONT_STARVE_INTRODUCTION_LETTER = "dont_starve_introduction";
 static const std::string IGNORED_ITEMS[] = {
-	"balors_crate", "confiscated_coffee", "dungeon_fountain_health", "dungeon_fountain_stamina", "horse_potion", 
-	"lurid_colored_drink", "ryis_lumber", "soup_of_the_day", "soup_of_the_day_gold", "stinky_stamina_potion", "unusual_seed"
+	"balors_crate", "confiscated_coffee", "dungeon_fountain_health", "dungeon_fountain_stamina", "horse_potion", "lurid_colored_drink",
+	"ryis_lumber", "soup_of_the_day", "soup_of_the_day_gold", "stinky_stamina_potion", "unusual_seed", "world_fountain"
 };
-
-static std::map<std::string, bool> DUNGEON_LOCATIONS = {
+static const std::map<std::string, bool> DUNGEON_LOCATIONS = {
 	{"deep_woods", true},
 	{"dungeon", true},
 	{"earth_seal", true},
@@ -34,7 +31,7 @@ static std::map<std::string, bool> DUNGEON_LOCATIONS = {
 	{"mines_entry", true},
 	{"water_seal", true}
 };
-static std::map<std::string, bool> LOCATION_SANITY_LOSS_MAP = {
+static const std::map<std::string, bool> LOCATION_SANITY_LOSS_MAP = {
 	{"adelines_bedroom", false},
 	{"adelines_office", false},
 	{"aldaria", true},
@@ -99,255 +96,9 @@ static std::map<std::string, bool> LOCATION_SANITY_LOSS_MAP = {
 	{"western_ruins", true}
 };
 
-// TODO: Look into building this map dynamically.
-static std::map<std::string, std::string> LOCALIZED_ITEM_NAME_TO_INTERNAL_NAME_MAP = {
-	{"Blackberry Jam", "blackberry_jam"},
-	{"Blueberry Jam", "blueberry_jam"},
-	{"Bread", "bread"},
-	{"Noodles", "noodles"},
-	{"Rose Hip Jam", "rosehip_jam"},
-	{"Wild Berry Jam", "wild_berry_jam"},
-	{"Marmalade", "marmalade"},
-	{"Canned Sardines", "canned_sardines"},
-	{"Crunchy Chickpeas", "crunchy_chickpeas"},
-	{"Deviled Eggs", "deviled_eggs"},
-	{"Dried Squid", "dried_squid"},
-	{"Hard Boiled Egg", "hard_boiled_egg"},
-	{"Pineshroom Toast", "pineshroom_toast"},
-	{"Roasted Chestnuts", "roasted_chestnuts"},
-	{"Spicy Cheddar Biscuit", "spicy_cheddar_biscuit"},
-	{"Spicy Water Chestnuts", "spicy_water_chestnuts"},
-	{"Toasted Sunflower Seeds", "toasted_sunflower_seeds"},
-	{"Trail Mix", "trail_mix"},
-	{"Water Chestnut Fritters", "water_chestnut_fritters"},
-	{"Crispy Fried Earthshroom", "crispy_fried_earthshroom"},
-	{"Berry Bowl", "berry_bowl"},
-	{"Beet Salad", "beet_salad"},
-	{"Braised Carrots", "braised_carrots"},
-	{"Broccoli Salad", "broccoli_salad"},
-	{"Cucumber Salad", "cucumber_salad"},
-	{"Grilled Corn", "grilled_corn"},
-	{"Herb Salad", "herb_salad"},
-	{"Sauteed Snow Peas", "sauteed_snow_peas"},
-	{"Sesame Broccoli", "sesame_broccoli"},
-	{"Sliced Turnip", "sliced_turnip"},
-	{"Buttered Peas", "buttered_peas"},
-	{"Cabbage Slaw", "cabbage_slaw"},
-	{"Spring Salad", "spring_salad"},
-	{"Seaweed Salad", "seaweed_salad"},
-	{"Summer Salad", "summer_salad"},
-	{"Turnip & Cabbage Salad", "turnip_and_cabbage_salad"},
-	{"Steamed Broccoli", "steamed_broccoli"},
-	{"Tide Salad", "tide_salad"},
-	{"Deep Sea Soup", "deep_sea_soup"},
-	{"Fish Stew", "fish_stew"},
-	{"Gazpacho", "gazpacho"},
-	{"Miner's Mushroom Stew", "miners_mushroom_stew"},
-	{"Onion Soup", "onion_soup"},
-	{"Potato Soup", "potato_soup"},
-	{"Pumpkin Stew", "pumpkin_stew"},
-	{"Smoked Trout Soup", "smoked_trout_soup"},
-	{"Tomato Soup", "tomato_soup"},
-	{"Vegetable Soup", "vegetable_soup"},
-	{"Winter Stew", "winter_stew"},
-	{"Clam Chowder", "clam_chowder"},
-	{"Baked Potato", "baked_potato"},
-	{"Baked Sweetroot", "baked_sweetroot"},
-	{"Braised Burdock", "braised_burdock"},
-	{"Breaded Catfish", "breaded_catfish"},
-	{"Crayfish Etouffee", "crayfish_etouffee"},
-	{"Chickpea Curry", "chickpea_curry"},
-	{"Cauliflower Curry", "cauliflower_curry"},
-	{"Deluxe Curry", "deluxe_curry"},
-	{"Fried Rice", "fried_rice"},
-	{"Jam Sandwich", "jam_sandwich"},
-	{"Loaded Baked Potato", "loaded_baked_potato"},
-	{"Mackerel Sashimi", "mackerel_sashimi"},
-	{"Mushroom Rice", "mushroom_rice"},
-	{"Pan-fried Salmon", "pan_fried_salmon"},
-	{"Pan-fried Snapper", "pan_fried_snapper"},
-	{"Quiche", "quiche"},
-	{"Red Snapper Sushi", "red_snapper_sushi"},
-	{"Rice Ball", "riceball"},
-	{"Roasted Cauliflower", "roasted_cauliflower"},
-	{"Roasted Sweet Potato", "roasted_sweet_potato"},
-	{"Rosemary Garlic Noodles", "rosemary_garlic_noodles"},
-	{"Salmon Sashimi", "salmon_sashimi"},
-	{"Simmered Daikon", "simmered_daikon"},
-	{"Sushi Platter", "sushi_platter"},
-	{"Tuna Sashimi", "tuna_sashimi"},
-	{"Vegetable Quiche", "vegetable_quiche"},
-	{"Apple Honey Curry", "apple_honey_curry"},
-	{"Chili Coconut Curry", "chili_coconut_curry"},
-	{"Beet Soup", "beet_soup"},
-	{"Harvest Plate", "harvest_plate"},
-	{"Seafood Boil", "seafood_boil"},
-	{"Seafood Snow Pea Noodles", "seafood_snow_pea_noodles"},
-	{"Spring Galette", "spring_galette"},
-	{"Veggie Sub Sandwich", "veggie_sub_sandwich"},
-	{"Cucumber Sandwich", "cucumber_sandwich"},
-	{"Crab Cakes", "crab_cakes"},
-	{"Fish Tacos", "fish_tacos"},
-	{"Cod with Thyme", "cod_with_thyme"},
-	{"Incredibly Hot Pot", "incredibly_hot_pot"},
-	{"Lobster Roll", "lobster_roll"},
-	{"Mushroom Steak Dinner", "mushroom_steak_dinner"},
-	{"Perch Risotto", "perch_risotto"},
-	{"Sea Bream Rice", "sea_bream_rice"},
-	{"Vegetable Pot Pie", "vegetable_pot_pie"},
-	{"Pizza", "pizza"},
-	{"Grilled Eel Rice Bowl", "grilled_eel_rice_bowl"},
-	{"Sesame Tuna Bowl", "sesame_tuna_bowl"},
-	{"Spicy Crab Sushi", "spicy_crab_sushi"},
-	{"Garlic Bread", "garlic_bread"},
-	{"Turnip & Potato Gratin", "turnip_and_potato_gratin"},
-	{"Grilled Cheese", "grilled_cheese"},
-	{"Fish Skewers", "fish_skewer"},
-	{"Pan Fried Bream", "pan_fried_bream"},
-	{"Spicy Corn", "spicy_corn"},
-	{"Horseradish Salmon", "horseradish_salmon"},
-	{"Herb Butter Pasta", "herb_butter_pasta"},
-	{"Omelet", "omelet"},
-	{"Monster Mash", "monster_mash"},
-	{"Berries and Cream", "berries_and_cream"},
-	{"Candied Lemon Peel", "candied_lemon_peel"},
-	{"Candied Strawberries", "candied_strawberries"},
-	{"Caramelized Moon Fruit", "caramelized_moon_fruit"},
-	{"Cherry Cobbler", "cherry_cobbler"},
-	{"Cherry Tart", "cherry_tart"},
-	{"Peaches and Cream", "peaches_and_cream"},
-	{"Chocolate Cake", "caldosian_chocolate_cake"},
-	{"Crystal Berry Pie", "crystal_berry_pie"},
-	{"Lemon Cake", "sour_lemon_cake"},
-	{"Lemon Pie", "lemon_pie"},
-	{"Pomegranate Sorbet", "pomegranate_sorbet"},
-	{"Pumpkin Pie", "pumpkin_pie"},
-	{"Strawberries and Cream", "strawberries_and_cream"},
-	{"Strawberry Shortcake", "strawberry_shortcake"},
-	{"Wild Berry Pie", "wildberry_pie"},
-	{"Wild Berry Scone", "wildberry_scone"},
-	{"Wintergreen Ice Cream", "wintergreen_ice_cream"},
-	{"Golden Cookies", "golden_cookies"},
-	{"Golden Cheesecake", "golden_cheesecake"},
-	{"Mont Blanc", "mont_blanc"},
-	{"Coconut Cream Pie", "coconut_cream_pie"},
-	{"Glowberry Cookies", "glowberry_cookies"},
-	{"Ice Cream Sundae", "ice_cream_sundae"},
-	{"Spell Fruit Parfait", "spell_fruit_parfait"},
-	{"Apple Pie", "apple_pie"},
-	{"Caramel Candy", "caramel_candy"},
-	{"Pudding", "pudding"},
-	{"Sweet Sesame Balls", "sweet_sesame_balls"},
-	{"Sweet Potato Pie", "sweet_potato_pie"},
-	{"Moon Fruit Cake", "moon_fruit_cake"},
-	{"Cranberry Orange Scone", "cranberry_orange_scone"},
-	{"Monster Cookies", "monster_cookie"},
-	{"Poached Pear", "poached_pear"},
-	{"Salted Watermelon", "salted_watermelon"},
-	{"Apple Juice", "apple_juice"},
-	{"Cherry Smoothie", "cherry_smoothie"},
-	{"Coconut Milk", "coconut_milk"},
-	{"Cranberry Juice", "cranberry_juice"},
-	{"Grape Juice", "grape_juice"},
-	{"Green Tea", "green_tea"},
-	{"Hot Chocolate", "hot_cocoa"},
-	{"Jasmine Tea", "jasmine_tea"},
-	{"Latte", "latte"},
-	{"Lemonade", "lemonade"},
-	{"Mocha", "mocha"},
-	{"Orange Juice", "orange_juice"},
-	{"Pomegranate Juice", "pomegranate_juice"},
-	{"Roasted Rice Tea", "roasted_rice_tea"},
-	{"Rose Tea", "rose_tea"},
-	{"Tea with Lemon", "cup_of_tea"},
-	{"Iced Coffee", "iced_coffee"},
-	{"Coffee", "coffee"},
-	{"Beer", "beer"},
-	{"Floral Tea", "floral_tea"},
-	{"Tulip Cake", "tulip_cake"},
-	{"Lavender Tea", "lavender_tea"},
-	{"Red Wine", "red_wine"},
-	{"White Wine", "white_wine"},
-	{"Mushroom Brew", "mushroom_brew"},
-	{"Hot Toddy", "hot_toddy"},
-	{"Twice-Baked Rations", "twice_baked_rations"},
-	{"Dragon Horn Mushroom with Thyme", "dragon_horn_mushroom_with_thyme"},
-	{"Bucket Brew", "bucket_brew"},
-	{"Mint Gimlet", "mint_gimlet"},
-	{"Heavy Mist", "heavy_mist"},
-	{"Humble Pie", "humble_pie"},
-	{"Confiscated Coffee", "confiscated_coffee"},
-	{"Mixed Fruit Juice", "mixed_fruit_juice"},
-	{"Big Cookie", "big_cookie"},
-	{"Honey Curry", "honey_curry"},
-	{"Espresso", "espresso"},
-	{"Turnip", "turnip"},
-	{"Potato", "potato"},
-	{"Cabbage", "cabbage"},
-	{"Strawberry", "strawberry"},
-	{"Carrot", "carrot"},
-	{"Peas", "peas"},
-	{"Cherry", "cherry"},
-	{"Chickpea", "chickpea"},
-	{"Wild Leek", "wild_leek"},
-	{"Lemon", "lemon"},
-	{"Morel Mushroom", "morel_mushroom"},
-	{"Fennel", "fennel"},
-	{"Fiddlehead", "fiddlehead"},
-	{"Nettle", "nettle"},
-	{"Wild Berries", "wild_berries"},
-	{"Blueberry", "blueberry"},
-	{"Cucumber", "cucumber"},
-	{"Tomato", "tomato"},
-	{"Corn", "corn"},
-	{"Chili Pepper", "chili_pepper"},
-	{"Watermelon", "watermelon"},
-	{"Sugar Cane", "sugar_cane"},
-	{"Tea", "tea"},
-	{"Peach", "peach"},
-	{"Pear", "pear"},
-	{"Rose", "rose"},
-	{"Dill", "dill"},
-	{"Sage", "sage"},
-	{"Sunflower", "sunflower"},
-	{"Sesame", "sesame"},
-	{"Coconut", "coconut"},
-	{"Thyme", "thyme"},
-	{"Oregano", "oregano"},
-	{"Basil", "basil"},
-	{"Wild Grapes", "wild_grapes"},
-	{"Sweet Potato", "sweet_potato"},
-	{"Broccoli", "broccoli"},
-	{"Pumpkin", "pumpkin"},
-	{"Onion", "onion"},
-	{"Cranberry", "cranberry"},
-	{"Moon Fruit", "moon_fruit"},
-	{"Rosemary", "rosemary"},
-	{"Orange", "orange"},
-	{"Apple", "apple"},
-	{"Chestnut", "chestnut"},
-	{"Garlic", "garlic"},
-	{"Horseradish", "horseradish"},
-	{"Blackberry", "blackberry"},
-	{"Cauliflower", "cauliflower"},
-	{"Daikon Radish", "daikon_radish"},
-	{"Burdock Root", "burdock_root"},
-	{"Snow Peas", "snow_peas"},
-	{"Beet", "beet"},
-	{"Pomegranate", "pomegranate"},
-	{"Jasmine", "jasmine"},
-	{"Pineshroom", "pineshroom"},
-	{"Glowberry", "glowberry"},
-	{"Oyster Mushroom", "oyster_mushroom"},
-	{"Ice Block", "ice_block"},
-	{"Rose Hip", "rose_hip"},
-	{"Wintergreen Berry", "wintergreen_berry"},
-	{"Acorn", "acorn"},
-	{"Water Chestnut", "water_chestnut"}
-};
-
 static YYTKInterface* g_ModuleInterface = nullptr;
-static bool load_items = true;
+static bool run_once = true;
+static bool localize_items = true;
 static std::string ari_current_location = "";
 static int ari_hunger_value = STARTING_HUNGER_VALUE;
 static int ari_sanity_value = STARTING_SANITY_VALUE;
@@ -360,7 +111,6 @@ static int time_of_last_sanity_tick = 0;
 static int held_item_id = -1;
 static bool game_is_active = false;
 static bool health_bar_visible = false;
-//static bool use_health_instead_of_stamina = false;
 static int hunger_stamina_health_penatly = 0;
 
 static std::map<std::string, int> item_name_to_restoration_map = {}; // Excludes cooked dishes
@@ -370,7 +120,6 @@ static std::map<std::string, int> recipe_name_to_stars_map = {}; // Only cooked 
 static std::mt19937 generator(std::random_device{}());
 static std::uniform_int_distribution<int> distribution_1_25(1, 25);
 static std::uniform_int_distribution<int> distribution_1_1000(1, 1000);
-//static std::vector<std::vector<bool>> noise_masks = {};
 static std::vector<std::vector<std::vector<int>>> noise_masks = {};
 static int total_noise_masks = 100;
 static int current_mask = 0;
@@ -385,17 +134,8 @@ static int rollback_position_y = -1;
 // Spice of Life
 static std::deque<std::string> food_queue = {};
 static std::string localized_item_name = "";
-
-//--------------------------------------------------------------------------
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
-}
-//--------------------------------------------------------------------------
+static std::map<std::string, std::string> localized_item_name_to_internal_name_map = {};
+static std::map<std::string, double> item_name_to_original_stamina_recovery_map = {};
 
 std::string FoodQueueToString()
 {
@@ -425,9 +165,9 @@ int GetFoodQueueOccurrences(std::string item_name)
 	return std::count(food_queue.begin(), food_queue.end(), item_name);
 }
 
-double GetFoodPenalty(std::string item_name)
+double GetFoodPenalty(std::string item_name, int occurrence_offset)
 {
-	int occurrences = GetFoodQueueOccurrences(item_name);
+	int occurrences = GetFoodQueueOccurrences(item_name) + occurrence_offset;
 	double penalty;
 	if (occurrences <= 1)
 		penalty = 0.0;
@@ -444,6 +184,28 @@ double GetFoodPenalty(std::string item_name)
 
 	g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - The stamina restoration penalty for %s was %d percent!", item_name.c_str(), static_cast<int>(penalty * 100));
 	return penalty;
+}
+
+RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localization_key)
+{
+	CScript* gml_script_get_localizer = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_get@Localizer@Localizer",
+		(PVOID*)&gml_script_get_localizer
+	);
+
+	RValue result;
+	RValue input = localization_key;
+	RValue* input_ptr = &input;
+	gml_script_get_localizer->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &input_ptr }
+	);
+
+	return result;
 }
 
 RValue GetMaxHealth(CInstance* Self, CInstance* Other)
@@ -527,6 +289,53 @@ RValue ItemIdToString(CInstance* Self, CInstance* Other, int id)
 	);
 
 	return item_name;
+}
+
+RValue StringToItemId(CInstance* Self, CInstance* Other, std::string name)
+{
+	CScript* gml_script_name_to_item_id = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_try_string_to_item_id",
+		(PVOID*)&gml_script_name_to_item_id
+	);
+
+	RValue item_id;
+	RValue item_name = name;
+	RValue* item_name_ptr = &item_name;
+	gml_script_name_to_item_id->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		item_id,
+		1,
+		{ &item_name_ptr }
+	);
+
+	return item_id;
+}
+
+void SetItemStaminaModifier(int item_id, double stamina_value)
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __item_data = global_instance->at("__item_data");
+	RValue item = g_ModuleInterface->CallBuiltin("array_get", { __item_data, item_id });
+
+	g_ModuleInterface->CallBuiltin("struct_set", { item, "stamina_modifier", stamina_value });
+}
+
+void ResetAllItemStaminaModifiers(CInstance* Self, CInstance* Other)
+{
+	if (!item_name_to_original_stamina_recovery_map.empty())
+	{
+		for (const auto& map_entry : item_name_to_original_stamina_recovery_map) {
+			RValue item_id = StringToItemId(Self, Other, map_entry.first);
+			if (item_id.m_Kind == VALUE_INT64)
+			{
+				SetItemStaminaModifier(item_id.m_i64, map_entry.second);
+			}
+		}
+	}
 }
 
 void SendMail(std::string mail_name_str)
@@ -614,7 +423,7 @@ bool AriIsAtSanityLossLocation()
 {
 	if (ari_current_location.length() > 0)
 		if (LOCATION_SANITY_LOSS_MAP.count(ari_current_location) > 0)
-			return LOCATION_SANITY_LOSS_MAP[ari_current_location];
+			return LOCATION_SANITY_LOSS_MAP.at(ari_current_location);
 	return false;
 }
 
@@ -634,6 +443,36 @@ bool GameIsPaused()
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 	RValue paused = global_instance->at("__pause_status");
 	return paused.m_i64 > 0;
+}
+
+void GenerateNoiseMasks()
+{
+	RValue window_get_width = g_ModuleInterface->CallBuiltin(
+		"window_get_width",
+		{}
+	);
+	window_width = window_get_width.m_Real;
+
+	RValue window_get_height = g_ModuleInterface->CallBuiltin(
+		"window_get_height",
+		{}
+	);
+	window_height = window_get_height.m_Real;
+
+	g_ModuleInterface->Print(CM_LIGHTPURPLE, "[DontStarve %s] - Generating random noise for screen static effect. This may take several seconds...");
+	for (int num_masks = 0; num_masks < total_noise_masks; num_masks++)
+	{
+		std::vector<std::vector<int>> noise = {};
+		for (int i = 0; i < window_width; i++)
+		{
+			for (int j = 0; j < window_height; j++)
+			{
+				if (distribution_1_1000(generator) == 1000)
+					noise.push_back({ i, j });
+			}
+		}
+		noise_masks.push_back(noise);
+	}
 }
 
 void FrameCallback(FWFrame& FrameContext)
@@ -685,34 +524,12 @@ void ObjectCallback(
 	}
 
 	// Stamina used while Ari is hungry penalty.
-	//if (use_health_instead_of_stamina)
 	if(hunger_stamina_health_penatly < 0) // TODO: Check this is working with recent changes.
 	{
 		ModifyHealth(global_instance->at("__ari").m_Object, self, hunger_stamina_health_penatly);
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - You used stamina while your hunger meter is depleted! Decreased health by %d!", hunger_stamina_health_penatly);
 		hunger_stamina_health_penatly = 0;
-		//use_health_instead_of_stamina = false;
 	}
-
-	/*
-	if (is_tracked_time_interval || use_health_instead_of_stamina) {
-		// Time tick when Ari is hungry.
-		if (is_tracked_time_interval && ari_is_hungry) {
-			ModifyHealth(global_instance->at("__ari").m_Object, self, HEALTH_LOST_PER_TICK);
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Time has passed while your hunger meter is depleted! Decreased health by %d!", HEALTH_LOST_PER_TICK);
-		}
-
-		// Stamina used when Ari is hungry.
-		if (use_health_instead_of_stamina) {
-			ModifyHealth(global_instance->at("__ari").m_Object, self, hunger_stamina_health_penatly);
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - You used stamina while your hunger meter is depleted! Decreased health by %d!", hunger_stamina_health_penatly);
-			hunger_stamina_health_penatly = 0;
-		}
-
-		use_health_instead_of_stamina = false;
-		is_tracked_time_interval = false;
-	}
-	*/
 
 	// Flag when the health bar is visible.
 	RValue ari_max_health = GetMaxHealth(global_instance->at("__ari").m_Object, self);
@@ -774,8 +591,8 @@ RValue& GmlScriptGetMinutesCallback(
 				ari_hunger_value = 0;
 		}
 
-		// Sanity ticks every 10m.
-		if (Arguments[0]->m_i64 % ONE_MINUTE_IN_SECONDS /*TEN_MINUTES_IN_SECONDS*/ == 0 && !is_sanity_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_sanity_tick) >= ONE_MINUTE_IN_SECONDS /*TEN_MINUTES_IN_SECONDS*/)
+		// Sanity ticks every 30s.
+		if (Arguments[0]->m_i64 % THIRTY_SECONDS == 0 && !is_sanity_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_sanity_tick) >= THIRTY_SECONDS)
 		{
 			is_sanity_tracked_time_interval = true;
 			time_of_last_sanity_tick = Arguments[0]->m_i64;
@@ -801,8 +618,8 @@ RValue& GmlScriptGetMinutesCallback(
 			}
 		}
 
-		// Every 5m snapshot Ari's position.
-		if (Arguments[0]->m_i64 % FIVE_MINUTES_IN_SECONDS == 0)
+		// Every 1m snapshot Ari's position.
+		if (Arguments[0]->m_i64 % ONE_MINUTE_IN_SECONDS == 0)
 		{
 			snapshot_position = true;
 		}
@@ -932,7 +749,7 @@ RValue& GmlScriptModifyStaminaCallback(
 				if (disabled_item == std::end(IGNORED_ITEMS))
 				{
 					UpdateFoodQueue(item_name_string);
-					double food_penalty = GetFoodPenalty(item_name_string);
+					double food_penalty = GetFoodPenalty(item_name_string, 0);
 					double penalty_multiplier = 1.0 - food_penalty;
 					double result = trunc(penalty_multiplier * Arguments[0]->m_Real);
 					if (result == 0)
@@ -955,7 +772,6 @@ RValue& GmlScriptModifyStaminaCallback(
 		int new_hunger_value = ari_hunger_value + Arguments[0]->m_Real;
 		if (new_hunger_value < 0) {
 			ari_hunger_value = 0;
-			//use_health_instead_of_stamina = true;
 			hunger_stamina_health_penatly += new_hunger_value;
 			g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Ari is hungry! Using health in place of stamina.");
 		}
@@ -994,16 +810,11 @@ RValue& GmlScriptOnDrawGuiCallback(
 		Arguments
 	);
 
-	// TODO: Look into using Archie's code to detect a sprite's X,Y position and offset to figure out position and size for hunger meter and icon.
-
 	// If we should be drawing the HUD.
 	if (game_is_active && !GameIsPaused())
 	{
-		int y_health_bar_offset = 0;
-		if (health_bar_visible)
-		{
-			y_health_bar_offset = 50;
-		}
+		int y_health_bar_offset = 100;
+		int sanity_bar_offset = 50;
 
 		// Hunger Bar Icon
 		RValue hunger_bar_icon_sprite_index = g_ModuleInterface->CallBuiltin(
@@ -1035,8 +846,6 @@ RValue& GmlScriptOnDrawGuiCallback(
 			}
 		);
 
-		//g_ModuleInterface->Print(CM_AQUA, "[DontStarve] - Orange Rectangle Coordinates: %d, %d, %d, %d", x1, y1, x2, y2);
-
 		// Hunger Bar (Black)
 		g_ModuleInterface->CallBuiltin(
 			"draw_set_color", {
@@ -1053,8 +862,6 @@ RValue& GmlScriptOnDrawGuiCallback(
 				_x1, _y1, _x2, _y2, false
 			}
 		);
-
-		//g_ModuleInterface->Print(CM_AQUA, "[DontStarve] - Black Rectangle Coordinates: %d, %d, %d, %d", _x1, _y1, _x2, _y2);
 
 		// Hunger Bar (Border)
 		RValue hunger_bar_sprite_index = g_ModuleInterface->CallBuiltin(
@@ -1085,11 +892,10 @@ RValue& GmlScriptOnDrawGuiCallback(
 
 		g_ModuleInterface->CallBuiltin(
 			"draw_text_transformed", {
-				140, (118 + y_health_bar_offset), std::to_string(ari_hunger_value) + "%", 3, 3, 0
+				140, (125 + y_health_bar_offset), std::to_string(ari_hunger_value) + "%", 3, 3, 0
 			}
 		);
 
-		
 		// Sanity Bar Icon
 		RValue sanity_bar_icon_sprite_index = g_ModuleInterface->CallBuiltin(
 			"asset_get_index", {
@@ -1099,7 +905,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 
 		g_ModuleInterface->CallBuiltin(
 			"draw_sprite", {
-				sanity_bar_icon_sprite_index, 1, 10, (2 * 122) + y_health_bar_offset
+				sanity_bar_icon_sprite_index, 1, 10, (122 + y_health_bar_offset + sanity_bar_offset)
 			}
 		);
 		
@@ -1111,16 +917,15 @@ RValue& GmlScriptOnDrawGuiCallback(
 		);
 
 		x1 = 50 + 9;
-		y1 = (2 * 115) + 5 + y_health_bar_offset;
+		y1 = 115 + 5 + y_health_bar_offset + sanity_bar_offset;
 		x2 = x1 + ari_sanity_value * 2;
-		y2 = (2 * 115) + 40 + y_health_bar_offset;
+		y2 = 115 + 40 + y_health_bar_offset + sanity_bar_offset;
+
 		g_ModuleInterface->CallBuiltin(
 			"draw_rectangle", {
 				x1, y1, x2, y2, false
 			}
 		);
-
-		//g_ModuleInterface->Print(CM_AQUA, "[DontStarve] - Orange Rectangle Coordinates: %d, %d, %d, %d", x1, y1, x2, y2);
 
 		// Sanity Bar (Black)
 		g_ModuleInterface->CallBuiltin(
@@ -1130,16 +935,14 @@ RValue& GmlScriptOnDrawGuiCallback(
 		);
 
 		_x1 = x2 + 1;
-		_y1 = (2 * 115) + 5 + y_health_bar_offset;
+		_y1 = 115 + 5 + y_health_bar_offset + sanity_bar_offset;
 		_x2 = _x1 + ((100 - ari_sanity_value) * 2);
-		_y2 = (2 * 115) + 40 + y_health_bar_offset;
+		_y2 = 115 + 40 + y_health_bar_offset + sanity_bar_offset;
 		g_ModuleInterface->CallBuiltin(
 			"draw_rectangle", {
 				_x1, _y1, _x2, _y2, false
 			}
 		);
-
-		//g_ModuleInterface->Print(CM_AQUA, "[DontStarve] - Black Rectangle Coordinates: %d, %d, %d, %d", _x1, _y1, _x2, _y2);
 
 		// Sanity Bar (Border)
 		RValue sanity_bar_sprite_index = g_ModuleInterface->CallBuiltin(
@@ -1150,7 +953,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 
 		g_ModuleInterface->CallBuiltin(
 			"draw_sprite", {
-				sanity_bar_sprite_index, 1, 50, (2 * 115) + y_health_bar_offset
+				sanity_bar_sprite_index, 1, 50, (115 + y_health_bar_offset + sanity_bar_offset)
 			}
 		);
 
@@ -1170,7 +973,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 
 		g_ModuleInterface->CallBuiltin(
 			"draw_text_transformed", {
-				140, (2 * 118) + y_health_bar_offset, std::to_string(ari_sanity_value) + "%", 3, 3, 0
+				140, (125 + y_health_bar_offset + sanity_bar_offset), std::to_string(ari_sanity_value) + "%", 3, 3, 0
 			}
 		);
 	}
@@ -1195,18 +998,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 			{ 0, 0, window_width, window_height, false }
 		);
 
-
-		// GENERATE RANDOM NOISE
-		//RValue window_width = g_ModuleInterface->CallBuiltin(
-		//	"window_get_width",
-		//	{}
-		//);
-
-		//RValue window_height = g_ModuleInterface->CallBuiltin(
-		//	"window_get_height",
-		//	{}
-		//);
-
+		// Draw static noise
 		g_ModuleInterface->CallBuiltin(
 			"draw_set_alpha",
 			{ 1.0 }
@@ -1220,34 +1012,12 @@ RValue& GmlScriptOnDrawGuiCallback(
 
 		for (size_t x = 0; x < noise_masks[current_mask].size(); x++)
 		{
-			//g_ModuleInterface->CallBuiltin(
-			//	"draw_point",
-			//	{ noise_masks[current_mask][x][0], noise_masks[current_mask][x][1] }
-			//);
-
 			g_ModuleInterface->CallBuiltin(
 				"draw_rectangle", {
 					noise_masks[current_mask][x][0] - 2, noise_masks[current_mask][x][1] - 2, noise_masks[current_mask][x][0] + 2, noise_masks[current_mask][x][1] + 2, false
 				}
 			);
 		}
-
-		//int count = 0;
-		//for (int i = 0; i < window_width; i++)
-		//{
-		//	for (int j = 0; j < window_height; j++)
-		//	{
-		//		if (noise_masks[current_mask][count])
-		//		{
-		//			g_ModuleInterface->CallBuiltin(
-		//				"draw_point",
-		//				{ i, j }
-		//			);
-		//		}
-
-		//		count += 1;
-		//	}
-		//}
 
 		current_mask++;
 		if (current_mask == total_noise_masks)
@@ -1281,6 +1051,43 @@ RValue& GmlScriptHeldItemCallback(
 			held_item_id = Result.at("item_id").m_i64;
 		}
 	}
+
+	return Result;
+}
+
+RValue& GmlScriptUseItemCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (held_item_id >= 0)
+	{
+		RValue item_name = ItemIdToString(Self, Other, held_item_id);
+		if (item_name.m_Kind == VALUE_STRING)
+		{
+			std::string item_name_string = item_name.AsString().data();
+			if (recipe_name_to_stars_map.count(item_name_string) > 0 || item_name_to_restoration_map.count(item_name_string) > 0)
+			{
+				if (item_name_to_original_stamina_recovery_map.count(item_name_string) > 0)
+				{
+					double stamina_recovery = item_name_to_original_stamina_recovery_map[item_name_string];
+					SetItemStaminaModifier(held_item_id, stamina_recovery);
+				}
+			}
+		}
+	}
+	
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_use_item"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
 
 	return Result;
 }
@@ -1345,8 +1152,9 @@ RValue& GmlScriptSetupMainScreenCallback(
 	IN RValue** Arguments
 )
 {
-	if (load_items)
+	if (run_once)
 	{
+		// Load items.
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
@@ -1370,7 +1178,6 @@ RValue& GmlScriptSetupMainScreenCallback(
 					RValue recipe = array_element->at("recipe");
 					if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
 					{
-						//RValue item_id = recipe.at("item_id");
 						if (recipe_name_to_stars_map.count(recipe_key.AsString().data()) <= 0)
 						{
 							RValue stars = array_element->at("stars");
@@ -1383,6 +1190,10 @@ RValue& GmlScriptSetupMainScreenCallback(
 							}
 						}
 					}
+
+					RValue stamina_modifier = array_element->at("stamina_modifier");
+					if (stamina_modifier.m_Kind == VALUE_REAL)
+						item_name_to_original_stamina_recovery_map[recipe_key.AsString().data()] = stamina_modifier.m_Real;
 				}
 				else
 				{
@@ -1394,47 +1205,21 @@ RValue& GmlScriptSetupMainScreenCallback(
 							RValue stamina_modifier = array_element->at("stamina_modifier");
 							item_name_to_restoration_map[recipe_key.AsString().data()] = stamina_modifier.m_Real;
 						}
+
+						RValue stamina_modifier = array_element->at("stamina_modifier");
+						if (stamina_modifier.m_Kind == VALUE_REAL)
+							item_name_to_original_stamina_recovery_map[recipe_key.AsString().data()] = stamina_modifier.m_Real;
 					}
 				}
 			}
 		}
 
-		// Generate noise masks.
-		RValue window_get_width = g_ModuleInterface->CallBuiltin(
-			"window_get_width",
-			{}
-		);
-		window_width = window_get_width.m_Real;
-
-		RValue window_get_height = g_ModuleInterface->CallBuiltin(
-			"window_get_height",
-			{}
-		);
-		window_height = window_get_height.m_Real;
-
-		for (int num_masks = 0; num_masks < total_noise_masks; num_masks++)
-		{
-			//std::vector<bool> noise = {};
-			std::vector<std::vector<int>> noise = {};
-			for (int i = 0; i < window_width; i++)
-			{
-				for (int j = 0; j < window_height; j++)
-				{
-					if (distribution_1_1000(generator) == 1000)
-						noise.push_back({ i, j });
-					//	noise.push_back(true);
-					//else
-					//	noise.push_back(false);
-				}
-			}
-			noise_masks.push_back(noise);
-		}
-		//-------------------------------------------------
-
-		load_items = false;
+		GenerateNoiseMasks();
+		run_once = false;
 	}
 	else
 	{
+		ResetAllItemStaminaModifiers(Self, Other);
 		is_hunger_tracked_time_interval = false;
 		snapshot_position = false;
 		rollback_position = false;
@@ -1443,9 +1228,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		held_item_id = -1;
 		game_is_active = false;
 		health_bar_visible = false;
-		//use_health_instead_of_stamina = false;
 		hunger_stamina_health_penatly = 0;
-		//sanity_health_penalty = 0;
 		ari_hunger_value = STARTING_HUNGER_VALUE;
 		ari_sanity_value = STARTING_SANITY_VALUE;
 		ari_current_location = "";
@@ -1528,8 +1311,6 @@ RValue& GmlScriptEndDayCallback(
 	IN RValue** Arguments
 )
 {
-	//ari_is_hungry = false;
-	//ari_is_insane = false;
 	is_hunger_tracked_time_interval = false;
 	snapshot_position = false;
 	rollback_position = false;
@@ -1538,9 +1319,6 @@ RValue& GmlScriptEndDayCallback(
 	held_item_id = -1;
 	game_is_active = false;
 	health_bar_visible = false;
-	//use_health_instead_of_stamina = false;
-	//hunger_stamina_health_penatly = 0;
-	//ari_hunger_value = STARTING_HUNGER_VALUE;
 	ari_sanity_value = STARTING_SANITY_VALUE;
 	ari_current_location = "";
 	rollback_position_x = -1;
@@ -1622,17 +1400,99 @@ RValue& GmlScriptGetDisplayDescriptionCallback(
 
 	if (localized_item_name.size() > 0)
 	{
-		if (LOCALIZED_ITEM_NAME_TO_INTERNAL_NAME_MAP.count(localized_item_name) > 0)
+		if (localized_item_name_to_internal_name_map.count(localized_item_name) > 0)
 		{
-			std::string internal_item_name = LOCALIZED_ITEM_NAME_TO_INTERNAL_NAME_MAP[localized_item_name];
+			// Add how many have been recently eaten to the item description.
+			std::string internal_item_name = localized_item_name_to_internal_name_map[localized_item_name];
 			int occurrences = GetFoodQueueOccurrences(internal_item_name);
 			if (occurrences > 0)
 			{
 				std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.AsString().data();
 				Result = new_description;
 			}
+
+			// Modify the item's stamina recovery.
+			if (item_name_to_original_stamina_recovery_map.count(internal_item_name) > 0)
+			{
+				double item_original_stamina_recovery = item_name_to_original_stamina_recovery_map[internal_item_name];
+
+				RValue item_id = StringToItemId(Self, Other, internal_item_name);
+				if (item_id.m_Kind == VALUE_INT64)
+				{
+					double food_penalty = GetFoodPenalty(internal_item_name, 1);
+					double penalty_multiplier = 1.0 - food_penalty;
+					double adjusted_stamina_recovery = trunc(penalty_multiplier * item_original_stamina_recovery);
+					if (adjusted_stamina_recovery == 0)
+						adjusted_stamina_recovery = 1.0;
+
+					SetItemStaminaModifier(item_id.m_i64, adjusted_stamina_recovery);
+				}
+			}
 		}
 	}
+
+	return Result;
+}
+
+RValue& GmlScriptGetLocalizerCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (localize_items)
+	{
+		localize_items = false;
+
+		// Load items.
+		CInstance* global_instance = nullptr;
+		g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+		RValue __item_data = global_instance->at("__item_data");
+
+		size_t array_length;
+		g_ModuleInterface->GetArraySize(__item_data, array_length);
+
+		for (size_t i = 0; i < array_length; i++)
+		{
+			RValue* array_element;
+			g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
+
+			RValue name_key = array_element->at("name_key");
+			if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
+			{
+				RValue recipe_key = array_element->at("recipe_key");
+
+				// Localize all of the cooked dishes.
+				if (strstr(name_key.AsString().data(), "cooked_dishes"))
+				{
+					RValue localized_name = GetLocalizedString(Self, Other, name_key.AsString().data());
+					localized_item_name_to_internal_name_map[localized_name.AsString().data()] = recipe_key.AsString().data();
+				}
+				else
+				{
+					// Localize all of the edible items.
+					RValue edible = array_element->at("edible");
+					if (edible.m_Kind == VALUE_BOOL && edible.m_Real == 1.0)
+					{
+						RValue localized_name = GetLocalizedString(Self, Other, name_key.AsString().data());
+						localized_item_name_to_internal_name_map[localized_name.AsString().data()] = recipe_key.AsString().data();
+					}
+				}
+			}
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get@Localizer@Localizer"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
 
 	return Result;
 }
@@ -1770,6 +1630,34 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Failed to hook script (gml_Script_held_item@Ari@Ari)!");
+	}
+}
+
+void CreateHookGmlScriptUseItem(AurieStatus& status)
+{
+	CScript* gml_script_use_item = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_use_item",
+		(PVOID*)&gml_script_use_item
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Failed to get script (gml_Script_use_item)!");
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_use_item",
+		gml_script_use_item->m_Functions->m_ScriptFunction,
+		GmlScriptUseItemCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Failed to hook script (gml_Script_use_item)!");
 	}
 }
 
@@ -2021,6 +1909,33 @@ void CreateHookGmlScriptGetDisplayDescription(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptGetLocalizer(AurieStatus& status)
+{
+	CScript* gml_script_get_localizer = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_get@Localizer@Localizer",
+		(PVOID*)&gml_script_get_localizer
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_get@Localizer@Localizer)!");
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_get@Localizer@Localizer",
+		gml_script_get_localizer->m_Functions->m_ScriptFunction,
+		GmlScriptGetLocalizerCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_get@Localizer@Localizer)!");
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -2087,6 +2002,13 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
+	CreateHookGmlScriptUseItem(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
+	}
+
 	CreateHookGmlScriptOnRoomStart(status);
 	if (!AurieSuccess(status))
 	{
@@ -2144,6 +2066,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptGetDisplayDescription(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
+	}
+
+	CreateHookGmlScriptGetLocalizer(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
