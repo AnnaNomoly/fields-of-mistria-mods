@@ -11,6 +11,7 @@ static const int END_OF_DAY_IN_SECONDS = 93600;
 static const int THIRTY_SECONDS = 30;
 static const int ONE_MINUTE_IN_SECONDS = 60;
 static const int THIRY_MINUTES_IN_SECONDS = 1800;
+static const int ONE_HOUR_IN_SECONDS = 3600;
 static const int HUNGER_LOST_PER_TICK = -1;
 static const int SANITY_LOST_PER_TICK = -1;
 static const int HUNGER_HEALTH_LOST_PER_TICK = -10;
@@ -18,7 +19,10 @@ static const int SANITY_HEALTH_LOST_PER_TICK = -1;
 static const int STARTING_HUNGER_VALUE = 15; //100;
 static const int STARTING_SANITY_VALUE = 100;
 static const int SPICE_OF_LIFE_QUEUE_SIZE = 10;
+static const int ADRENALINE_RUSH_SANITY_RECOVERY = 5;
+static const char* GUARDIANS_SHIELD = "guardians_shield";
 static const char* DONT_STARVE_INTRODUCTION_LETTER = "dont_starve_introduction";
+static const char* GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE = "gml_Script_deserialize@StatusEffectManager@StatusEffectManager";
 static const std::string IGNORED_ITEMS[] = {
 	"balors_crate", "confiscated_coffee", "dungeon_fountain_health", "dungeon_fountain_stamina", "horse_potion", "lurid_colored_drink",
 	"ryis_lumber", "soup_of_the_day", "soup_of_the_day_gold", "stinky_stamina_potion", "unusual_seed", "world_fountain"
@@ -97,9 +101,11 @@ static const std::map<std::string, bool> LOCATION_SANITY_LOSS_MAP = {
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
+static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script. 
 static bool run_once = true;
 static bool localize_items = true;
 static std::string ari_current_location = "";
+static bool ari_is_in_dungeon = false;
 static int ari_hunger_value = STARTING_HUNGER_VALUE;
 static int ari_sanity_value = STARTING_SANITY_VALUE;
 static bool is_hunger_tracked_time_interval = false;
@@ -110,7 +116,6 @@ static int time_of_last_hunger_tick = 0;
 static int time_of_last_sanity_tick = 0;
 static int held_item_id = -1;
 static bool game_is_active = false;
-static bool health_bar_visible = false;
 static int hunger_stamina_health_penatly = 0;
 
 static std::map<std::string, int> item_name_to_restoration_map = {}; // Excludes cooked dishes
@@ -136,6 +141,13 @@ static std::deque<std::string> food_queue = {};
 static std::string localized_item_name = "";
 static std::map<std::string, std::string> localized_item_name_to_internal_name_map = {};
 static std::map<std::string, double> item_name_to_original_stamina_recovery_map = {};
+
+// Perks & Status Effects
+static std::map<std::string, int64_t> perk_name_to_id_map = {};
+static std::map<std::string, int64_t> status_effect_name_to_id_map = {};
+static bool priestess_shield_active = false;
+static bool is_priestess_shield_tracked_time_interval = false;
+static int time_of_last_priestess_shield_tick = 0; // Blood Pact perk timer.
 
 std::string FoodQueueToString()
 {
@@ -208,6 +220,28 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	return result;
 }
 
+RValue PerkActive(CInstance* Self, CInstance* Other, int64_t perk_id)
+{
+	CScript* gml_script_perk_active = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_perk_active@Ari@Ari",
+		(PVOID*)&gml_script_perk_active
+	);
+
+	RValue result;
+	RValue input = perk_id;
+	RValue* input_ptr = &input;
+	gml_script_perk_active->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &input_ptr }
+	);
+
+	return result;
+}
+
 RValue GetMaxHealth(CInstance* Self, CInstance* Other)
 {
 	CScript* gml_script_get_max_health = nullptr;
@@ -266,6 +300,27 @@ void ModifyHealth(CInstance* Self, CInstance* Other, int value)
 		result,
 		1,
 		{ &health_modifier_ptr }
+	);
+}
+
+void SetHealth(CInstance* Self, CInstance* Other, int value)
+{
+	CScript* gml_script_set_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_set_health@Ari@Ari",
+		(PVOID*)&gml_script_set_health
+	);
+
+	RValue result;
+	RValue health_value = value;
+	RValue* health_value_ptr = &health_value;
+
+	gml_script_set_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &health_value_ptr }
 	);
 }
 
@@ -338,6 +393,129 @@ void ResetAllItemStaminaModifiers(CInstance* Self, CInstance* Other)
 	}
 }
 
+void CancelStatusEffect(CInstance* Self, CInstance* Other, RValue status_effect_id)
+{
+	CScript* gml_script_cancel_status_effect = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_cancel@StatusEffectManager@StatusEffectManager",
+		(PVOID*)&gml_script_cancel_status_effect
+	);
+
+	RValue result;
+	RValue* status_effect_id_ptr = &status_effect_id;
+
+	gml_script_cancel_status_effect->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &status_effect_id_ptr }
+	);
+}
+
+void RegisterStatusEffect(CInstance* Self, CInstance* Other, RValue status_effect_id, RValue amount, RValue start, RValue finish)
+{
+	CScript* gml_script_register_status_effect = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_register@StatusEffectManager@StatusEffectManager",
+		(PVOID*)&gml_script_register_status_effect
+	);
+
+	RValue result;
+	RValue* status_effect_id_ptr = &status_effect_id;
+	RValue* amount_ptr = &amount;
+	RValue* start_ptr = &start;
+	RValue* finish_ptr = &finish;
+	RValue* argument_array[4] = { status_effect_id_ptr, amount_ptr, start_ptr, finish_ptr };
+
+	gml_script_register_status_effect->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		4,
+		argument_array
+	);
+}
+
+bool AriHasInvulnerableHits()
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue invulnerable_hits_exists = g_ModuleInterface->CallBuiltin("struct_exists", { __ari, "invulnerable_hits" });
+	if (invulnerable_hits_exists.m_Kind == VALUE_BOOL && invulnerable_hits_exists.m_Real == 1)
+	{
+		RValue invulnerable_hits = g_ModuleInterface->CallBuiltin("struct_get", { __ari, "invulnerable_hits" });
+		if (invulnerable_hits.m_Kind == VALUE_REAL && invulnerable_hits.m_Real > 0)
+			return true;
+	}
+	return false;
+}
+
+void ActivatePriestessShield(CInstance* Self, CInstance* Other)
+{
+	// Set invulnerability hit on the global instance.
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue invulnerable_hits_exists = g_ModuleInterface->CallBuiltin("struct_exists", { __ari, "invulnerable_hits" });
+	if (invulnerable_hits_exists.m_Kind == VALUE_BOOL && invulnerable_hits_exists.m_Real == 1)
+	{
+		RValue invulnerable_hits = g_ModuleInterface->CallBuiltin("struct_get", { __ari, "invulnerable_hits" });
+		if (invulnerable_hits.m_Kind == VALUE_REAL && invulnerable_hits.m_Real == 0)
+		{
+			invulnerable_hits = 1.0;
+			g_ModuleInterface->CallBuiltin("struct_set", { __ari, "invulnerable_hits", invulnerable_hits });
+
+			// Register the buff so the icon is displayed.
+			RValue status_effect_id = status_effect_name_to_id_map[GUARDIANS_SHIELD];
+			RValue amount = RValue();
+			RValue start = 1;
+			RValue finish = 2147483647.0; // "End of Time" value
+			RegisterStatusEffect(Self, Other, status_effect_id, amount, start, finish);
+
+			priestess_shield_active = true;
+		}
+		//else
+		//{
+		//	RValue invulnerable_hits = 1.0;
+		//	g_ModuleInterface->CallBuiltin("struct_set", { __ari, "invulnerable_hits", invulnerable_hits });
+		//}
+	}
+	//else
+	//{
+	//	RValue invulnerable_hits = 1.0;
+	//	g_ModuleInterface->CallBuiltin("struct_set", { __ari, "invulnerable_hits", invulnerable_hits });
+	//}
+}
+
+void CancelPriestessShield(CInstance* Self, CInstance* Other)
+{
+	// Set invulnerability hits on the global instance.
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue invulnerable_hits_exists = g_ModuleInterface->CallBuiltin("struct_exists", { __ari, "invulnerable_hits" });
+	if (invulnerable_hits_exists.m_Kind == VALUE_BOOL && invulnerable_hits_exists.m_Real == 1)
+	{
+		RValue invulnerable_hits = g_ModuleInterface->CallBuiltin("struct_get", { __ari, "invulnerable_hits" });
+		if (invulnerable_hits.m_Kind == VALUE_REAL && invulnerable_hits.m_Real > 0)
+		{
+			invulnerable_hits = 0.0;
+			g_ModuleInterface->CallBuiltin("struct_set", { __ari, "invulnerable_hits", invulnerable_hits });
+		}
+	}
+
+	// Cancel the buff so the icon.
+	RValue status_effect_id = status_effect_name_to_id_map[GUARDIANS_SHIELD];
+	CancelStatusEffect(Self, Other, status_effect_id);
+
+	priestess_shield_active = false;
+}
+
 void SendMail(std::string mail_name_str)
 {
 	CInstance* global_instance = nullptr;
@@ -401,14 +579,6 @@ bool MailExists(std::string mail_name_str)
 			return true;
 	}
 
-	return false;
-}
-
-bool AriIsInDungeonLocation()
-{
-	if (ari_current_location.length() > 0)
-		if (DUNGEON_LOCATIONS.count(ari_current_location) > 0)
-			return true;
 	return false;
 }
 
@@ -495,72 +665,132 @@ void ObjectCallback(
 	if (!self->m_Object)
 		return;
 
-	if (!strstr(self->m_Object->m_Name, "obj_ari"))
-		return;
-
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
-	// Time passed while Ari is hungry penalty.
-	if (is_hunger_tracked_time_interval)
+	if (strstr(self->m_Object->m_Name, "obj_monster"))
 	{
-		if (AriIsHungry())
+		CInstance* global_instance = nullptr;
+		g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+		// Adrenaline Rush perk.
+		int perk_id = perk_name_to_id_map["generous_in_defeat"];
+		RValue perk_active = PerkActive(global_instance->at("__ari").m_Object, self, perk_id);
+		if (perk_active.m_Kind == VALUE_BOOL && perk_active.m_Real == 1.0)
 		{
-			ModifyHealth(global_instance->at("__ari").m_Object, self, HUNGER_HEALTH_LOST_PER_TICK);
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Time has passed while your hunger meter is depleted! Decreased health by %d!", HUNGER_HEALTH_LOST_PER_TICK);
+			RValue exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "__dont_starve__processed_monster_death" });
+			if (exists.m_Kind == VALUE_BOOL && exists.m_Real == 0)
+			{
+				RValue hit_points_exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "hit_points" });
+				if (hit_points_exists.m_Kind == VALUE_BOOL && hit_points_exists.m_Real == 1)
+				{
+					RValue hit_points = self->at("hit_points");
+					if (hit_points.m_Kind == VALUE_REAL && hit_points.m_Real <= 0)
+					{
+						g_ModuleInterface->CallBuiltin("struct_set", { self, "__dont_starve__processed_monster_death", true });
+
+						// Adjust sanity points.
+						ari_sanity_value += ADRENALINE_RUSH_SANITY_RECOVERY;
+						if (ari_sanity_value > STARTING_SANITY_VALUE)
+							ari_sanity_value = STARTING_SANITY_VALUE;
+
+						// Debug print
+						g_ModuleInterface->Print(CM_LIGHTPURPLE, "(DEBUG) Adrenaline Rush for slaying monster: %s", self->m_Object->m_Name); // TODO: Remove this debug print out
+					}
+				}
+			}
 		}
-		is_hunger_tracked_time_interval = false;
 	}
 
-	// Time passed while Ari is insane.
-	if (is_sanity_tracked_time_interval)
+	if (strstr(self->m_Object->m_Name, "obj_ari"))
 	{
-		if (AriIsInsane())
+		CInstance* global_instance = nullptr;
+		g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+		// Time passed while Ari is hungry penalty.
+		if (is_hunger_tracked_time_interval)
 		{
-			ModifyHealth(global_instance->at("__ari").m_Object, self, SANITY_HEALTH_LOST_PER_TICK);
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Time has passed while your sanity meter is depleted! Decreased health by %d!", SANITY_HEALTH_LOST_PER_TICK);
+			if (AriIsHungry())
+			{
+				ModifyHealth(global_instance->at("__ari").m_Object, self, HUNGER_HEALTH_LOST_PER_TICK);
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Time has passed while your hunger meter is depleted! Decreased health by %d!", HUNGER_HEALTH_LOST_PER_TICK);
+			}
+			is_hunger_tracked_time_interval = false;
 		}
-		is_sanity_tracked_time_interval = false;
-	}
 
-	// Stamina used while Ari is hungry penalty.
-	if(hunger_stamina_health_penatly < 0) // TODO: Check this is working with recent changes.
-	{
-		ModifyHealth(global_instance->at("__ari").m_Object, self, hunger_stamina_health_penatly);
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - You used stamina while your hunger meter is depleted! Decreased health by %d!", hunger_stamina_health_penatly);
-		hunger_stamina_health_penatly = 0;
-	}
+		// Time passed while Ari is insane.
+		if (is_sanity_tracked_time_interval)
+		{
+			if (AriIsInsane())
+			{
+				ModifyHealth(global_instance->at("__ari").m_Object, self, SANITY_HEALTH_LOST_PER_TICK);
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Time has passed while your sanity meter is depleted! Decreased health by %d!", SANITY_HEALTH_LOST_PER_TICK);
+			}
+			is_sanity_tracked_time_interval = false;
+		}
 
-	// Flag when the health bar is visible.
-	RValue ari_max_health = GetMaxHealth(global_instance->at("__ari").m_Object, self);
-	RValue ari_current_health = GetCurrentHealth(global_instance->at("__ari").m_Object, self);
-	if (ari_current_health.m_Real < ari_max_health.m_Real || AriIsInDungeonLocation())
-		health_bar_visible = true;
-	else
-		health_bar_visible = false;
+		// Stamina used while Ari is hungry penalty.
+		if (hunger_stamina_health_penatly < 0) // TODO: Check this is working with recent changes.
+		{
+			ModifyHealth(global_instance->at("__ari").m_Object, self, hunger_stamina_health_penatly);
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - You used stamina while your hunger meter is depleted! Decreased health by %d!", hunger_stamina_health_penatly);
+			hunger_stamina_health_penatly = 0;
+		}
 
-	// Snapshot Ari's current position.
-	if (!GameIsPaused() && snapshot_position)
-	{
-		RValue x;
-		g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
-		rollback_position_x = x.m_Real;
+		// Snapshot Ari's current position.
+		if (!GameIsPaused() && snapshot_position)
+		{
+			RValue x;
+			g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
+			rollback_position_x = x.m_Real;
 
-		RValue y;
-		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
-		rollback_position_y = y.m_Real;
+			RValue y;
+			g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
+			rollback_position_y = y.m_Real;
 
-		snapshot_position = false;
-	}
+			snapshot_position = false;
+		}
 
-	// Randomly rollback Ari's position.
-	if (!GameIsPaused() && AriIsInsane() && distribution_1_1000(generator) % 1000 == 0)
-	{
-		RValue x = rollback_position_x;
-		g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, x);
+		// Randomly rollback Ari's position.
+		if (!GameIsPaused() && AriIsInsane() && distribution_1_1000(generator) % 1000 == 0)
+		{
+			RValue x = rollback_position_x;
+			g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, x);
 
-		RValue y = rollback_position_y;
-		g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, y);
+			RValue y = rollback_position_y;
+			g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, y);
+		}
+
+		// Blood Pact perk.
+		int perk_id = perk_name_to_id_map["guardians_shield"];
+		RValue perk_active = PerkActive(global_instance->at("__ari").m_Object, self, perk_id);
+		if (perk_active.m_Kind == VALUE_BOOL && perk_active.m_Real == 1.0)
+		{
+			// Prevent HP from exceeding modified max while Blood Pact perk is active.
+			RValue ari_max_health = GetMaxHealth(global_instance->at("__ari").m_Object, self);
+			RValue ari_current_health = GetCurrentHealth(global_instance->at("__ari").m_Object, self);
+
+			double current_health = ari_current_health.m_Real;
+			double effective_max_health = ari_max_health.m_Real - 20;
+			if (current_health > effective_max_health)
+				SetHealth(global_instance->at("__ari").m_Object, self, effective_max_health);
+
+			// Activate Priestess Shield.
+			if (is_priestess_shield_tracked_time_interval)
+			{
+				ActivatePriestessShield(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+				is_priestess_shield_tracked_time_interval = false;
+			}
+
+			// Cancel Priestess Shield.
+			if (priestess_shield_active && (!AriHasInvulnerableHits() || !ari_is_in_dungeon))
+				CancelPriestessShield(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+		}
+		else
+		{
+			// Cancel Priestess Shield.
+			if (priestess_shield_active || AriHasInvulnerableHits())
+				CancelPriestessShield(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+
+			is_priestess_shield_tracked_time_interval = false;
+		}
 	}
 }
 
@@ -598,7 +828,7 @@ RValue& GmlScriptGetMinutesCallback(
 			time_of_last_sanity_tick = Arguments[0]->m_i64;
 
 			// Adjust sanity
-			if (AriIsInDungeonLocation())
+			if (ari_is_in_dungeon)
 			{
 				ari_sanity_value += SANITY_LOST_PER_TICK;
 				if (ari_sanity_value < 0)
@@ -622,6 +852,21 @@ RValue& GmlScriptGetMinutesCallback(
 		if (Arguments[0]->m_i64 % ONE_MINUTE_IN_SECONDS == 0)
 		{
 			snapshot_position = true;
+		}
+
+		// Blood Pact perk.
+		if (!ari_is_in_dungeon)
+		{
+			time_of_last_priestess_shield_tick = Arguments[0]->m_i64;
+			is_priestess_shield_tracked_time_interval = false;
+		}
+		else
+		{
+			if (!is_priestess_shield_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_priestess_shield_tick) >= ONE_HOUR_IN_SECONDS)
+			{
+				is_priestess_shield_tracked_time_interval = true;
+				time_of_last_priestess_shield_tick = Arguments[0]->m_i64;
+			}
 		}
 	}
 
@@ -696,7 +941,7 @@ RValue& GmlScriptModifyHealthCallback(
 	}
 
 	// Ari lost health in the dungeon.
-	if (Arguments[0]->m_Real < 0 && AriIsInDungeonLocation())
+	if (Arguments[0]->m_Real < 0 && ari_is_in_dungeon)
 	{
 		ari_sanity_value += Arguments[0]->m_Real;
 		if (ari_sanity_value < 0) 
@@ -1214,6 +1459,28 @@ RValue& GmlScriptSetupMainScreenCallback(
 			}
 		}
 
+		// Load perks.
+		RValue perks = global_instance->at("__perk__");
+		g_ModuleInterface->GetArraySize(perks, array_length);
+		for (size_t i = 0; i < array_length; i++)
+		{
+			RValue* array_element;
+			g_ModuleInterface->GetArrayEntry(perks, i, array_element);
+
+			perk_name_to_id_map[array_element->AsString().data()] = i;
+		}
+
+		// Load status effects.
+		RValue status_effects = global_instance->at("__status_effect_id__");
+		g_ModuleInterface->GetArraySize(status_effects, array_length);
+		for (size_t i = 0; i < array_length; i++)
+		{
+			RValue* array_element;
+			g_ModuleInterface->GetArrayEntry(status_effects, i, array_element);
+
+			status_effect_name_to_id_map[array_element->AsString().data()] = i;
+		}
+
 		GenerateNoiseMasks();
 		run_once = false;
 	}
@@ -1227,7 +1494,6 @@ RValue& GmlScriptSetupMainScreenCallback(
 		time_of_last_sanity_tick = 0;
 		held_item_id = -1;
 		game_is_active = false;
-		health_bar_visible = false;
 		hunger_stamina_health_penatly = 0;
 		ari_hunger_value = STARTING_HUNGER_VALUE;
 		ari_sanity_value = STARTING_SANITY_VALUE;
@@ -1318,7 +1584,6 @@ RValue& GmlScriptEndDayCallback(
 	time_of_last_sanity_tick = 0;
 	held_item_id = -1;
 	game_is_active = false;
-	health_bar_visible = false;
 	ari_sanity_value = STARTING_SANITY_VALUE;
 	ari_current_location = "";
 	rollback_position_x = -1;
@@ -1356,6 +1621,34 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 	if (game_is_active)
 		if (Result.m_Kind == VALUE_STRING)
 			ari_current_location = Result.AsString().data();
+
+	return Result;
+}
+
+RValue& GmlScriptIsDungeonRoomCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_is_dungeon_room"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (game_is_active && Result.m_Kind == VALUE_BOOL)
+	{
+		if (Result.m_Real == 0)
+			ari_is_in_dungeon = false;
+		else
+			ari_is_in_dungeon = true;
+	}
 
 	return Result;
 }
@@ -1495,6 +1788,47 @@ RValue& GmlScriptGetLocalizerCallback(
 	);
 
 	return Result;
+}
+
+RValue& GmlScriptStatusEffectManagerDeserializeCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (script_name_to_reference_map.count(GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE) == 0)
+	{
+		std::vector<CInstance*> script_refs = { Self, Other };
+		script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE] = script_refs;
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+void CreateObjectCallback(AurieStatus& status)
+{
+	status = g_ModuleInterface->CreateCallback(
+		g_ArSelfModule,
+		EVENT_OBJECT_CALL,
+		ObjectCallback,
+		0
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook (EVENT_OBJECT_CALL)!");
+	}
 }
 
 void CreateHookGmlScriptGetMinutes(AurieStatus &status)
@@ -1855,6 +2189,33 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptIsDungeonRoom(AurieStatus& status)
+{
+	CScript* gml_script_try_location_id_to_string = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_is_dungeon_room",
+		(PVOID*)&gml_script_try_location_id_to_string
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_is_dungeon_room)!");
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_is_dungeon_room",
+		gml_script_try_location_id_to_string->m_Functions->m_ScriptFunction,
+		GmlScriptIsDungeonRoomCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_is_dungeon_room)!");
+	}
+}
+
 void CreateHookGmlScriptGetDisplayName(AurieStatus& status)
 {
 	CScript* gml_script_get_display_description = nullptr;
@@ -1936,6 +2297,33 @@ void CreateHookGmlScriptGetLocalizer(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptStatusEffectManagerDeserialize(AurieStatus& status)
+{
+	CScript* gml_script_try_despawn_stars = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE,
+		(PVOID*)&gml_script_try_despawn_stars
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (%s)!", GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE,
+		gml_script_try_despawn_stars->m_Functions->m_ScriptFunction,
+		GmlScriptStatusEffectManagerDeserializeCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (%s)!", GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -1953,19 +2341,14 @@ EXPORTED AurieStatus ModuleInitialize(
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Hello from PluginEntry!");
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[DontStarve] - Plugin starting...");
 
+	CreateObjectCallback(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to obtain YYTK interface!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
 	}
-
-	g_ModuleInterface->CreateCallback(
-		g_ArSelfModule,
-		EVENT_OBJECT_CALL,
-		ObjectCallback,
-		0
-	);
 
 	CreateHookGmlScriptGetMinutes(status);
 	if (!AurieSuccess(status))
@@ -2058,6 +2441,13 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
+	CreateHookGmlScriptIsDungeonRoom(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
+	}
+
 	CreateHookGmlScriptGetDisplayName(status);
 	if (!AurieSuccess(status))
 	{
@@ -2079,5 +2469,13 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
+	CreateHookGmlScriptStatusEffectManagerDeserialize(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Exiting due to failure on start!");
+		return status;
+	}
+
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Plugin started!");
 	return AURIE_SUCCESS;
 }
