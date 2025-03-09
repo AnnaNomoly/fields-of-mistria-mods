@@ -16,9 +16,10 @@ static const int HUNGER_LOST_PER_TICK = -1;
 static const int SANITY_LOST_PER_TICK = -1;
 static const int HUNGER_HEALTH_LOST_PER_TICK = -10;
 static const int SANITY_HEALTH_LOST_PER_TICK = -1;
-static const int STARTING_HUNGER_VALUE = 15; //100;
+static const int STARTING_HUNGER_VALUE = 50; //100;
 static const int STARTING_SANITY_VALUE = 100;
 static const int SPICE_OF_LIFE_QUEUE_SIZE = 10;
+static const int BLOOD_PACT_HEALTH_REDUCTION = 50;
 static const int ADRENALINE_RUSH_SANITY_RECOVERY = 5;
 static const char* GUARDIANS_SHIELD = "guardians_shield";
 static const char* DONT_STARVE_INTRODUCTION_LETTER = "dont_starve_introduction";
@@ -82,7 +83,7 @@ static const std::map<std::string, bool> LOCATION_SANITY_LOSS_MAP = {
 	{"medium_barn", false},
 	{"medium_coop", false},
 	{"mill", false},
-	{"mines_entry", true},
+	{"mines_entry", false},
 	{"museum_entry", false},
 	{"narrows", true},
 	{"player_home", false},
@@ -100,12 +101,16 @@ static const std::map<std::string, bool> LOCATION_SANITY_LOSS_MAP = {
 	{"western_ruins", true}
 };
 
+// DEBUG
+static double debug_green_overlay_value = 0.60;
+
 static YYTKInterface* g_ModuleInterface = nullptr;
-static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script. 
 static bool run_once = true;
 static bool localize_items = true;
 static std::string ari_current_location = "";
 static bool ari_is_in_dungeon = false;
+static bool is_inclement_weather = false;
+static bool is_heavy_inclement_weather = false;
 static int ari_hunger_value = STARTING_HUNGER_VALUE;
 static int ari_sanity_value = STARTING_SANITY_VALUE;
 static bool is_hunger_tracked_time_interval = false;
@@ -117,9 +122,10 @@ static int time_of_last_sanity_tick = 0;
 static int held_item_id = -1;
 static bool game_is_active = false;
 static int hunger_stamina_health_penatly = 0;
-
 static std::map<std::string, int> item_name_to_restoration_map = {}; // Excludes cooked dishes
 static std::map<std::string, int> recipe_name_to_stars_map = {}; // Only cooked dishes
+static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script. 
+static std::map<std::string, int> weather_name_to_id_map = {};
 
 // Random Noise
 static std::mt19937 generator(std::random_device{}());
@@ -143,6 +149,7 @@ static std::map<std::string, std::string> localized_item_name_to_internal_name_m
 static std::map<std::string, double> item_name_to_original_stamina_recovery_map = {};
 
 // Perks & Status Effects
+static std::map<std::string, bool> active_perk_map = {}; // Tracks which mod specific perks are active.
 static std::map<std::string, int64_t> perk_name_to_id_map = {};
 static std::map<std::string, int64_t> status_effect_name_to_id_map = {};
 static bool priestess_shield_active = false;
@@ -220,8 +227,10 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	return result;
 }
 
-RValue PerkActive(CInstance* Self, CInstance* Other, int64_t perk_id)
+bool PerkActive(CInstance* Self, CInstance* Other, std::string perk_name)
 {
+	int64_t perk_id = perk_name_to_id_map[perk_name];
+
 	CScript* gml_script_perk_active = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
 		"gml_Script_perk_active@Ari@Ari",
@@ -239,7 +248,9 @@ RValue PerkActive(CInstance* Self, CInstance* Other, int64_t perk_id)
 		{ &input_ptr }
 	);
 
-	return result;
+	if (result.m_Kind == VALUE_BOOL && result.m_Real == 1.0)
+		return true;
+	return false;
 }
 
 RValue GetMaxHealth(CInstance* Self, CInstance* Other)
@@ -437,6 +448,39 @@ void RegisterStatusEffect(CInstance* Self, CInstance* Other, RValue status_effec
 	);
 }
 
+bool AriHasCosmeticEquipped(std::string cosmetic_name)
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue preset_index_selected = __ari.at("preset_index_selected");
+	RValue presets = __ari.at("presets");
+	RValue buffer = presets.at("__buffer");
+
+	RValue* selelected_buffer_entry; // Ari's current cosmetics
+	g_ModuleInterface->GetArrayEntry(buffer, preset_index_selected.m_Real, selelected_buffer_entry);
+	
+	RValue assets = selelected_buffer_entry->at("assets");
+	RValue inner_buffer = assets.at("__buffer");
+	size_t inner_buffer_size;
+	g_ModuleInterface->GetArraySize(inner_buffer, inner_buffer_size);
+
+	for (int i = 0; i < inner_buffer_size; i++)
+	{
+		RValue* equipped_cosmetic;
+		g_ModuleInterface->GetArrayEntry(inner_buffer, i, equipped_cosmetic);
+
+		RValue equipped_cosmetic_name = equipped_cosmetic->at("name");
+		std::string equipped_cosmetic_name_string = equipped_cosmetic_name.AsString().data();
+
+		if (cosmetic_name.compare(equipped_cosmetic_name_string) == 0)
+			return true;
+	}
+
+	return false;
+}
+
 bool AriHasInvulnerableHits()
 {
 	CInstance* global_instance = nullptr;
@@ -450,6 +494,7 @@ bool AriHasInvulnerableHits()
 		if (invulnerable_hits.m_Kind == VALUE_REAL && invulnerable_hits.m_Real > 0)
 			return true;
 	}
+
 	return false;
 }
 
@@ -478,17 +523,7 @@ void ActivatePriestessShield(CInstance* Self, CInstance* Other)
 
 			priestess_shield_active = true;
 		}
-		//else
-		//{
-		//	RValue invulnerable_hits = 1.0;
-		//	g_ModuleInterface->CallBuiltin("struct_set", { __ari, "invulnerable_hits", invulnerable_hits });
-		//}
 	}
-	//else
-	//{
-	//	RValue invulnerable_hits = 1.0;
-	//	g_ModuleInterface->CallBuiltin("struct_set", { __ari, "invulnerable_hits", invulnerable_hits });
-	//}
 }
 
 void CancelPriestessShield(CInstance* Self, CInstance* Other)
@@ -671,9 +706,7 @@ void ObjectCallback(
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
 		// Adrenaline Rush perk.
-		int perk_id = perk_name_to_id_map["generous_in_defeat"];
-		RValue perk_active = PerkActive(global_instance->at("__ari").m_Object, self, perk_id);
-		if (perk_active.m_Kind == VALUE_BOOL && perk_active.m_Real == 1.0)
+		if (active_perk_map["generous_in_defeat"])
 		{
 			RValue exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "__dont_starve__processed_monster_death" });
 			if (exists.m_Kind == VALUE_BOOL && exists.m_Real == 0)
@@ -704,7 +737,25 @@ void ObjectCallback(
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		// Time passed while Ari is hungry penalty.
+		// Update active perks.
+		if (PerkActive(global_instance->at("__ari").m_Object, self, "guardians_shield"))
+			active_perk_map["guardians_shield"] = true;
+		else
+			active_perk_map["guardians_shield"] = false;
+		if (PerkActive(global_instance->at("__ari").m_Object, self, "generous_in_defeat"))
+			active_perk_map["generous_in_defeat"] = true;
+		else
+			active_perk_map["generous_in_defeat"] = false;
+		if (PerkActive(global_instance->at("__ari").m_Object, self, "refreshing"))
+			active_perk_map["refreshing"] = true;
+		else
+			active_perk_map["refreshing"] = false;
+		if (PerkActive(global_instance->at("__ari").m_Object, self, "nice_swing"))
+			active_perk_map["nice_swing"] = true;
+		else
+			active_perk_map["nice_swing"] = false;
+
+		// Hunger time interval.
 		if (is_hunger_tracked_time_interval)
 		{
 			if (AriIsHungry())
@@ -715,7 +766,7 @@ void ObjectCallback(
 			is_hunger_tracked_time_interval = false;
 		}
 
-		// Time passed while Ari is insane.
+		// Sanity time interval.
 		if (is_sanity_tracked_time_interval)
 		{
 			if (AriIsInsane())
@@ -723,6 +774,7 @@ void ObjectCallback(
 				ModifyHealth(global_instance->at("__ari").m_Object, self, SANITY_HEALTH_LOST_PER_TICK);
 				g_ModuleInterface->Print(CM_LIGHTGREEN, "[DontStarve] - Time has passed while your sanity meter is depleted! Decreased health by %d!", SANITY_HEALTH_LOST_PER_TICK);
 			}
+
 			is_sanity_tracked_time_interval = false;
 		}
 
@@ -759,16 +811,14 @@ void ObjectCallback(
 		}
 
 		// Blood Pact perk.
-		int perk_id = perk_name_to_id_map["guardians_shield"];
-		RValue perk_active = PerkActive(global_instance->at("__ari").m_Object, self, perk_id);
-		if (perk_active.m_Kind == VALUE_BOOL && perk_active.m_Real == 1.0)
+		if (active_perk_map["guardians_shield"])
 		{
 			// Prevent HP from exceeding modified max while Blood Pact perk is active.
 			RValue ari_max_health = GetMaxHealth(global_instance->at("__ari").m_Object, self);
 			RValue ari_current_health = GetCurrentHealth(global_instance->at("__ari").m_Object, self);
 
 			double current_health = ari_current_health.m_Real;
-			double effective_max_health = ari_max_health.m_Real - 20;
+			double effective_max_health = ari_max_health.m_Real - BLOOD_PACT_HEALTH_REDUCTION;
 			if (current_health > effective_max_health)
 				SetHealth(global_instance->at("__ari").m_Object, self, effective_max_health);
 
@@ -827,22 +877,61 @@ RValue& GmlScriptGetMinutesCallback(
 			is_sanity_tracked_time_interval = true;
 			time_of_last_sanity_tick = Arguments[0]->m_i64;
 
-			// Adjust sanity
+			// Reduce sanity.
+			bool sanity_loss_occurred = false;
 			if (ari_is_in_dungeon)
 			{
 				ari_sanity_value += SANITY_LOST_PER_TICK;
 				if (ari_sanity_value < 0)
 					ari_sanity_value = 0;
-			}
-			else if (IsNight(Arguments[0]->m_i64) && AriIsAtSanityLossLocation())
-			{
-				ari_sanity_value += SANITY_LOST_PER_TICK;
-				if (ari_sanity_value < 0)
-					ari_sanity_value = 0;
+				sanity_loss_occurred = true;
 			}
 			else
 			{
-				ari_sanity_value -= SANITY_LOST_PER_TICK; // Recover sanity.
+				// Reduce sanity for being outdoors at night.
+				if (IsNight(Arguments[0]->m_i64) && AriIsAtSanityLossLocation())
+				{
+					ari_sanity_value += SANITY_LOST_PER_TICK;
+					if (ari_sanity_value < 0)
+						ari_sanity_value = 0;
+					sanity_loss_occurred = true;
+				}
+
+				// Reduce sanity due to inclement weather while outdoors.
+				if ((is_inclement_weather || is_heavy_inclement_weather) && AriIsAtSanityLossLocation())
+				{
+					if (is_heavy_inclement_weather)
+					{
+						ari_sanity_value += SANITY_LOST_PER_TICK;
+						if (ari_sanity_value < 0)
+							ari_sanity_value = 0;
+						sanity_loss_occurred = true;
+					}
+					else if (is_inclement_weather)
+					{
+						// Check for the Rainy Day Oufit perk.
+						if (!active_perk_map["refreshing"]) // If the perk ISN'T active.
+						{
+							ari_sanity_value += SANITY_LOST_PER_TICK;
+							if (ari_sanity_value < 0)
+								ari_sanity_value = 0;
+							sanity_loss_occurred = true;
+						}
+						else if(!AriHasCosmeticEquipped("head_rain_hat")) // Rain hat isn't equipped.
+						{
+							ari_sanity_value += SANITY_LOST_PER_TICK;
+							if (ari_sanity_value < 0)
+								ari_sanity_value = 0;
+							sanity_loss_occurred = true;
+						}
+					}
+				}
+			}
+			
+			// Recover sanity.
+			if(!sanity_loss_occurred)
+			{
+				ari_sanity_value -= SANITY_LOST_PER_TICK; 
 				if (ari_sanity_value > STARTING_SANITY_VALUE)
 					ari_sanity_value = STARTING_SANITY_VALUE;
 			}
@@ -1014,6 +1103,28 @@ RValue& GmlScriptModifyStaminaCallback(
 		}
 	}
 	else {
+		// Weather stamina use penalties.
+		if (!ari_is_in_dungeon && AriIsAtSanityLossLocation())
+		{
+			if (is_heavy_inclement_weather)
+			{
+				double modified_stamina_cost = Arguments[0]->m_Real;
+				if (active_perk_map["nice_swing"])
+					modified_stamina_cost *= 2;
+				else
+					modified_stamina_cost *= 3;
+				Arguments[0]->m_Real = modified_stamina_cost;
+			}
+			else if (is_inclement_weather)
+			{
+				double modified_stamina_cost = Arguments[0]->m_Real;
+				if (!active_perk_map["nice_swing"])
+					modified_stamina_cost *= 2;
+				Arguments[0]->m_Real = modified_stamina_cost;
+			}
+		}
+
+		// Adjust hunger.
 		int new_hunger_value = ari_hunger_value + Arguments[0]->m_Real;
 		if (new_hunger_value < 0) {
 			ari_hunger_value = 0;
@@ -1268,6 +1379,41 @@ RValue& GmlScriptOnDrawGuiCallback(
 		if (current_mask == total_noise_masks)
 			current_mask = 0;
 	}
+	
+	// DEBUG - Testing green overlay
+	//----------------------------------------------------------------------------------------
+	//if (GetAsyncKeyState(VK_F1) & 1)
+	//{
+	//	RValue user_value = g_ModuleInterface->CallBuiltin(
+	//		"get_integer",
+	//		{ "Input an opacity value for the green overlay.", 0.60 } // 0.60 seems good
+	//	);
+	//	if (user_value.m_Kind == VALUE_REAL)
+	//		debug_green_overlay_value = user_value.m_Real;
+	//	if (user_value.m_Kind == VALUE_INT64)
+	//		debug_green_overlay_value = user_value.m_i64;
+	//}
+
+	//if (game_is_active && frame_counter == 0)
+	//{
+	//	// Draw semi-transparent overlay
+	//	g_ModuleInterface->CallBuiltin(
+	//		"draw_set_alpha",
+	//		{ debug_green_overlay_value }
+	//	);
+
+	//	g_ModuleInterface->CallBuiltin(
+	//		"draw_set_color", {
+	//			65280 // lime green
+	//		}
+	//	);
+
+	//	g_ModuleInterface->CallBuiltin(
+	//		"draw_rectangle",
+	//		{ 0, 0, window_width, window_height, false }
+	//	);
+	//}
+	//----------------------------------------------------------------------------------------
 
 	return Result;
 }
@@ -1481,6 +1627,17 @@ RValue& GmlScriptSetupMainScreenCallback(
 			status_effect_name_to_id_map[array_element->AsString().data()] = i;
 		}
 
+		// Load weather types.
+		RValue weather = global_instance->at("__weather__");
+		g_ModuleInterface->GetArraySize(weather, array_length);
+		for (size_t i = 0; i < array_length; i++)
+		{
+			RValue* array_element;
+			g_ModuleInterface->GetArrayEntry(weather, i, array_element);
+
+			weather_name_to_id_map[array_element->AsString().data()] = i;
+		}
+
 		GenerateNoiseMasks();
 		run_once = false;
 	}
@@ -1540,6 +1697,44 @@ RValue& GmlScriptGetWeatherCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	// TODO: Check if the game returns a REAL or INT64
+	if (Result.m_Kind == VALUE_REAL)
+	{
+		if (Result.m_Real == weather_name_to_id_map["heavy_inclement"])
+		{
+			is_heavy_inclement_weather = true;
+			is_inclement_weather = true;
+		}
+		else if (Result.m_Real == weather_name_to_id_map["inclement"])
+		{
+			is_heavy_inclement_weather = false;
+			is_inclement_weather = true;
+		}
+		else
+		{
+			is_heavy_inclement_weather = false;
+			is_inclement_weather = false;
+		}
+	}
+	if (Result.m_Kind == VALUE_INT64)
+	{
+		if (Result.m_i64 == weather_name_to_id_map["heavy_inclement"])
+		{
+			is_heavy_inclement_weather = true;
+			is_inclement_weather = true;
+		}
+		else if (Result.m_i64 == weather_name_to_id_map["inclement"])
+		{
+			is_heavy_inclement_weather = false;
+			is_inclement_weather = true;
+		}
+		else
+		{
+			is_heavy_inclement_weather = false;
+			is_inclement_weather = false;
+		}
+	}
 
 	return Result;
 }
