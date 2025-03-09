@@ -10,20 +10,28 @@ using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
-static const char* const VERSION = "1.1.0";
+static const char* const VERSION = "1.1.1";
 static const char* const SPELL_COST_KEY = "spell_cost";
 static const char* const DAMAGE_ARI_KEY = "damage_ari";
 static const char* const IGNORE_MIMICS_KEY = "ignore_mimics";
 static const char* const SOUND_EFFECTS_KEY = "sound_effects";
 static const char* const SCREEN_FLASH_KEY = "screen_flash";
+static const char* const ONE_SHOT_MONSTERS_KEY = "one_shot_monsters";
+static const char* const MINIMUM_MAGNITUDE_KEY = "minimum_magnitude";
+static const char* const MAXIMUM_MAGNITUDE_KEY = "maximum_magnitude";
 static const int DEFAULT_SPELL_COST_VALUE = 2;
 static const bool DEFAULT_DAMAGE_ARI_VALUE = true;
 static const bool DEFAULT_IGNORE_MIMICS_VALUE = false;
 static const bool DEFAULT_SOUND_EFFECTS_VALUE = true;
 static const bool DEFAULT_SCREEN_FLASH_VALUE = true;
-static const int FULL_RESTORE_SPELL_ID = 0;
-static const int GROWTH_SPELL_ID = 1;
-static const int SUMMON_RAIN_SPELL_ID = 2;
+static const bool DEFAULT_ONE_SHOT_MONSTERS_VALUE = true;
+static const int DEFAULT_MINIMUM_MAGNITUDE_VALUE = 5;
+static const int DEFAULT_MAXIMUM_MAGNITUDE_VALUE = 9;
+static const char* const FULL_RESTORE_SPELL = "full_restore";
+static const char* const GROWTH_SPELL = "growth";
+static const char* const SUMMON_RAIN_SPELL = "summon_rain";
+//static const char* const FIREBALL_SPELL = "fireball"; // TODO: Will know the actual spell name after the March 2025 patch drops.
+// TODO: Add configuration option that determines what spell is replaced. This will also need to be done after we know the name of the new spell.
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
@@ -32,6 +40,9 @@ static bool damage_ari_option = DEFAULT_DAMAGE_ARI_VALUE;
 static bool ignore_mimics_option = DEFAULT_IGNORE_MIMICS_VALUE;
 static bool sound_effects_option = DEFAULT_SOUND_EFFECTS_VALUE;
 static bool screen_flash_option = DEFAULT_SCREEN_FLASH_VALUE;
+static bool one_shot_monsters = DEFAULT_ONE_SHOT_MONSTERS_VALUE;
+static int minimum_magnitude = DEFAULT_MINIMUM_MAGNITUDE_VALUE;
+static int maximum_magnitude = DEFAULT_MAXIMUM_MAGNITUDE_VALUE;
 
 static double ari_current_mana = -1.0;
 static int pinned_spell = -1;
@@ -46,6 +57,7 @@ static bool modify_mana = false;
 static bool modify_health = false;
 static bool in_dungeon = false;
 static std::mt19937 generator(std::random_device{}());
+static std::map<std::string, int64_t> spell_name_to_id_map = {};
 
 void handle_eptr(std::exception_ptr eptr)
 {
@@ -74,12 +86,18 @@ void LogDefaultConfigValues()
 	ignore_mimics_option = DEFAULT_IGNORE_MIMICS_VALUE;
 	sound_effects_option = DEFAULT_SOUND_EFFECTS_VALUE;
 	screen_flash_option = DEFAULT_SCREEN_FLASH_VALUE;
+	one_shot_monsters = DEFAULT_ONE_SHOT_MONSTERS_VALUE;
+	minimum_magnitude = DEFAULT_MINIMUM_MAGNITUDE_VALUE;
+	maximum_magnitude = DEFAULT_MAXIMUM_MAGNITUDE_VALUE;
 
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SPELL_COST_KEY, DEFAULT_SPELL_COST_VALUE);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, DAMAGE_ARI_KEY, DEFAULT_DAMAGE_ARI_VALUE ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, IGNORE_MIMICS_KEY, DEFAULT_IGNORE_MIMICS_VALUE ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SOUND_EFFECTS_KEY, DEFAULT_SOUND_EFFECTS_VALUE ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SCREEN_FLASH_KEY, DEFAULT_SCREEN_FLASH_VALUE ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, ONE_SHOT_MONSTERS_KEY, DEFAULT_ONE_SHOT_MONSTERS_VALUE ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
 }
 
 void ResetStaticFields(bool returnedToTitleScreen)
@@ -102,6 +120,23 @@ void ResetStaticFields(bool returnedToTitleScreen)
 	in_dungeon = false;
 }
 
+void LoadSpells()
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	size_t array_length = 0;
+	RValue spells = global_instance->at("__spell__");
+	g_ModuleInterface->GetArraySize(spells, array_length);
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(spells, i, array_element);
+
+		spell_name_to_id_map[array_element->AsString().data()] = i;
+	}
+}
+
 void ModifyHealth(CInstance* Self, CInstance* Other, int value)
 {
 	CScript* gml_script_modify_health = nullptr;
@@ -121,6 +156,38 @@ void ModifyHealth(CInstance* Self, CInstance* Other, int value)
 		1,
 		{ &health_modifier_ptr }
 	);
+}
+
+void ModifyMonsterHealth(CInstance* Self)
+{
+	RValue processed_monster_damage = g_ModuleInterface->CallBuiltin("struct_exists", { Self, "__quake_spell__processed_monster_damage" });
+	if (processed_monster_damage.m_Kind == VALUE_BOOL && processed_monster_damage.m_Real == 0)
+	{
+		RValue hit_points_exists = g_ModuleInterface->CallBuiltin("struct_exists", { Self, "hit_points" });
+		if (hit_points_exists.m_Kind == VALUE_BOOL && hit_points_exists.m_Real == 1)
+		{
+			RValue hit_points = Self->at("hit_points");
+			if (hit_points.m_Kind != VALUE_UNSET && hit_points.m_Kind != VALUE_UNDEFINED)
+			{
+				if (one_shot_monsters)
+					Self->at("hit_points").m_Real = 0;
+				else
+				{
+					int quake_damage = quake_magnitude * 10;
+					int original_monster_hp = Self->at("hit_points").m_Real;
+					int modified_moster_hp = original_monster_hp - quake_damage;
+					if (modified_moster_hp < 0)
+						modified_moster_hp = 0;
+					Self->at("hit_points").m_Real = modified_moster_hp;
+				}
+
+				g_ModuleInterface->CallBuiltin("struct_set", { Self, "__quake_spell__processed_monster_damage", true });
+
+				// Debug print
+				g_ModuleInterface->Print(CM_LIGHTPURPLE, "(DEBUG) Quake spell damaged monster: %s", Self->m_Object->m_Name); // TODO: Remove this debug print out
+			}
+		}
+	}
 }
 
 void PlaySoundEffect(const char* sound_name, int priority)
@@ -193,20 +260,12 @@ void ObjectCallback(
 		{
 			if (!ignore_mimics_option)
 			{
-				RValue hit_points = self->at("hit_points");
-				if (hit_points.m_Kind != VALUE_UNSET && hit_points.m_Kind != VALUE_UNDEFINED)
-				{
-					self->at("hit_points").m_Real = 0;
-				}
+				ModifyMonsterHealth(self);
 			}
 		}
 		else
 		{
-			RValue hit_points = self->at("hit_points");
-			if (hit_points.m_Kind != VALUE_UNSET && hit_points.m_Kind != VALUE_UNDEFINED)
-			{
-				self->at("hit_points").m_Real = 0;
-			}
+			ModifyMonsterHealth(self);
 		}
 	}
 
@@ -264,7 +323,7 @@ RValue& GmlScriptCanCastSpell(
 		Arguments
 	);
 
-	if (pinned_spell == FULL_RESTORE_SPELL_ID)
+	if (pinned_spell == spell_name_to_id_map[FULL_RESTORE_SPELL])
 	{
 		if (in_dungeon && !quake_spell_active && ari_current_mana >= spell_cost)
 		{
@@ -286,9 +345,9 @@ RValue& GmlScriptCastSpell(
 	IN RValue** Arguments
 )
 {
-	if (pinned_spell == FULL_RESTORE_SPELL_ID)
+	if (pinned_spell == spell_name_to_id_map[FULL_RESTORE_SPELL])
 	{
-		std::uniform_int_distribution<int> distribution(5, 9); // TODO: Decide if this range should be configurable.
+		std::uniform_int_distribution<int> distribution(minimum_magnitude, maximum_magnitude);
 		quake_magnitude = distribution(generator);
 
 		if(damage_ari_option)
@@ -445,6 +504,75 @@ RValue& GmlScriptSetupMainScreenCallback(
 									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SCREEN_FLASH_KEY, DEFAULT_SCREEN_FLASH_VALUE ? "true" : "false");
 									screen_flash_option = DEFAULT_SCREEN_FLASH_VALUE;
 								}
+
+								// Try loading the one_shot_monsters value.
+								if (json_object.contains(ONE_SHOT_MONSTERS_KEY))
+								{
+									one_shot_monsters = json_object[ONE_SHOT_MONSTERS_KEY];
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %s!", VERSION, ONE_SHOT_MONSTERS_KEY, one_shot_monsters ? "true" : "false");
+								}
+								else
+								{
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, ONE_SHOT_MONSTERS_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, ONE_SHOT_MONSTERS_KEY, DEFAULT_ONE_SHOT_MONSTERS_VALUE ? "true" : "false");
+									one_shot_monsters = DEFAULT_ONE_SHOT_MONSTERS_VALUE;
+								}
+
+								// Try loading the minimum_magnitude value.
+								if (json_object.contains(MINIMUM_MAGNITUDE_KEY))
+								{
+									minimum_magnitude = json_object[MINIMUM_MAGNITUDE_KEY];
+									if (spell_cost < 1 || spell_cost > 9)
+									{
+										g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, MINIMUM_MAGNITUDE_KEY, minimum_magnitude, config_file.c_str());
+										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - This value MUST be a valid integer between 1 and 9 (inclusive)!", VERSION);
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
+										minimum_magnitude = DEFAULT_MINIMUM_MAGNITUDE_VALUE;
+									}
+									else
+									{
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, minimum_magnitude);
+									}
+								}
+								else
+								{
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, MINIMUM_MAGNITUDE_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
+									minimum_magnitude = DEFAULT_MINIMUM_MAGNITUDE_VALUE;
+								}
+
+								// Try loading the maximum_magnitude value.
+								if (json_object.contains(MAXIMUM_MAGNITUDE_KEY))
+								{
+									maximum_magnitude = json_object[MAXIMUM_MAGNITUDE_KEY];
+									if (spell_cost < 1 || spell_cost > 9)
+									{
+										g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, MAXIMUM_MAGNITUDE_KEY, maximum_magnitude, config_file.c_str());
+										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - This value MUST be a valid integer between 1 and 9 (inclusive)!", VERSION);
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
+										maximum_magnitude = DEFAULT_MAXIMUM_MAGNITUDE_VALUE;
+									}
+									else
+									{
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, maximum_magnitude);
+									}
+								}
+								else
+								{
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, MAXIMUM_MAGNITUDE_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
+									maximum_magnitude = DEFAULT_MAXIMUM_MAGNITUDE_VALUE;
+								}
+
+								// Verify minimum_magnitude is less than maximum_magnitude.
+								if (minimum_magnitude > maximum_magnitude)
+								{
+									g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - The \"%s\" value (%d) MUST be less than the \"%s\" value (%d)!", VERSION, MINIMUM_MAGNITUDE_KEY, minimum_magnitude, MAXIMUM_MAGNITUDE_KEY, maximum_magnitude);
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
+									minimum_magnitude = DEFAULT_MINIMUM_MAGNITUDE_VALUE;
+									maximum_magnitude = DEFAULT_MAXIMUM_MAGNITUDE_VALUE;
+								}
 							}
 						}
 						catch (...)
@@ -469,7 +597,10 @@ RValue& GmlScriptSetupMainScreenCallback(
 							{DAMAGE_ARI_KEY, DEFAULT_DAMAGE_ARI_VALUE},
 							{IGNORE_MIMICS_KEY, DEFAULT_IGNORE_MIMICS_VALUE},
 							{SOUND_EFFECTS_KEY, DEFAULT_SOUND_EFFECTS_VALUE},
-							{SCREEN_FLASH_KEY, DEFAULT_SCREEN_FLASH_VALUE}
+							{SCREEN_FLASH_KEY, DEFAULT_SCREEN_FLASH_VALUE},
+							{ONE_SHOT_MONSTERS_KEY, DEFAULT_ONE_SHOT_MONSTERS_VALUE},
+							{MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE},
+							{MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE}
 						};
 
 						std::ofstream out_stream(config_file);
@@ -500,6 +631,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 			LogDefaultConfigValues();
 		}
 
+		LoadSpells();
 		load_on_start = false;
 	}
 
