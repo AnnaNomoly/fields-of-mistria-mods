@@ -156,6 +156,37 @@ static bool priestess_shield_active = false;
 static bool is_priestess_shield_tracked_time_interval = false;
 static int time_of_last_priestess_shield_tick = 0; // Blood Pact perk timer.
 
+void ResetStaticFields(bool returned_to_title_screen)
+{
+	if (returned_to_title_screen)
+	{
+		active_perk_map = {};
+		ari_hunger_value = STARTING_HUNGER_VALUE;
+		food_queue = {};
+		hunger_stamina_health_penatly = 0;
+	}
+
+	ari_is_in_dungeon = false;
+	ari_current_location = "";
+	ari_sanity_value = STARTING_SANITY_VALUE;
+	game_is_active = false;
+	held_item_id = -1;
+	is_heavy_inclement_weather = false;
+	is_hunger_tracked_time_interval = false;
+	is_inclement_weather = false;
+	is_priestess_shield_tracked_time_interval = false;
+	is_sanity_tracked_time_interval = false;
+	localized_item_name = "";
+	priestess_shield_active = false;
+	rollback_position = false;
+	rollback_position_x = -1;
+	rollback_position_y = -1;
+	snapshot_position = false;
+	time_of_last_hunger_tick = 0;
+	time_of_last_priestess_shield_tick = 0;
+	time_of_last_sanity_tick = 0;
+}
+
 std::string FoodQueueToString()
 {
 	std::string food_queue_string = "[";
@@ -830,7 +861,7 @@ void ObjectCallback(
 			}
 
 			// Cancel Priestess Shield.
-			if (priestess_shield_active && (!AriHasInvulnerableHits() || !ari_is_in_dungeon))
+			if (!ari_is_in_dungeon || (priestess_shield_active && !AriHasInvulnerableHits())) //if (priestess_shield_active && (!AriHasInvulnerableHits() || !ari_is_in_dungeon))
 				CancelPriestessShield(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
 		}
 		else
@@ -1644,21 +1675,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	else
 	{
 		ResetAllItemStaminaModifiers(Self, Other);
-		is_hunger_tracked_time_interval = false;
-		snapshot_position = false;
-		rollback_position = false;
-		time_of_last_hunger_tick = 0;
-		time_of_last_sanity_tick = 0;
-		held_item_id = -1;
-		game_is_active = false;
-		hunger_stamina_health_penatly = 0;
-		ari_hunger_value = STARTING_HUNGER_VALUE;
-		ari_sanity_value = STARTING_SANITY_VALUE;
-		ari_current_location = "";
-		rollback_position_x = -1;
-		rollback_position_y = -1;
-		food_queue = {};
-		localized_item_name = "";
+		ResetStaticFields(true);
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
@@ -1772,17 +1789,7 @@ RValue& GmlScriptEndDayCallback(
 	IN RValue** Arguments
 )
 {
-	is_hunger_tracked_time_interval = false;
-	snapshot_position = false;
-	rollback_position = false;
-	time_of_last_hunger_tick = 0;
-	time_of_last_sanity_tick = 0;
-	held_item_id = -1;
-	game_is_active = false;
-	ari_sanity_value = STARTING_SANITY_VALUE;
-	ari_current_location = "";
-	rollback_position_x = -1;
-	rollback_position_y = -1;
+	ResetStaticFields(false);
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_end_day"));
 	original(
