@@ -8,7 +8,7 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 
 2. The mod will output some information to the YYTK console window. If the recipe was **INVALID** you will get a warning message. If the recipe is **ALREADY KNOWN** you will get a different warning message. If the recipe is **NEW** you will get a success message, learn the recipe, and additionally the "new recipe" window will appear in the game!
 
-## Recipe Table (FoM v0.11.7)
+## Recipe Table (FoM v0.13.2)
 | Recipe Name |
 | ----------- |
 | apple_honey_curry |
@@ -18,6 +18,7 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | baked_sweetroot |
 | beet_salad |
 | beet_soup |
+| bell_berry_bakewell_tart |
 | berries_and_cream |
 | berry_bowl |
 | blackberry_jam |
@@ -32,6 +33,7 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | caldosian_chocolate_cake |
 | candied_lemon_peel |
 | candied_strawberries |
+| candied_walnuts |
 | canned_sardines |
 | caramel_candy |
 | caramelized_moon_fruit |
@@ -145,6 +147,7 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | spicy_corn |
 | spicy_crab_sushi |
 | spicy_water_chestnuts |
+| spirit_mushroom_tea |
 | spring_galette |
 | spring_salad |
 | steamed_broccoli |
