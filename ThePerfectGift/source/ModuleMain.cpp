@@ -8,7 +8,11 @@
 using namespace Aurie;
 using namespace YYTK;
 
-static const char* const VERSION = "1.0.1";
+static const char* const VERSION = "1.1.0";
+static const std::string GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY = "mods/ThePerfectGift/gift_preference_detected";
+static const std::string GIFT_PREFERENCE_UNLOCKED_LOCALIZATION_KEY = "mods/ThePerfectGift/gift_preference_unlocked";
+static const std::string ITEM_PLACEHOLDER_TEXT = "<ITEM>";
+static const std::string NPC_PLACEHOLDER_TEXT = "<NPC>";
 static const std::string ADELINE = "adeline";
 static const std::string BALOR = "balor";
 //static const std::string CALDARUS = "caldarus";
@@ -63,6 +67,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Balor/Museum Lines/perfect_sapphire/perfect_sapphire/init", { BALOR, "perfect_sapphire" }},
 	{ "Conversations/Bank/Balor/Museum Lines/rusted_treasure_chest/rusted_treasure_chest/init", { BALOR, "rusted_treasure_chest" }},
 	{ "Conversations/Bank/Balor/Museum Lines/sapphire_betta/sapphire_betta/init", { BALOR, "sapphire_betta" }},
+	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_juniper/7", { BALOR, "ruby" }},
 	// Caldarus
 	// Celine
 	{ "Conversations/Bank/Celine/Banked Lines/daisies/daisies/init", { CELINE, "daisy" }},
@@ -76,6 +81,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Dell/Museum Lines/caldosian_sword/caldosian_sword/init", { DELL, "caldosian_sword" }},
 	{ "Conversations/Bank/Dell/Museum Lines/lightning_dragonfly/lightning_dragonfly/init", { DELL, "lightning_dragonfly" }},
 	{ "Conversations/General Dialogue/birthday_anticipation/dell_birthday_anticipation_family/init", { DELL, "chocolate" }},
+	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_dell/12", { DELL, "chocolate" }},
 	// Dozy
 	// Eiland
 	{ "Conversations/Bank/Eiland/Market Lines/market_darcy_1/market_darcy_1/init", { EILAND, "roasted_rice_tea" }},
@@ -123,6 +129,8 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Juniper/Market Lines/market_darcy_1/market_darcy_1/init", { JUNIPER, "latte" }},
 	{ "Conversations/Bank/Juniper/Museum Lines/ancient_royal_scepter/ancient_royal_scepter/init", { JUNIPER, "ancient_royal_scepter" }},
 	{ "Conversations/Bank/Valen/Market Lines/market_darcy_4/market_darcy_4/init", { JUNIPER, "latte" }},
+	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_balor/2", { JUNIPER, "newt" }},
+	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_balor/4", { JUNIPER, "newt" }},
 	// Landen
 	{ "Conversations/Bank/Landen/Banked Lines/inn_special/inn_special/init", { LANDEN, "vegetable_pot_pie" }},
 	{ "Cutscenes/Heart Events/Ryis/ryis_six_hearts/ryis_six_hearts/17", { LANDEN, "coconut_cream_pie" }},
@@ -154,6 +162,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/March/Museum Lines/perfect_copper_ore/perfect_copper_ore/init", { MARCH, "perfect_copper_ore" }},
 	{ "Conversations/Bank/March/Museum Lines/perfect_iron_ore/perfect_iron_ore/init", { MARCH, "perfect_iron_ore" }},
 	{ "Conversations/Bank/March/Museum Lines/perfect_silver_ore/perfect_silver_ore/init", { MARCH, "perfect_silver_ore" }},
+	{ "Conversations/Festival Lines/March/animal_festival/animal_festival_0/init", { MARCH, "hot_cocoa" } },
 	// Merri
 	// Nora
 	{ "Conversations/Bank/Nora/Market Lines/market_darcy_4/market_darcy_4/init", { NORA, "latte" }},
@@ -174,6 +183,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Ryis/Market Lines/market_darcy_2/market_darcy_2/init", { RYIS, "iced_coffee" }},
 	{ "Conversations/Bank/Ryis/Market Lines/market_darcy_3/market_darcy_3/init", { RYIS, "iced_coffee" }},
 	{ "Conversations/Bank/Landen/Banked Lines/veggie_sub/veggie_sub/init", { RYIS, "veggie_sub_sandwich" }},
+	{ "Conversations/Bank/Ryis/Banked Lines/shopping_for_landen/shopping_for_landen_2/init", { RYIS, "bread" } },
 	// Stillwell
 	// Taliferro
 	// Terithia
@@ -235,45 +245,130 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_items = true;
+static bool localize_items = true;
 static std::map<std::string, std::vector<std::string>> gifts_to_unlock = {};
-static std::map<std::string, int> item_name_to_id_map = {};
+static std::map<std::string, INT64> item_name_to_id_map = {};
+static std::map<std::string, std::string> internal_item_name_to_localized_item_name_map = {};
+static RValue live_item = RValue();
+static bool greet_the_townsfolk_quest_complete_or_in_progress = false;
+static bool greet_the_vendors_quest_complete_or_in_progress = false;
+static bool unlocking_gift_preference = false;
+static std::string gift_preference_npc_name = "";
+static std::string gift_preference_internal_item_name = "";
+static CInstance* obj_ari = nullptr;
 
-void UnlockGifts(CInstance* self, std::string npc_name)
+bool GameIsPaused()
 {
-	RValue me_exists = g_ModuleInterface->CallBuiltin(
-		"struct_exists", {
-			self, "me"
-		}
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+	RValue paused = global_instance->at("__pause_status");
+	return paused.m_i64 > 0;
+}
+
+bool QuestCompletedOrInProgress(std::string quest_name)
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue quest_log = global_instance->at("__quest_log");
+
+	// Check the active quests.
+	RValue active = quest_log.at("active");
+	RValue active_inner = active.at("inner");
+	RValue active_entry_exists = g_ModuleInterface->CallBuiltin("struct_exists", { active_inner, quest_name });
+	if (active_entry_exists.m_Kind == VALUE_BOOL && active_entry_exists.m_Real == 1)
+		return true;
+
+	// Check the completed quests.
+	RValue completed = quest_log.at("completed");
+	RValue completed_inner = completed.at("inner");
+	RValue quest_entry_exists = g_ModuleInterface->CallBuiltin("struct_exists", { completed_inner, quest_name });
+	if (quest_entry_exists.m_Kind == VALUE_BOOL && quest_entry_exists.m_Real == 1)
+		return true;
+	
+	return false;
+}
+
+void DisplayNotification(CInstance* Self, CInstance* Other, std::string localization_key)
+{
+	CScript* gml_script_create_notification = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_create_notification",
+		(PVOID*)&gml_script_create_notification
 	);
 
+	RValue result;
+	RValue notification = localization_key;
+	RValue* notification_ptr = &notification;
+	gml_script_create_notification->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &notification_ptr }
+	);
+
+	gift_preference_npc_name = "";
+	gift_preference_internal_item_name = "";
+}
+
+void UnlockGifts(CInstance* npc, std::string npc_name)
+{
+	RValue me_exists = g_ModuleInterface->CallBuiltin("struct_exists", { npc, "me" });
 	if (me_exists.m_Kind == VALUE_BOOL && me_exists.m_Real == 1)
 	{
-		RValue me = self->at("me");
-		RValue gifts_given = me.at("gifts_given");
-		RValue inner = gifts_given.at("inner");
-
+		unlocking_gift_preference = true;
 		for (int i = 0; i < gifts_to_unlock[npc_name].size(); i++)
 		{
-			RValue gift_preference = g_ModuleInterface->CallBuiltin(
-				"struct_get", {
-					inner, std::to_string(item_name_to_id_map[gifts_to_unlock[npc_name][i]])
-				}
+			g_ModuleInterface->CallBuiltin("struct_set", { live_item, "item_id", item_name_to_id_map[gifts_to_unlock[npc_name][i]] });
+
+			CScript* gml_script_receive_gift = nullptr;
+			g_ModuleInterface->GetNamedRoutinePointer(
+				"gml_Script_receive_gift@gml_Object_par_NPC_Create_0",
+				(PVOID*)&gml_script_receive_gift
 			);
 
-			if (gift_preference.m_Kind == VALUE_UNDEFINED)
-			{
-				RValue zero = 0.0;
-				g_ModuleInterface->CallBuiltin(
-					"struct_set", {
-						inner, std::to_string(item_name_to_id_map[gifts_to_unlock[npc_name][i]]), zero
-					}
-				);
-				g_ModuleInterface->Print(CM_LIGHTGREEN, "[ThePerfectGift %s] - Learned gift preference for %s: %s", VERSION, npc_name.c_str(), gifts_to_unlock[npc_name][i].c_str());
-			}
-		}
+			RValue result;
+			RValue* live_item_ptr = &live_item;
 
-		gifts_to_unlock.erase(npc_name);
+			gml_script_receive_gift->m_Functions->m_ScriptFunction(
+				npc,
+				obj_ari,
+				result,
+				1,
+				{ &live_item_ptr }
+			);
+
+			// Display the notification.
+			gift_preference_npc_name = npc_name;
+			gift_preference_internal_item_name = gifts_to_unlock[npc_name][i];
+			DisplayNotification(npc, npc, GIFT_PREFERENCE_UNLOCKED_LOCALIZATION_KEY);
+		}
+		unlocking_gift_preference = false;
+		gifts_to_unlock[npc_name].clear();
 	}
+}
+
+RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localization_key)
+{
+	CScript* gml_script_get_localizer = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_get@Localizer@Localizer",
+		(PVOID*)&gml_script_get_localizer
+	);
+
+	RValue result;
+	RValue input = localization_key;
+	RValue* input_ptr = &input;
+	gml_script_get_localizer->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &input_ptr }
+	);
+
+	return result;
 }
 
 void ObjectCallback(
@@ -288,76 +383,276 @@ void ObjectCallback(
 	if (!self->m_Object)
 		return;
 
-	if (gifts_to_unlock.size() > 0)
+	if (strstr(self->m_Object->m_Name, "obj_ari"))
 	{
-		if (gifts_to_unlock.contains(ADELINE) && strstr(self->m_Object->m_Name, "obj_adeline"))
+		obj_ari = self;
+	}
+
+	if (gifts_to_unlock.size() > 0 && !unlocking_gift_preference && live_item.m_Kind != VALUE_UNDEFINED && !GameIsPaused())
+	{
+		if (gifts_to_unlock.contains(ADELINE) && strstr(self->m_Object->m_Name, "obj_adeline") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, ADELINE);
-		if (gifts_to_unlock.contains(BALOR) && strstr(self->m_Object->m_Name, "obj_balor"))
+		if (gifts_to_unlock.contains(BALOR) && strstr(self->m_Object->m_Name, "obj_balor") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, BALOR);
 		//if (gifts_to_unlock.contains(CALDARUS) && strstr(self->m_Object->m_Name, "obj_caldarus"))
 		//	UnlockGifts(self, CALDARUS);
-		if (gifts_to_unlock.contains(CELINE) && strstr(self->m_Object->m_Name, "obj_celine"))
+		if (gifts_to_unlock.contains(CELINE) && strstr(self->m_Object->m_Name, "obj_celine") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, CELINE);
-		if (gifts_to_unlock.contains(DARCY) && strstr(self->m_Object->m_Name, "obj_darcy"))
+		if (gifts_to_unlock.contains(DARCY) && strstr(self->m_Object->m_Name, "obj_darcy") && greet_the_vendors_quest_complete_or_in_progress)
 			UnlockGifts(self, DARCY);
-		if (gifts_to_unlock.contains(DELL) && strstr(self->m_Object->m_Name, "obj_dell"))
+		if (gifts_to_unlock.contains(DELL) && strstr(self->m_Object->m_Name, "obj_dell") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, DELL);
-		if (gifts_to_unlock.contains(DOZY) && strstr(self->m_Object->m_Name, "obj_dozy"))
+		if (gifts_to_unlock.contains(DOZY) && strstr(self->m_Object->m_Name, "obj_dozy") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, DOZY);
-		if (gifts_to_unlock.contains(EILAND) && strstr(self->m_Object->m_Name, "obj_eiland"))
+		if (gifts_to_unlock.contains(EILAND) && strstr(self->m_Object->m_Name, "obj_eiland") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, EILAND);
-		if (gifts_to_unlock.contains(ELSIE) && strstr(self->m_Object->m_Name, "obj_elsie"))
+		if (gifts_to_unlock.contains(ELSIE) && strstr(self->m_Object->m_Name, "obj_elsie") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, ELSIE);
-		if (gifts_to_unlock.contains(ERROL) && strstr(self->m_Object->m_Name, "obj_errol"))
+		if (gifts_to_unlock.contains(ERROL) && strstr(self->m_Object->m_Name, "obj_errol") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, ERROL);
-		if (gifts_to_unlock.contains(HAYDEN) && strstr(self->m_Object->m_Name, "obj_hayden"))
+		if (gifts_to_unlock.contains(HAYDEN) && strstr(self->m_Object->m_Name, "obj_hayden") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, HAYDEN);
-		if (gifts_to_unlock.contains(HEMLOCK) && strstr(self->m_Object->m_Name, "obj_hemlock"))
+		if (gifts_to_unlock.contains(HEMLOCK) && strstr(self->m_Object->m_Name, "obj_hemlock") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, HEMLOCK);
-		if (gifts_to_unlock.contains(HENRIETTA) && strstr(self->m_Object->m_Name, "obj_henrietta"))
+		if (gifts_to_unlock.contains(HENRIETTA) && strstr(self->m_Object->m_Name, "obj_henrietta") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, HENRIETTA);
-		if (gifts_to_unlock.contains(HOLT) && strstr(self->m_Object->m_Name, "obj_holt"))
+		if (gifts_to_unlock.contains(HOLT) && strstr(self->m_Object->m_Name, "obj_holt") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, HOLT);
-		if (gifts_to_unlock.contains(JOSEPHINE) && strstr(self->m_Object->m_Name, "obj_josephine"))
+		if (gifts_to_unlock.contains(JOSEPHINE) && strstr(self->m_Object->m_Name, "obj_josephine") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, JOSEPHINE);
-		if (gifts_to_unlock.contains(JUNIPER) && strstr(self->m_Object->m_Name, "obj_juniper"))
+		if (gifts_to_unlock.contains(JUNIPER) && strstr(self->m_Object->m_Name, "obj_juniper") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, JUNIPER);
-		if (gifts_to_unlock.contains(LANDEN) && strstr(self->m_Object->m_Name, "obj_landen"))
+		if (gifts_to_unlock.contains(LANDEN) && strstr(self->m_Object->m_Name, "obj_landen") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, LANDEN);
-		if (gifts_to_unlock.contains(LOUIS) && strstr(self->m_Object->m_Name, "obj_louis"))
+		if (gifts_to_unlock.contains(LOUIS) && strstr(self->m_Object->m_Name, "obj_louis") && greet_the_vendors_quest_complete_or_in_progress)
 			UnlockGifts(self, LOUIS);
-		if (gifts_to_unlock.contains(LUC) && strstr(self->m_Object->m_Name, "obj_luc"))
+		if (gifts_to_unlock.contains(LUC) && strstr(self->m_Object->m_Name, "obj_luc") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, LUC);
-		if (gifts_to_unlock.contains(MAPLE) && strstr(self->m_Object->m_Name, "obj_maple"))
+		if (gifts_to_unlock.contains(MAPLE) && strstr(self->m_Object->m_Name, "obj_maple") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, MAPLE);
-		if (gifts_to_unlock.contains(MARCH) && strstr(self->m_Object->m_Name, "obj_march"))
+		if (gifts_to_unlock.contains(MARCH) && strstr(self->m_Object->m_Name, "obj_march") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, MARCH);
-		if (gifts_to_unlock.contains(MERRI) && strstr(self->m_Object->m_Name, "obj_merri"))
+		if (gifts_to_unlock.contains(MERRI) && strstr(self->m_Object->m_Name, "obj_merri") && greet_the_vendors_quest_complete_or_in_progress)
 			UnlockGifts(self, MERRI);
-		if (gifts_to_unlock.contains(NORA) && strstr(self->m_Object->m_Name, "obj_nora"))
+		if (gifts_to_unlock.contains(NORA) && strstr(self->m_Object->m_Name, "obj_nora") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, NORA);
-		if (gifts_to_unlock.contains(OLRIC) && strstr(self->m_Object->m_Name, "obj_olric"))
+		if (gifts_to_unlock.contains(OLRIC) && strstr(self->m_Object->m_Name, "obj_olric") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, OLRIC);
 		//if (gifts_to_unlock.contains(PRIESTESS) && strstr(self->m_Object->m_Name, "obj_priestess"))
 		//	UnlockGifts(self, PRIESTESS);
-		if (gifts_to_unlock.contains(REINA) && strstr(self->m_Object->m_Name, "obj_reina"))
+		if (gifts_to_unlock.contains(REINA) && strstr(self->m_Object->m_Name, "obj_reina") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, REINA);
-		if (gifts_to_unlock.contains(RYIS) && strstr(self->m_Object->m_Name, "obj_ryis"))
+		if (gifts_to_unlock.contains(RYIS) && strstr(self->m_Object->m_Name, "obj_ryis") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, RYIS);
 		//if (gifts_to_unlock.contains(STILLWELL) && strstr(self->m_Object->m_Name, "obj_stillwell"))
 		//	UnlockGifts(self, STILLWELL);
 		//if (gifts_to_unlock.contains(TALIFERRO) && strstr(self->m_Object->m_Name, "obj_taliferro"))
 		//	UnlockGifts(self, TALIFERRO);
-		if (gifts_to_unlock.contains(TERITHIA) && strstr(self->m_Object->m_Name, "obj_terithia"))
+		if (gifts_to_unlock.contains(TERITHIA) && strstr(self->m_Object->m_Name, "obj_terithia") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, TERITHIA);
-		if (gifts_to_unlock.contains(VALEN) && strstr(self->m_Object->m_Name, "obj_valen"))
+		if (gifts_to_unlock.contains(VALEN) && strstr(self->m_Object->m_Name, "obj_valen") && greet_the_townsfolk_quest_complete_or_in_progress)
 			UnlockGifts(self, VALEN);
-		if (gifts_to_unlock.contains(VERA) && strstr(self->m_Object->m_Name, "obj_vera"))
+		if (gifts_to_unlock.contains(VERA) && strstr(self->m_Object->m_Name, "obj_vera") && greet_the_vendors_quest_complete_or_in_progress)
 			UnlockGifts(self, VERA);
 		//if (gifts_to_unlock.contains(WHEEDLE) && strstr(self->m_Object->m_Name, "obj_wheedle"))
 		//	UnlockGifts(self, WHEEDLE);
 		//if (gifts_to_unlock.contains(ZOREL) && strstr(self->m_Object->m_Name, "obj_zorel"))
 		//	UnlockGifts(self, ZOREL);
+	}
+}
+
+RValue& GmlScriptWeatherManagerOnRoomEndCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	live_item = RValue();
+	greet_the_townsfolk_quest_complete_or_in_progress = QuestCompletedOrInProgress("greet_the_townsfolk");
+	greet_the_vendors_quest_complete_or_in_progress = QuestCompletedOrInProgress("greet_the_vendors");
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_on_room_end@WeatherManager@Weather"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptTextboxTranslateCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	// Load localized item names.
+	if (localize_items)
+	{
+		localize_items = false;
+
+		// Load items.
+		CInstance* global_instance = nullptr;
+		g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+		RValue __item_data = global_instance->at("__item_data");
+
+		size_t array_length;
+		g_ModuleInterface->GetArraySize(__item_data, array_length);
+
+		for (size_t i = 0; i < array_length; i++)
+		{
+			RValue* array_element;
+			g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
+
+			RValue name_key = array_element->at("name_key");
+			if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
+			{
+				RValue recipe_key = array_element->at("recipe_key");
+				RValue localized_name = GetLocalizedString(Self, Other, name_key.AsString().data());
+				internal_item_name_to_localized_item_name_map[recipe_key.AsString().data()] = localized_name.AsString().data();
+			}
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get@Localizer@Localizer"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (ArgumentCount == 1 && Arguments[0]->m_Kind == VALUE_STRING)
+	{
+		std::string localization_key = Arguments[0]->AsString().data();
+		if (localization_key.compare(GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY) == 0 || localization_key.compare(GIFT_PREFERENCE_UNLOCKED_LOCALIZATION_KEY) == 0)
+		{
+			std::string result_str = Result.AsString().data();
+
+			// Replace the <ITEM> placeholder text.
+			size_t item_placeholder_index = result_str.find(ITEM_PLACEHOLDER_TEXT);
+			if (item_placeholder_index != std::string::npos) {
+				result_str.replace(item_placeholder_index, ITEM_PLACEHOLDER_TEXT.length(), internal_item_name_to_localized_item_name_map[gift_preference_internal_item_name]);
+			}
+
+			// Replace the <NPC> placeholder text.
+			size_t npc_placeholder_index = result_str.find(NPC_PLACEHOLDER_TEXT);
+			if (npc_placeholder_index != std::string::npos) {
+				std::string npc_name = gift_preference_npc_name;
+				npc_name[0] = std::toupper(npc_name[0]);
+				result_str.replace(npc_placeholder_index, NPC_PLACEHOLDER_TEXT.length(), npc_name);
+			}
+
+			Result = result_str;
+		}
+	}
+	
+	return Result;
+}
+
+RValue& GmlScriptAriGiveItemCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	live_item = Arguments[0]->m_Object;
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_give_item@Ari@Ari"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptNpcAddHeartPointsCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (unlocking_gift_preference)
+		return Result;
+	else
+	{
+		const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_add_heart_points@Npc@Npc"));
+		original(
+			Self,
+			Other,
+			Result,
+			ArgumentCount,
+			Arguments
+		);
+
+		return Result;
+	}
+}
+
+RValue& GmlScriptBarkOnDrawCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (unlocking_gift_preference)
+		return Result;
+	else
+	{
+		const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_emit@BarkEmitter@BarkEmitter"));
+		original(
+			Self,
+			Other,
+			Result,
+			ArgumentCount,
+			Arguments
+		);
+
+		return Result;
+	}
+}
+
+RValue& GmlScriptPlayConversationCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (unlocking_gift_preference)
+		return Result;
+	else
+	{
+		const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_play_conversation"));
+		original(
+			Self,
+			Other,
+			Result,
+			ArgumentCount,
+			Arguments
+		);
+
+		return Result;
 	}
 }
 
@@ -370,6 +665,13 @@ RValue& GmlScriptSetupMainScreenCallback(
 )
 {
 	gifts_to_unlock = {};
+	obj_ari = nullptr;
+	live_item = RValue();
+	gift_preference_npc_name = "";
+	gift_preference_internal_item_name = "";
+	unlocking_gift_preference = false;
+	greet_the_townsfolk_quest_complete_or_in_progress = false;
+	greet_the_vendors_quest_complete_or_in_progress = false;
 
 	if (load_items)
 	{
@@ -445,7 +747,14 @@ RValue& GmlScriptTranslateCallback(
 				gifts_to_unlock[npc_name] = {};
 
 			for (int i = 1; i < gifts.size(); i++)
+			{
 				gifts_to_unlock[npc_name].push_back(gifts[i]);
+
+				// Display the notification.
+				gift_preference_npc_name = npc_name;
+				gift_preference_internal_item_name = gifts[i];
+				DisplayNotification(Self, Other, GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY);
+			}
 		}
 	}
 
@@ -459,6 +768,168 @@ RValue& GmlScriptTranslateCallback(
 	);
 
 	return Result;
+}
+
+void CreateHookGmlScriptAriGiveItem(AurieStatus& status)
+{
+	CScript* gml_script_ari_give_item = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_give_item@Ari@Ari",
+		(PVOID*)&gml_script_ari_give_item
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_give_item@Ari@Ari)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_give_item@Ari@Ari",
+		gml_script_ari_give_item->m_Functions->m_ScriptFunction,
+		GmlScriptAriGiveItemCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_give_item@Ari@Ari)!", VERSION);
+	}
+}
+
+void CreateHookGmlScriptTextboxTranslate(AurieStatus& status)
+{
+	CScript* gml_script_textbox_translate = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_get@Localizer@Localizer",
+		(PVOID*)&gml_script_textbox_translate
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_get@Localizer@Localizer)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_get@Localizer@Localizer",
+		gml_script_textbox_translate->m_Functions->m_ScriptFunction,
+		GmlScriptTextboxTranslateCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_get@Localizer@Localizer)!", VERSION);
+	}
+}
+
+void CreateHookGmlScriptWeatherManagerOnRoomEnd(AurieStatus& status)
+{
+	CScript* gml_script_weather_manager_on_room_end = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_on_room_end@WeatherManager@Weather",
+		(PVOID*)&gml_script_weather_manager_on_room_end
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_on_room_end@WeatherManager@Weather)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_on_room_end@WeatherManager@Weather",
+		gml_script_weather_manager_on_room_end->m_Functions->m_ScriptFunction,
+		GmlScriptWeatherManagerOnRoomEndCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_on_room_end@WeatherManager@Weather)!", VERSION);
+	}
+}
+
+void CreateHookGmlScriptNpcAddHeartPoints(AurieStatus& status)
+{
+	CScript* gml_script_npc_add_heart_points = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_add_heart_points@Npc@Npc",
+		(PVOID*)&gml_script_npc_add_heart_points
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_add_heart_points@Npc@Npc)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_add_heart_points@Npc@Npc",
+		gml_script_npc_add_heart_points->m_Functions->m_ScriptFunction,
+		GmlScriptNpcAddHeartPointsCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_add_heart_points@Npc@Npc)!", VERSION);
+	}
+}
+
+void CreateHookGmlScriptBarkOnDraw(AurieStatus& status)
+{
+	CScript* gml_script_bark_on_draw = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_emit@BarkEmitter@BarkEmitter",
+		(PVOID*)&gml_script_bark_on_draw
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_emit@BarkEmitter@BarkEmitter)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_emit@BarkEmitter@BarkEmitter",
+		gml_script_bark_on_draw->m_Functions->m_ScriptFunction,
+		GmlScriptBarkOnDrawCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_emit@BarkEmitter@BarkEmitter)!", VERSION);
+	}
+}
+
+void CreateHookGmlScriptPlayConversation(AurieStatus& status)
+{
+	CScript* gml_script_play_conversation = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_play_conversation",
+		(PVOID*)&gml_script_play_conversation
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_play_conversation)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_play_conversation",
+		gml_script_play_conversation->m_Functions->m_ScriptFunction,
+		GmlScriptPlayConversationCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_play_conversation)!", VERSION);
+	}
 }
 
 void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
@@ -562,6 +1033,48 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptPlayConversation(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptBarkOnDraw(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptNpcAddHeartPoints(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptAriGiveItem(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptTextboxTranslate(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptWeatherManagerOnRoomEnd(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
