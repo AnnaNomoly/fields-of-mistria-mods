@@ -10,7 +10,9 @@ using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
-static const char* const VERSION = "1.1.1";
+static const char* const VERSION = "1.1.2";
+static const char* const MOD_NAME = "QuakeSpell";
+static const char* const MOD_VARIANT = "Full Restore";
 static const char* const SPELL_COST_KEY = "spell_cost";
 static const char* const DAMAGE_ARI_KEY = "damage_ari";
 static const char* const IGNORE_MIMICS_KEY = "ignore_mimics";
@@ -30,8 +32,7 @@ static const int DEFAULT_MAXIMUM_MAGNITUDE_VALUE = 9;
 static const char* const FULL_RESTORE_SPELL = "full_restore";
 static const char* const GROWTH_SPELL = "growth";
 static const char* const SUMMON_RAIN_SPELL = "summon_rain";
-//static const char* const FIREBALL_SPELL = "fireball"; // TODO: Will know the actual spell name after the March 2025 patch drops.
-// TODO: Add configuration option that determines what spell is replaced. This will also need to be done after we know the name of the new spell.
+static const char* const FIRE_BREATH = "fire_breath";
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
@@ -67,7 +68,7 @@ void handle_eptr(std::exception_ptr eptr)
 		}
 	}
 	catch (const std::exception& e) {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Error: %s", VERSION, e.what());
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Error: %s", MOD_NAME, MOD_VARIANT, VERSION, e.what());
 	}
 }
 
@@ -90,14 +91,14 @@ void LogDefaultConfigValues()
 	minimum_magnitude = DEFAULT_MINIMUM_MAGNITUDE_VALUE;
 	maximum_magnitude = DEFAULT_MAXIMUM_MAGNITUDE_VALUE;
 
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SPELL_COST_KEY, DEFAULT_SPELL_COST_VALUE);
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, DAMAGE_ARI_KEY, DEFAULT_DAMAGE_ARI_VALUE ? "true" : "false");
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, IGNORE_MIMICS_KEY, DEFAULT_IGNORE_MIMICS_VALUE ? "true" : "false");
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SOUND_EFFECTS_KEY, DEFAULT_SOUND_EFFECTS_VALUE ? "true" : "false");
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SCREEN_FLASH_KEY, DEFAULT_SCREEN_FLASH_VALUE ? "true" : "false");
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, ONE_SHOT_MONSTERS_KEY, DEFAULT_ONE_SHOT_MONSTERS_VALUE ? "true" : "false");
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, SPELL_COST_KEY, DEFAULT_SPELL_COST_VALUE);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, DAMAGE_ARI_KEY, DEFAULT_DAMAGE_ARI_VALUE ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, IGNORE_MIMICS_KEY, DEFAULT_IGNORE_MIMICS_VALUE ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, SOUND_EFFECTS_KEY, DEFAULT_SOUND_EFFECTS_VALUE ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, SCREEN_FLASH_KEY, DEFAULT_SCREEN_FLASH_VALUE ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, ONE_SHOT_MONSTERS_KEY, DEFAULT_ONE_SHOT_MONSTERS_VALUE ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
 }
 
 void ResetStaticFields(bool returnedToTitleScreen)
@@ -277,7 +278,7 @@ void ObjectCallback(
 		ModifyHealth(global_instance->at("__ari").m_Object, self, quake_magnitude * 10 * -1);
 		modify_health = false;
 
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Ari took %d damage from the quake!", VERSION, quake_magnitude * 10);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Ari took %d damage from the quake!", MOD_NAME, MOD_VARIANT, VERSION, quake_magnitude * 10);
 	}
 }
 
@@ -359,7 +360,7 @@ RValue& GmlScriptCastSpell(
 
 		modify_mana = true;
 		quake_spell_active = true;
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Quake spell cast! Magnitude: %d", VERSION, quake_magnitude);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Quake spell cast! Magnitude: %d", MOD_NAME, MOD_VARIANT, VERSION, quake_magnitude);
 		return Result;
 	}
 
@@ -400,7 +401,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 					std::string mod_data_folder = fields_of_mistria_folder + "\\mod_data";
 					if (!std::filesystem::exists(mod_data_folder))
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - The \"mod_data\" directory was not found. Creating directory: %s", VERSION, mod_data_folder.c_str());
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, MOD_VARIANT, VERSION, mod_data_folder.c_str());
 						std::filesystem::create_directory(mod_data_folder);
 					}
 
@@ -408,7 +409,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 					std::string quake_spell_folder = mod_data_folder + "\\QuakeSpell";
 					if (!std::filesystem::exists(quake_spell_folder))
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - The \"QuakeSpell\" directory was not found. Creating directory: %s", VERSION, quake_spell_folder.c_str());
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - The \"QuakeSpell\" directory was not found. Creating directory: %s", MOD_NAME, MOD_VARIANT, VERSION, quake_spell_folder.c_str());
 						std::filesystem::create_directory(quake_spell_folder);
 					}
 
@@ -424,8 +425,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 							// Check if the json_object is empty.
 							if (json_object.empty())
 							{
-								g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - No values found in mod configuration file: %s!", VERSION, config_file.c_str());
-								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Add your desired values to the configuration file, otherwise defaults will be used.", VERSION);
+								g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - No values found in mod configuration file: %s!", MOD_NAME, MOD_VARIANT, VERSION, config_file.c_str());
+								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Add your desired values to the configuration file, otherwise defaults will be used.", MOD_NAME, MOD_VARIANT, VERSION);
 								LogDefaultConfigValues();
 							}
 							else
@@ -436,20 +437,20 @@ RValue& GmlScriptSetupMainScreenCallback(
 									spell_cost = json_object[SPELL_COST_KEY];
 									if (spell_cost < 0 || spell_cost > 12)
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, SPELL_COST_KEY, spell_cost, config_file.c_str());
-										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - This value MUST be a valid integer between 0 and 12 (inclusive)!", VERSION);
-										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SPELL_COST_KEY, DEFAULT_SPELL_COST_VALUE);
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, MOD_VARIANT, VERSION, SPELL_COST_KEY, spell_cost, config_file.c_str());
+										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - This value MUST be a valid integer between 0 and 12 (inclusive)!", MOD_NAME, MOD_VARIANT, VERSION);
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, SPELL_COST_KEY, DEFAULT_SPELL_COST_VALUE);
 										spell_cost = DEFAULT_SPELL_COST_VALUE;
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %d!", VERSION, SPELL_COST_KEY, spell_cost);
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, SPELL_COST_KEY, spell_cost);
 									}
 								}
 								else
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SPELL_COST_KEY, config_file.c_str());
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SPELL_COST_KEY, DEFAULT_SPELL_COST_VALUE);
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, MOD_VARIANT, VERSION, SPELL_COST_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, SPELL_COST_KEY, DEFAULT_SPELL_COST_VALUE);
 									spell_cost = DEFAULT_SPELL_COST_VALUE;
 								}
 
@@ -457,12 +458,12 @@ RValue& GmlScriptSetupMainScreenCallback(
 								if (json_object.contains(DAMAGE_ARI_KEY))
 								{
 									damage_ari_option = json_object[DAMAGE_ARI_KEY];
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %s!", VERSION, DAMAGE_ARI_KEY, damage_ari_option ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, DAMAGE_ARI_KEY, damage_ari_option ? "true" : "false");
 								}
 								else
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, DAMAGE_ARI_KEY, config_file.c_str());
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, DAMAGE_ARI_KEY, DEFAULT_DAMAGE_ARI_VALUE ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, MOD_VARIANT, VERSION, DAMAGE_ARI_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, DAMAGE_ARI_KEY, DEFAULT_DAMAGE_ARI_VALUE ? "true" : "false");
 									damage_ari_option = DEFAULT_DAMAGE_ARI_VALUE;
 								}
 
@@ -470,12 +471,12 @@ RValue& GmlScriptSetupMainScreenCallback(
 								if (json_object.contains(IGNORE_MIMICS_KEY))
 								{
 									ignore_mimics_option = json_object[IGNORE_MIMICS_KEY];
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %s!", VERSION, IGNORE_MIMICS_KEY, ignore_mimics_option ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, IGNORE_MIMICS_KEY, ignore_mimics_option ? "true" : "false");
 								}
 								else
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, IGNORE_MIMICS_KEY, config_file.c_str());
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, IGNORE_MIMICS_KEY, DEFAULT_IGNORE_MIMICS_VALUE ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, MOD_VARIANT, VERSION, IGNORE_MIMICS_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, IGNORE_MIMICS_KEY, DEFAULT_IGNORE_MIMICS_VALUE ? "true" : "false");
 									ignore_mimics_option = DEFAULT_IGNORE_MIMICS_VALUE;
 								}
 
@@ -483,12 +484,12 @@ RValue& GmlScriptSetupMainScreenCallback(
 								if (json_object.contains(SOUND_EFFECTS_KEY))
 								{
 									sound_effects_option = json_object[SOUND_EFFECTS_KEY];
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %s!", VERSION, SOUND_EFFECTS_KEY, sound_effects_option ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, SOUND_EFFECTS_KEY, sound_effects_option ? "true" : "false");
 								}
 								else
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SOUND_EFFECTS_KEY, config_file.c_str());
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SOUND_EFFECTS_KEY, DEFAULT_SOUND_EFFECTS_VALUE ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, MOD_VARIANT, VERSION, SOUND_EFFECTS_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, SOUND_EFFECTS_KEY, DEFAULT_SOUND_EFFECTS_VALUE ? "true" : "false");
 									sound_effects_option = DEFAULT_SOUND_EFFECTS_VALUE;
 								}
 
@@ -496,12 +497,12 @@ RValue& GmlScriptSetupMainScreenCallback(
 								if (json_object.contains(SCREEN_FLASH_KEY))
 								{
 									screen_flash_option = json_object[SCREEN_FLASH_KEY];
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %s!", VERSION, SCREEN_FLASH_KEY, screen_flash_option ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, SCREEN_FLASH_KEY, screen_flash_option ? "true" : "false");
 								}
 								else
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SCREEN_FLASH_KEY, config_file.c_str());
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SCREEN_FLASH_KEY, DEFAULT_SCREEN_FLASH_VALUE ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, MOD_VARIANT, VERSION, SCREEN_FLASH_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, SCREEN_FLASH_KEY, DEFAULT_SCREEN_FLASH_VALUE ? "true" : "false");
 									screen_flash_option = DEFAULT_SCREEN_FLASH_VALUE;
 								}
 
@@ -509,12 +510,12 @@ RValue& GmlScriptSetupMainScreenCallback(
 								if (json_object.contains(ONE_SHOT_MONSTERS_KEY))
 								{
 									one_shot_monsters = json_object[ONE_SHOT_MONSTERS_KEY];
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %s!", VERSION, ONE_SHOT_MONSTERS_KEY, one_shot_monsters ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, ONE_SHOT_MONSTERS_KEY, one_shot_monsters ? "true" : "false");
 								}
 								else
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, ONE_SHOT_MONSTERS_KEY, config_file.c_str());
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %s!", VERSION, ONE_SHOT_MONSTERS_KEY, DEFAULT_ONE_SHOT_MONSTERS_VALUE ? "true" : "false");
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, MOD_VARIANT, VERSION, ONE_SHOT_MONSTERS_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, MOD_VARIANT, VERSION, ONE_SHOT_MONSTERS_KEY, DEFAULT_ONE_SHOT_MONSTERS_VALUE ? "true" : "false");
 									one_shot_monsters = DEFAULT_ONE_SHOT_MONSTERS_VALUE;
 								}
 
@@ -524,20 +525,20 @@ RValue& GmlScriptSetupMainScreenCallback(
 									minimum_magnitude = json_object[MINIMUM_MAGNITUDE_KEY];
 									if (spell_cost < 1 || spell_cost > 9)
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, MINIMUM_MAGNITUDE_KEY, minimum_magnitude, config_file.c_str());
-										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - This value MUST be a valid integer between 1 and 9 (inclusive)!", VERSION);
-										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, MOD_VARIANT, VERSION, MINIMUM_MAGNITUDE_KEY, minimum_magnitude, config_file.c_str());
+										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - This value MUST be a valid integer between 1 and 9 (inclusive)!", MOD_NAME, MOD_VARIANT, VERSION);
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
 										minimum_magnitude = DEFAULT_MINIMUM_MAGNITUDE_VALUE;
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, minimum_magnitude);
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MINIMUM_MAGNITUDE_KEY, minimum_magnitude);
 									}
 								}
 								else
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, MINIMUM_MAGNITUDE_KEY, config_file.c_str());
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, MOD_VARIANT, VERSION, MINIMUM_MAGNITUDE_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
 									minimum_magnitude = DEFAULT_MINIMUM_MAGNITUDE_VALUE;
 								}
 
@@ -547,29 +548,29 @@ RValue& GmlScriptSetupMainScreenCallback(
 									maximum_magnitude = json_object[MAXIMUM_MAGNITUDE_KEY];
 									if (spell_cost < 1 || spell_cost > 9)
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, MAXIMUM_MAGNITUDE_KEY, maximum_magnitude, config_file.c_str());
-										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - This value MUST be a valid integer between 1 and 9 (inclusive)!", VERSION);
-										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, MOD_VARIANT, VERSION, MAXIMUM_MAGNITUDE_KEY, maximum_magnitude, config_file.c_str());
+										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - This value MUST be a valid integer between 1 and 9 (inclusive)!", MOD_NAME, MOD_VARIANT, VERSION);
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
 										maximum_magnitude = DEFAULT_MAXIMUM_MAGNITUDE_VALUE;
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using CUSTOM \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, maximum_magnitude);
+										g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MAXIMUM_MAGNITUDE_KEY, maximum_magnitude);
 									}
 								}
 								else
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, MAXIMUM_MAGNITUDE_KEY, config_file.c_str());
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, MOD_VARIANT, VERSION, MAXIMUM_MAGNITUDE_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
 									maximum_magnitude = DEFAULT_MAXIMUM_MAGNITUDE_VALUE;
 								}
 
 								// Verify minimum_magnitude is less than maximum_magnitude.
 								if (minimum_magnitude > maximum_magnitude)
 								{
-									g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - The \"%s\" value (%d) MUST be less than the \"%s\" value (%d)!", VERSION, MINIMUM_MAGNITUDE_KEY, minimum_magnitude, MAXIMUM_MAGNITUDE_KEY, maximum_magnitude);
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
-									g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Using DEFAULT \"%s\" value: %d!", VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
+									g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - The \"%s\" value (%d) MUST be less than the \"%s\" value (%d)!", MOD_NAME, MOD_VARIANT, VERSION, MINIMUM_MAGNITUDE_KEY, minimum_magnitude, MAXIMUM_MAGNITUDE_KEY, maximum_magnitude);
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MINIMUM_MAGNITUDE_KEY, DEFAULT_MINIMUM_MAGNITUDE_VALUE);
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, MOD_VARIANT, VERSION, MAXIMUM_MAGNITUDE_KEY, DEFAULT_MAXIMUM_MAGNITUDE_VALUE);
 									minimum_magnitude = DEFAULT_MINIMUM_MAGNITUDE_VALUE;
 									maximum_magnitude = DEFAULT_MAXIMUM_MAGNITUDE_VALUE;
 								}
@@ -580,8 +581,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 							eptr = std::current_exception();
 							handle_eptr(eptr);
 
-							g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to parse JSON from configuration file: %s", VERSION, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - Make sure the file is valid JSON!", VERSION);
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to parse JSON from configuration file: %s", MOD_NAME, MOD_VARIANT, VERSION, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - Make sure the file is valid JSON!", MOD_NAME, MOD_VARIANT, VERSION);
 							LogDefaultConfigValues();
 						}
 
@@ -591,7 +592,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 					{
 						in_stream.close();
 
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[QuakeSpell %s] - The \"QuakeSpell.json\" file was not found. Creating file: %s", VERSION, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s (%s) %s] - The \"QuakeSpell.json\" file was not found. Creating file: %s", MOD_NAME, MOD_VARIANT, VERSION, config_file.c_str());
 						json default_json = {
 							{SPELL_COST_KEY, DEFAULT_SPELL_COST_VALUE},
 							{DAMAGE_ARI_KEY, DEFAULT_DAMAGE_ARI_VALUE},
@@ -612,13 +613,13 @@ RValue& GmlScriptSetupMainScreenCallback(
 				}
 				else
 				{
-					g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to find the \"%s\" directory.", VERSION, "AppData\\Local\\FieldsOfMistria");
+					g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to find the \"%s\" directory.", MOD_NAME, MOD_VARIANT, VERSION, "AppData\\Local\\FieldsOfMistria");
 					LogDefaultConfigValues();
 				}
 			}
 			else
 			{
-				g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to find the \"%s\" directory.", VERSION, "AppData\\Local");
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to find the \"%s\" directory.", MOD_NAME, MOD_VARIANT, VERSION, "AppData\\Local");
 				LogDefaultConfigValues();
 			}
 		}
@@ -627,7 +628,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 			eptr = std::current_exception();
 			handle_eptr(eptr);
 
-			g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - An error occurred loading the mod configuration file.", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - An error occurred loading the mod configuration file.", MOD_NAME, MOD_VARIANT, VERSION);
 			LogDefaultConfigValues();
 		}
 
@@ -842,7 +843,7 @@ void CreateFrameCallback(AurieModule* Module, AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook (EVENT_FRAME)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook (EVENT_FRAME)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -857,7 +858,7 @@ void CreateObjectCallback(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook (EVENT_OBJECT_CALL)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook (EVENT_OBJECT_CALL)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -871,7 +872,7 @@ void CreateHookGmlScriptSetPinnedSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_set_pinned_spell@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_set_pinned_spell@Ari@Ari)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -884,7 +885,7 @@ void CreateHookGmlScriptSetPinnedSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_set_pinned_spell@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_set_pinned_spell@Ari@Ari)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -898,7 +899,7 @@ void CreateHookGmlScriptCanCastSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_can_cast_spell)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_can_cast_spell)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -911,7 +912,7 @@ void CreateHookGmlScriptCanCastSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_can_cast_spell)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_can_cast_spell)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -925,7 +926,7 @@ void CreateHookGmlScriptCastSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_cast_spell)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_cast_spell)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -938,7 +939,7 @@ void CreateHookGmlScriptCastSpell(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_enchantern_state_to_string)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_enchantern_state_to_string)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -952,7 +953,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -966,7 +967,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -980,7 +981,7 @@ void CreateHookGmlScriptNewDay(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_new_day)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_new_day)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -994,7 +995,7 @@ void CreateHookGmlScriptNewDay(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_new_day)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_new_day)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -1008,7 +1009,7 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_show_room_title)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_show_room_title)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -1021,7 +1022,7 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_show_room_title)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_show_room_title)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -1035,7 +1036,7 @@ void CreateHookGmlScriptGetMana(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_get_mana@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_get_mana@Ari@Ari)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -1048,7 +1049,7 @@ void CreateHookGmlScriptGetMana(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_get_mana@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_get_mana@Ari@Ari)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -1062,7 +1063,7 @@ void CreateHookGmlScriptModifyMana(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_modify_mana@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_modify_mana@Ari@Ari)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -1075,7 +1076,7 @@ void CreateHookGmlScriptModifyMana(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_modify_mana@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_modify_mana@Ari@Ari)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -1089,7 +1090,7 @@ void CreateHookGmlScriptOnDrawGui(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_on_draw_gui@Display@Display)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_on_draw_gui@Display@Display)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -1102,7 +1103,7 @@ void CreateHookGmlScriptOnDrawGui(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_on_draw_gui@Display@Display)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_on_draw_gui@Display@Display)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -1116,7 +1117,7 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_try_location_id_to_string)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_try_location_id_to_string)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -1129,7 +1130,7 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_try_location_id_to_string)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_try_location_id_to_string)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -1143,7 +1144,7 @@ void CreateHookGmlScriptFadeOut(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to get script (gml_Script_fade_out@ScreenFaderMenu@ScreenFaderMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to get script (gml_Script_fade_out@ScreenFaderMenu@ScreenFaderMenu)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 
 	status = MmCreateHook(
@@ -1156,7 +1157,7 @@ void CreateHookGmlScriptFadeOut(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Failed to hook script (gml_Script_fade_out@ScreenFaderMenu@ScreenFaderMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Failed to hook script (gml_Script_fade_out@ScreenFaderMenu@ScreenFaderMenu)!", MOD_NAME, MOD_VARIANT, VERSION);
 	}
 }
 
@@ -1173,99 +1174,99 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTAQUA, "[QuakeSpell %s] - Plugin starting...", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s (%s) %s] - Plugin starting...", MOD_NAME, MOD_VARIANT, VERSION);
 
 	CreateFrameCallback(Module, status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateObjectCallback(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetPinnedSpell(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptCanCastSpell(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptCastSpell(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptNewDay(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptShowRoomTitle(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptGetMana(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptModifyMana(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptOnDrawGui(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptTryLocationIdToString(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptFadeOut(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[QuakeSpell %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s (%s) %s] - Exiting due to failure on start!", MOD_NAME, MOD_VARIANT, VERSION);
 		return status;
 	}
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[QuakeSpell %s] - Plugin started!", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s (%s) %s] - Plugin started!", MOD_NAME, MOD_VARIANT, VERSION);
 	return AURIE_SUCCESS;
 }
