@@ -9,6 +9,7 @@ static const int SIX_AM_IN_SECONDS = 21600;
 static const int EIGHT_PM_IN_SECONDS = 72000;
 static const int END_OF_DAY_IN_SECONDS = 93600;
 static const int THIRTY_SECONDS = 30;
+static const int SEVENTY_TWO_SECONDS = 72;
 static const int ONE_MINUTE_IN_SECONDS = 60;
 static const int THIRY_MINUTES_IN_SECONDS = 1800;
 static const int ONE_HOUR_IN_SECONDS = 3600;
@@ -23,6 +24,10 @@ static const int BLOOD_PACT_HEALTH_REDUCTION = 50;
 static const int ADRENALINE_RUSH_SANITY_RECOVERY = 5;
 static const char* GUARDIANS_SHIELD = "guardians_shield";
 static const char* DONT_STARVE_INTRODUCTION_LETTER = "dont_starve_introduction";
+static const char* GML_SCRIPT_IS_DUNGEON_ROOM = "gml_Script_is_dungeon_room";
+static const char* GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME = "gml_Script_get_display_name@anon@2028@LiveItem@LiveItem";
+static const char* GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION = "gml_Script_get_display_description@anon@3113@LiveItem@LiveItem";
+static const char* GML_SCRIPT_LOCALIZER_GET = "gml_Script_get@Localizer@Localizer";
 static const char* GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE = "gml_Script_deserialize@StatusEffectManager@StatusEffectManager";
 static const std::string IGNORED_ITEMS[] = {
 	"balors_crate", "confiscated_coffee", "dungeon_fountain_health", "dungeon_fountain_stamina", "horse_potion", "lurid_colored_drink",
@@ -164,6 +169,7 @@ void ResetStaticFields(bool returned_to_title_screen)
 		ari_hunger_value = STARTING_HUNGER_VALUE;
 		food_queue = {};
 		hunger_stamina_health_penatly = 0;
+		script_name_to_reference_map = {}; // testing if this fixes the crash when loading a different save
 	}
 
 	ari_is_in_dungeon = false;
@@ -240,7 +246,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 {
 	CScript* gml_script_get_localizer = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_get@Localizer@Localizer",
+		GML_SCRIPT_LOCALIZER_GET,
 		(PVOID*)&gml_script_get_localizer
 	);
 
@@ -861,7 +867,8 @@ void ObjectCallback(
 			}
 
 			// Cancel Priestess Shield.
-			if (!ari_is_in_dungeon || (priestess_shield_active && !AriHasInvulnerableHits())) //if (priestess_shield_active && (!AriHasInvulnerableHits() || !ari_is_in_dungeon))
+			if (priestess_shield_active && (!AriHasInvulnerableHits() || !ari_is_in_dungeon)) // Cancel only if the mod's buff is active (will not cancel the default perk) and conditions are met
+			//if (!ari_is_in_dungeon || (priestess_shield_active && !AriHasInvulnerableHits())) // Cancel any shield (mod's or default perk)
 				CancelPriestessShield(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
 		}
 		else
@@ -903,7 +910,7 @@ RValue& GmlScriptGetMinutesCallback(
 		}
 
 		// Sanity ticks every 30s.
-		if (Arguments[0]->m_i64 % THIRTY_SECONDS == 0 && !is_sanity_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_sanity_tick) >= THIRTY_SECONDS)
+		if (Arguments[0]->m_i64 % SEVENTY_TWO_SECONDS == 0 && !is_sanity_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_sanity_tick) >= SEVENTY_TWO_SECONDS)
 		{
 			is_sanity_tracked_time_interval = true;
 			time_of_last_sanity_tick = Arguments[0]->m_i64;
@@ -1273,7 +1280,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 		g_ModuleInterface->CallBuiltin(
 			"draw_set_font",
 			{
-				8 //font
+				20 // 20 looks clean, 19 includes % (NOTE: The font index can change with patches)
 			}
 		);
 
@@ -1354,7 +1361,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 		g_ModuleInterface->CallBuiltin(
 			"draw_set_font",
 			{
-				8 //font
+				20 // 20 looks clean, 19 includes % (NOTE: The font index can change with patches)
 			}
 		);
 
@@ -1835,7 +1842,7 @@ RValue& GmlScriptIsDungeonRoomCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_is_dungeon_room"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_IS_DUNGEON_ROOM));
 	original(
 		Self,
 		Other,
@@ -1863,7 +1870,7 @@ RValue& GmlScriptGetDisplayNameCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get_display_name@anon@1883@LiveItem@LiveItem"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME));
 	original(
 		Self,
 		Other,
@@ -1884,7 +1891,7 @@ RValue& GmlScriptGetDisplayDescriptionCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get_display_description@anon@2798@LiveItem@LiveItem"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION));
 	original(
 		Self,
 		Other,
@@ -1980,7 +1987,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		}
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get@Localizer@Localizer"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_LOCALIZER_GET));
 	original(
 		Self,
 		Other,
@@ -2395,18 +2402,18 @@ void CreateHookGmlScriptIsDungeonRoom(AurieStatus& status)
 {
 	CScript* gml_script_try_location_id_to_string = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_is_dungeon_room",
+		GML_SCRIPT_IS_DUNGEON_ROOM,
 		(PVOID*)&gml_script_try_location_id_to_string
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_is_dungeon_room)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (%s)!", GML_SCRIPT_IS_DUNGEON_ROOM);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_is_dungeon_room",
+		GML_SCRIPT_IS_DUNGEON_ROOM,
 		gml_script_try_location_id_to_string->m_Functions->m_ScriptFunction,
 		GmlScriptIsDungeonRoomCallback,
 		nullptr
@@ -2414,7 +2421,7 @@ void CreateHookGmlScriptIsDungeonRoom(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_is_dungeon_room)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (%s)!", GML_SCRIPT_IS_DUNGEON_ROOM);
 	}
 }
 
@@ -2422,18 +2429,18 @@ void CreateHookGmlScriptGetDisplayName(AurieStatus& status)
 {
 	CScript* gml_script_get_display_description = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_get_display_name@anon@1883@LiveItem@LiveItem",
+		GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME,
 		(PVOID*)&gml_script_get_display_description
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_get_display_name@anon@1883@LiveItem@LiveItem)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (%s)!", GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_get_display_name@anon@1883@LiveItem@LiveItem",
+		GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME,
 		gml_script_get_display_description->m_Functions->m_ScriptFunction,
 		GmlScriptGetDisplayNameCallback,
 		nullptr
@@ -2441,7 +2448,7 @@ void CreateHookGmlScriptGetDisplayName(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_get_display_name@anon@1883@LiveItem@LiveItem)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (%s)!", GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME);
 	}
 }
 
@@ -2449,18 +2456,18 @@ void CreateHookGmlScriptGetDisplayDescription(AurieStatus& status)
 {
 	CScript* gml_script_get_display_description = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_get_display_description@anon@2798@LiveItem@LiveItem",
+		GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION,
 		(PVOID*)&gml_script_get_display_description
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_get_display_description@anon@2798@LiveItem@LiveItem)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (%s)!", GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_get_display_description@anon@2798@LiveItem@LiveItem",
+		GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION,
 		gml_script_get_display_description->m_Functions->m_ScriptFunction,
 		GmlScriptGetDisplayDescriptionCallback,
 		nullptr
@@ -2468,7 +2475,7 @@ void CreateHookGmlScriptGetDisplayDescription(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_get_display_description@anon@2798@LiveItem@LiveItem)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (%s)!", GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION);
 	}
 }
 
@@ -2476,18 +2483,18 @@ void CreateHookGmlScriptGetLocalizer(AurieStatus& status)
 {
 	CScript* gml_script_get_localizer = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_get@Localizer@Localizer",
+		GML_SCRIPT_LOCALIZER_GET,
 		(PVOID*)&gml_script_get_localizer
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (gml_Script_get@Localizer@Localizer)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to get script (%s)!", GML_SCRIPT_LOCALIZER_GET);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_get@Localizer@Localizer",
+		GML_SCRIPT_LOCALIZER_GET,
 		gml_script_get_localizer->m_Functions->m_ScriptFunction,
 		GmlScriptGetLocalizerCallback,
 		nullptr
@@ -2495,7 +2502,7 @@ void CreateHookGmlScriptGetLocalizer(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (gml_Script_get@Localizer@Localizer)!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - Failed to hook script (%s)!", GML_SCRIPT_LOCALIZER_GET);
 	}
 }
 
