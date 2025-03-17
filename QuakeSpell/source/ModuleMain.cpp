@@ -32,7 +32,7 @@ static const int DEFAULT_MAXIMUM_MAGNITUDE_VALUE = 9;
 static const char* const FULL_RESTORE_SPELL = "full_restore";
 static const char* const GROWTH_SPELL = "growth";
 static const char* const SUMMON_RAIN_SPELL = "summon_rain";
-static const char* const FIRE_BREATH = "fire_breath";
+static const char* const FIRE_BREATH_SPELL = "fire_breath";
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
