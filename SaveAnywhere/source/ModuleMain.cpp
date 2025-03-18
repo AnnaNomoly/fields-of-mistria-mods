@@ -14,6 +14,7 @@ static const double UNSET_INT = -1;
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
 static bool mod_healthy = false;
+static bool mod_save = false;
 static int ari_x = UNSET_INT;
 static int ari_y = UNSET_INT;
 static int ari_room_id = UNSET_INT;
@@ -30,8 +31,14 @@ static std::string mod_folder = "";
 static int mines_entry_location_id = UNSET_INT;
 static std::map<int, const char*> location_id_to_name_map = {};
 
-void ResetVars()
+void ResetStaticFields(bool returnedToTitleScreen)
 {
+	if (returnedToTitleScreen)
+	{
+		save_prefix = "";
+	}
+
+	mod_save = false;
 	ari_x = UNSET_INT;
 	ari_y = UNSET_INT;
 	ari_room_id = UNSET_INT;
@@ -90,6 +97,8 @@ void WriteModFile()
 
 void SaveGame(CInstance* Self, CInstance* Other)
 {
+	mod_save = true;
+
 	CScript* gml_script_save_game = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
 		"gml_Script_save_game",
@@ -254,6 +263,50 @@ void ObjectCallback(
 	}
 }
 
+RValue& GmlScriptSaveGameCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (!mod_save)
+	{
+		// No save prefix has been detected. This should only happen when a new game is started.
+		if (save_prefix.size() == 0)
+		{
+			// Get the save file name.
+			std::string save_file = Arguments[0]->AsString().data();
+			std::size_t index = save_file.find_last_of("/");
+			std::string save_name = save_file.substr(index + 1);
+
+			// Check it's a valid value.
+			if (save_name.find("undefined") == std::string::npos)
+			{
+				// Get the save prefix.
+				index = save_name.find_last_of("-");
+				save_prefix = save_name.substr(0, index + 1);
+			}
+		}
+	}
+	else
+	{
+		mod_save = false;
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_save_game"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
 RValue& GmlScriptLoadGameCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -347,9 +400,16 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 
 		if (GetAsyncKeyState(VK_HOME) & 1)
 		{
-			WriteModFile();
-			SaveGame(Self, Other);
-			DisplaySaveNotification(Self, Other);
+			if (save_prefix.size() != 0)
+			{
+				WriteModFile();
+				SaveGame(Self, Other);
+				DisplaySaveNotification(Self, Other);
+			}
+			else
+			{
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SaveAnywhere %s] - Game was NOT saved! An autosave file has not been created. If this is a new file you must save at the bed at least once.", VERSION);
+			}
 		}
 	}
 
@@ -379,7 +439,7 @@ RValue& GmlScriptEndDayCallback(
 		std::string file_name = mod_folder + "\\" + save_prefix + "autosave.sav";
 		std::remove(file_name.c_str());
 
-		ResetVars();
+		ResetStaticFields(false);
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_end_day"));
@@ -465,7 +525,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	{
 		if (mod_healthy)
 		{
-			ResetVars();
+			ResetStaticFields(true);
 		}
 	}
 
@@ -496,12 +556,39 @@ void CreateHookObject(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptSaveGame(AurieStatus& status)
+{
+	CScript* gml_script_save_game = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_save_game",
+		(PVOID*)&gml_script_save_game
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Failed to get script (gml_Script_save_game)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_save_game",
+		gml_script_save_game->m_Functions->m_ScriptFunction,
+		GmlScriptSaveGameCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Failed to hook script (gml_Script_save_game)!", VERSION);
+	}
+}
+
 void CreateHookGmlScriptLoadGame(AurieStatus& status)
 {
-	CScript* gml_script_held_item = nullptr;
+	CScript* gml_script_load_game = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
 		"gml_Script_load_game",
-		(PVOID*)&gml_script_held_item
+		(PVOID*)&gml_script_load_game
 	);
 
 	if (!AurieSuccess(status))
@@ -512,7 +599,7 @@ void CreateHookGmlScriptLoadGame(AurieStatus& status)
 	status = MmCreateHook(
 		g_ArSelfModule,
 		"gml_Script_load_game",
-		gml_script_held_item->m_Functions->m_ScriptFunction,
+		gml_script_load_game->m_Functions->m_ScriptFunction,
 		GmlScriptLoadGameCallback,
 		nullptr
 	);
@@ -525,10 +612,10 @@ void CreateHookGmlScriptLoadGame(AurieStatus& status)
 
 void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 {
-	CScript* gml_script_modify_stamina = nullptr;
+	CScript* gml_script_show_room_title = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
 		"gml_Script_show_room_title",
-		(PVOID*)&gml_script_modify_stamina
+		(PVOID*)&gml_script_show_room_title
 	);
 
 	if (!AurieSuccess(status))
@@ -539,7 +626,7 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 	status = MmCreateHook(
 		g_ArSelfModule,
 		"gml_Script_show_room_title",
-		gml_script_modify_stamina->m_Functions->m_ScriptFunction,
+		gml_script_show_room_title->m_Functions->m_ScriptFunction,
 		GmlScriptShowRoomTitleCallback,
 		nullptr
 	);
@@ -552,10 +639,10 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 
 void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 {
-	CScript* gml_script_held_item = nullptr;
+	CScript* gml_script_try_location_id_to_string = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
 		"gml_Script_try_location_id_to_string",
-		(PVOID*)&gml_script_held_item
+		(PVOID*)&gml_script_try_location_id_to_string
 	);
 
 	if (!AurieSuccess(status))
@@ -566,7 +653,7 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 	status = MmCreateHook(
 		g_ArSelfModule,
 		"gml_Script_try_location_id_to_string",
-		gml_script_held_item->m_Functions->m_ScriptFunction,
+		gml_script_try_location_id_to_string->m_Functions->m_ScriptFunction,
 		GmlScriptTryLocationIdToStringCallback,
 		nullptr
 	);
@@ -647,6 +734,13 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	g_ModuleInterface->Print(CM_LIGHTAQUA, "[SaveAnywhere %s] - Plugin starting...", VERSION);
 
 	CreateHookObject(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptSaveGame(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - Exiting due to failure on start!", VERSION);
