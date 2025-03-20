@@ -892,6 +892,16 @@ RValue& GmlScriptGetMinutesCallback(
 {
 	if (game_is_active)
 	{
+		int current_time_in_seconds = 0;
+		if (Arguments[0]->m_Kind == VALUE_INT32)
+			current_time_in_seconds = Arguments[0]->m_i32;
+		else if (Arguments[0]->m_Kind == VALUE_INT64)
+			current_time_in_seconds = Arguments[0]->m_i64;
+		else if (Arguments[0]->m_Kind == VALUE_REAL)
+			current_time_in_seconds = Arguments[0]->m_Real;
+		else
+			g_ModuleInterface->Print(CM_LIGHTRED, "[DontStarve] - ERROR: The argument to gml_Script_get_minutes was an unexpected type!");
+
 		// Set the most recent ticks to 6AM after end of day.
 		if (time_of_last_hunger_tick == END_OF_DAY_IN_SECONDS)
 			time_of_last_hunger_tick = SIX_AM_IN_SECONDS;
@@ -899,9 +909,9 @@ RValue& GmlScriptGetMinutesCallback(
 			time_of_last_sanity_tick = SIX_AM_IN_SECONDS;
 
 		// Hunger ticks every 30m.
-		if (/*Arguments[0]->m_i64 % THIRY_MINUTES_IN_SECONDS == 0 &&*/ !is_hunger_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_hunger_tick) >= THIRY_MINUTES_IN_SECONDS) {
+		if (!is_hunger_tracked_time_interval && (current_time_in_seconds - time_of_last_hunger_tick) >= THIRY_MINUTES_IN_SECONDS) {
 			is_hunger_tracked_time_interval = true;
-			time_of_last_hunger_tick = Arguments[0]->m_i64;
+			time_of_last_hunger_tick = current_time_in_seconds;
 
 			// Adjust hunger
 			ari_hunger_value += HUNGER_LOST_PER_TICK;
@@ -910,10 +920,10 @@ RValue& GmlScriptGetMinutesCallback(
 		}
 
 		// Sanity ticks every 30s.
-		if (/*Arguments[0]->m_i64 % ONE_MINUTE_IN_SECONDS == 0 &&*/ !is_sanity_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_sanity_tick) >= SEVENTY_TWO_SECONDS)
+		if (!is_sanity_tracked_time_interval && (current_time_in_seconds - time_of_last_sanity_tick) >= SEVENTY_TWO_SECONDS)
 		{
 			is_sanity_tracked_time_interval = true;
-			time_of_last_sanity_tick = Arguments[0]->m_i64;
+			time_of_last_sanity_tick = current_time_in_seconds;
 
 			// Reduce sanity.
 			bool sanity_loss_occurred = false;
@@ -927,7 +937,7 @@ RValue& GmlScriptGetMinutesCallback(
 			else
 			{
 				// Reduce sanity for being outdoors at night.
-				if (IsNight(Arguments[0]->m_i64) && AriIsAtSanityLossLocation())
+				if (IsNight(current_time_in_seconds) && AriIsAtSanityLossLocation())
 				{
 					ari_sanity_value += SANITY_LOST_PER_TICK;
 					if (ari_sanity_value < 0)
@@ -976,7 +986,7 @@ RValue& GmlScriptGetMinutesCallback(
 		}
 
 		// Every 1m snapshot Ari's position.
-		if (Arguments[0]->m_i64 % ONE_MINUTE_IN_SECONDS == 0)
+		if (current_time_in_seconds % ONE_MINUTE_IN_SECONDS == 0)
 		{
 			snapshot_position = true;
 		}
@@ -984,15 +994,15 @@ RValue& GmlScriptGetMinutesCallback(
 		// Blood Pact perk.
 		if (!ari_is_in_dungeon)
 		{
-			time_of_last_priestess_shield_tick = Arguments[0]->m_i64;
+			time_of_last_priestess_shield_tick = current_time_in_seconds;
 			is_priestess_shield_tracked_time_interval = false;
 		}
 		else
 		{
-			if (!is_priestess_shield_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_priestess_shield_tick) >= ONE_HOUR_IN_SECONDS)
+			if (!is_priestess_shield_tracked_time_interval && (current_time_in_seconds - time_of_last_priestess_shield_tick) >= ONE_HOUR_IN_SECONDS)
 			{
 				is_priestess_shield_tracked_time_interval = true;
-				time_of_last_priestess_shield_tick = Arguments[0]->m_i64;
+				time_of_last_priestess_shield_tick = current_time_in_seconds;
 			}
 		}
 	}
