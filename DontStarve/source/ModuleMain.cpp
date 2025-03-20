@@ -899,7 +899,7 @@ RValue& GmlScriptGetMinutesCallback(
 			time_of_last_sanity_tick = SIX_AM_IN_SECONDS;
 
 		// Hunger ticks every 30m.
-		if (Arguments[0]->m_i64 % THIRY_MINUTES_IN_SECONDS == 0 && !is_hunger_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_hunger_tick) >= THIRY_MINUTES_IN_SECONDS) {
+		if (/*Arguments[0]->m_i64 % THIRY_MINUTES_IN_SECONDS == 0 &&*/ !is_hunger_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_hunger_tick) >= THIRY_MINUTES_IN_SECONDS) {
 			is_hunger_tracked_time_interval = true;
 			time_of_last_hunger_tick = Arguments[0]->m_i64;
 
@@ -910,7 +910,7 @@ RValue& GmlScriptGetMinutesCallback(
 		}
 
 		// Sanity ticks every 30s.
-		if (Arguments[0]->m_i64 % SEVENTY_TWO_SECONDS == 0 && !is_sanity_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_sanity_tick) >= SEVENTY_TWO_SECONDS)
+		if (/*Arguments[0]->m_i64 % ONE_MINUTE_IN_SECONDS == 0 &&*/ !is_sanity_tracked_time_interval && (Arguments[0]->m_i64 - time_of_last_sanity_tick) >= SEVENTY_TWO_SECONDS)
 		{
 			is_sanity_tracked_time_interval = true;
 			time_of_last_sanity_tick = Arguments[0]->m_i64;
