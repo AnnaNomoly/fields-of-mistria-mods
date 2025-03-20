@@ -3,7 +3,7 @@
 using namespace Aurie;
 using namespace YYTK;
 
-static const char* const VERSION = "0.0.1";
+static const char* const VERSION = "1.0.0";
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_locations = true;
@@ -28,22 +28,6 @@ bool RValueToBool(RValue value)
 	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
 		return true;
 	return false;
-}
-
-void ObjectCallback(
-	IN FWCodeEvent& CodeEvent
-)
-{
-	auto& [self, other, code, argc, argv] = CodeEvent.Arguments();
-
-	if (!self)
-		return;
-
-	if (!self->m_Object)
-		return;
-
-	if (!strstr(self->m_Object->m_Name, "obj_ari"))
-		return;
 }
 
 RValue& GmlScriptGetWeatherCallback(
@@ -365,13 +349,6 @@ EXPORTED AurieStatus ModuleInitialize(
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
 	g_ModuleInterface->Print(CM_LIGHTAQUA, "[StopTimeIndoors %s] - Plugin starting...", VERSION);
-	
-	g_ModuleInterface->CreateCallback(
-		g_ArSelfModule,
-		EVENT_OBJECT_CALL,
-		ObjectCallback,
-		0
-	);
 
 	CreateHookGmlScriptGetWeather(status);
 	if (!AurieSuccess(status))
