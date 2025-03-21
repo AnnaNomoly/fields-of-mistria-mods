@@ -39,7 +39,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 }
 ```
 
-## Cosmetic Table (FoM v0.12.1)
+## Cosmetic Table (FoM v0.13.2)
 | Cosmetic Name |
 | ----------- |
 | back_gear_basic_backpack |
@@ -138,6 +138,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_circlet_earth |
 | head_clips_angel_wing |
 | head_clips_bat_wing |
+| head_clips_heart |
 | head_clips_moon |
 | head_clips_star |
 | head_clips_strawberry |
@@ -157,6 +158,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_flower_crown |
 | head_flower_hat |
 | head_flower_top_hat |
+| head_gold_helmet |
 | head_halo |
 | head_headband_basic |
 | head_hijab |
@@ -186,6 +188,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_striped_bucket_hat |
 | head_sunhat_straw |
 | head_tangerine |
+| head_tarnished_gold_helmet |
 | head_teapot |
 | head_verdigris_helmet |
 | head_witch_hat |
@@ -200,9 +203,11 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | pants_copper_armor |
 | pants_crystal_armor |
 | pants_explorer |
+| pants_gold_armor |
 | pants_iron_armor |
 | pants_scrap_metal |
 | pants_silver_armor |
+| pants_tarnished_gold_armor |
 | pants_verdigris_armor |
 | robe_dragon_cleric |
 | robe_earth |
@@ -218,6 +223,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | shoes_boots_explorer |
 | shoes_boots_farmer |
 | shoes_boots_fishing |
+| shoes_boots_gold_armor |
 | shoes_boots_iron_armor |
 | shoes_boots_miner |
 | shoes_boots_noble |
@@ -226,6 +232,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | shoes_boots_scrap_metal |
 | shoes_boots_short_basic |
 | shoes_boots_silver_armor |
+| shoes_boots_tarnished_gold_armor |
 | shoes_boots_verdigris_armor |
 | shoes_boots_work |
 | shoes_dressy_stockings |
@@ -251,6 +258,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | top_crystal_armor |
 | top_explorer |
 | top_fishing_vest |
+| top_gold_armor |
 | top_iron_armor |
 | top_jacket_and_tee_basic |
 | top_long_sleeve_baseball |
@@ -267,6 +275,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | top_silver_armor |
 | top_tanktop |
 | top_tanktop_buttons |
+| top_tarnished_gold_armor |
 | top_tee_basic |
 | top_tee_oversized |
 | top_tee_ringer_basic |
