@@ -1,6 +1,7 @@
 #include <map>
-#include <iostream>
 #include <fstream>
+//#include <sstream>
+#include <iostream>
 #include <codecvt>
 #include <shlobj.h>
 #include <filesystem>
@@ -285,32 +286,96 @@ void DisplayNotification(CInstance* Self, CInstance* Other, std::string localiza
 
 void UnlockGifts(CInstance* npc, std::string npc_name)
 {
-	RValue me_exists = g_ModuleInterface->CallBuiltin("struct_exists", { npc, "me" });
-	if (me_exists.m_Kind == VALUE_BOOL && me_exists.m_Real == 1)
+	if (!gifts_to_unlock[npc_name].empty())
 	{
-		RValue me = g_ModuleInterface->CallBuiltin("struct_get", { npc, "me" });
-		RValue known_gift_preferences_exists = g_ModuleInterface->CallBuiltin("struct_exists", { me, "known_gift_preferences" });
-		if (known_gift_preferences_exists.m_Kind == VALUE_BOOL && known_gift_preferences_exists.m_Real == 1)
+		RValue me_exists = g_ModuleInterface->CallBuiltin("struct_exists", { npc, "me" });
+		if (me_exists.m_Kind == VALUE_BOOL && me_exists.m_Real == 1)
 		{
-			RValue known_gift_preferences = g_ModuleInterface->CallBuiltin("struct_get", { me, "known_gift_preferences" });
-			RValue inner_exists = g_ModuleInterface->CallBuiltin("struct_exists", { known_gift_preferences, "inner" });
-			if (inner_exists.m_Kind == VALUE_BOOL && inner_exists.m_Real == 1)
+			RValue me = g_ModuleInterface->CallBuiltin("struct_get", { npc, "me" });
+			RValue known_gift_preferences_exists = g_ModuleInterface->CallBuiltin("struct_exists", { me, "known_gift_preferences" });
+			if (known_gift_preferences_exists.m_Kind == VALUE_BOOL && known_gift_preferences_exists.m_Real == 1)
 			{
-				RValue inner = g_ModuleInterface->CallBuiltin("struct_get", { known_gift_preferences, "inner" });
-				for (int i = 0; i < gifts_to_unlock[npc_name].size(); i++)
+				RValue known_gift_preferences = g_ModuleInterface->CallBuiltin("struct_get", { me, "known_gift_preferences" });
+				RValue inner_exists = g_ModuleInterface->CallBuiltin("struct_exists", { known_gift_preferences, "inner" });
+				if (inner_exists.m_Kind == VALUE_BOOL && inner_exists.m_Real == 1)
 				{
-					// Set the gift preference.
-					RValue set = 0.0;
-					g_ModuleInterface->CallBuiltin("struct_set", { inner, item_name_to_id_map[gifts_to_unlock[npc_name][i]], set });
+					RValue inner = g_ModuleInterface->CallBuiltin("struct_get", { known_gift_preferences, "inner" });
+					for (int i = 0; i < gifts_to_unlock[npc_name].size(); i++)
+					{
+						// Check if this preference has already been learned.
+						RValue already_set = g_ModuleInterface->CallBuiltin("struct_exists", { inner, item_name_to_id_map[gifts_to_unlock[npc_name][i]] });
+						if (already_set.m_Kind == VALUE_BOOL && already_set.m_Real == 0)
+						{
+							// Set the gift preference.
+							RValue set = 0.0;
+							g_ModuleInterface->CallBuiltin("struct_set", { inner, item_name_to_id_map[gifts_to_unlock[npc_name][i]], set });
 
-					// Display the notification.
-					gift_preference_npc_name = npc_name;
-					gift_preference_internal_item_name = gifts_to_unlock[npc_name][i];
-					DisplayNotification(npc, npc, GIFT_PREFERENCE_UNLOCKED_LOCALIZATION_KEY);
+							// Display the notification.
+							gift_preference_npc_name = npc_name;
+							gift_preference_internal_item_name = gifts_to_unlock[npc_name][i];
+							DisplayNotification(npc, npc, GIFT_PREFERENCE_UNLOCKED_LOCALIZATION_KEY);
+						}
+					}
+					gifts_to_unlock[npc_name].clear();
 				}
-				gifts_to_unlock[npc_name].clear();
 			}
 		}
+	}
+}
+
+void ParseCustomModDialogue(CInstance* Self, CInstance* Other, std::string dialogue_key)
+{
+	std::string token;
+	std::istringstream iss(dialogue_key);
+	std::vector<std::string> tokens;
+
+	// Split the input string by '/'
+	while (std::getline(iss, token, '/')) {
+		tokens.push_back(token);
+	}
+
+	// Validate that the input has the expected prefix and minimum number of tokens.
+	// Expected tokens: "Conversations", "Mods", <mod_name>, then at least one group of
+	// ["gift_hint_<#>", <npc_name>, <item_name>] and finally the conversation name.
+	if (tokens.size() < 7 || tokens[0] != "Conversations" || tokens[1] != "Mods") {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Invalid custom mod dialogue key detected: %s", VERSION, dialogue_key.c_str());
+		return;
+	}
+
+	// The mod name is the third token.
+	std::string mod_name = tokens[2];
+
+	// The last token is the conversation name (ignored).
+	// Gift hint groups are found in the tokens from index 3 up to tokens.size() - 2.
+	size_t giftHintTokenCount = tokens.size() - 4; // subtracting 3 initial tokens and the last conversation token
+	if (giftHintTokenCount % 3 != 0) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Invalid custom mod dialogue key detected: %s", VERSION, dialogue_key.c_str());
+		return;
+	}
+
+	// Iterate over each group of gift hint tokens.
+	for (size_t i = 3; i < tokens.size() - 1; i += 3) {
+		// Validate that the first token of the group starts with "gift_hint_"
+		if (tokens[i].find("gift_hint_") != 0) {
+			g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Invalid custom mod dialogue key detected: %s", VERSION, dialogue_key.c_str());
+			return;
+		}
+
+		std::string npc_name = tokens[i + 1];  // second token of the group: NPC name
+		std::transform(npc_name.begin(), npc_name.end(), npc_name.begin(), [](unsigned char c) { return std::tolower(c); });
+
+		std::string item_name = tokens[i + 2]; // third token of the group: Item name
+		std::transform(item_name.begin(), item_name.end(), item_name.begin(), [](unsigned char c) { return std::tolower(c); });
+
+		if (gifts_to_unlock.count(npc_name) <= 0)
+			gifts_to_unlock[npc_name] = {};
+
+		gifts_to_unlock[npc_name].push_back(item_name);
+
+		// Display the notification.
+		gift_preference_npc_name = npc_name;
+		gift_preference_internal_item_name = item_name;
+		DisplayNotification(Self, Other, GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY);
 	}
 }
 
@@ -503,7 +568,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	IN RValue** Arguments
 )
 {
-	gifts_to_unlock = { { EILAND, {"pumpkin_pie", "apple_pie"} } }; //{};
+	gifts_to_unlock = {}; // { { EILAND, {"pumpkin_pie", "apple_pie"} } };
 	gift_preference_npc_name = "";
 	gift_preference_internal_item_name = "";
 
@@ -569,7 +634,11 @@ RValue& GmlScriptTranslateCallback(
 )
 {
 	std::string dialog_string = Arguments[0]->AsString().data();
-	if (GIFT_DIALOG_MAP.count(dialog_string) > 0)
+	if (dialog_string.find("Conversations/Mods") != std::string::npos)
+	{
+		ParseCustomModDialogue(Self, Other, dialog_string);
+	}
+	else if (GIFT_DIALOG_MAP.count(dialog_string) > 0)
 	{
 		auto range = GIFT_DIALOG_MAP.equal_range(dialog_string);
 		for (auto it = range.first; it != range.second; ++it)
