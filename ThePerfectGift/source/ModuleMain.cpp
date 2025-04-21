@@ -9,14 +9,14 @@
 using namespace Aurie;
 using namespace YYTK;
 
-static const char* const VERSION = "1.1.0";
+static const char* const VERSION = "1.1.2";
 static const std::string GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY = "mods/ThePerfectGift/gift_preference_detected";
 static const std::string GIFT_PREFERENCE_UNLOCKED_LOCALIZATION_KEY = "mods/ThePerfectGift/gift_preference_unlocked";
 static const std::string ITEM_PLACEHOLDER_TEXT = "<ITEM>";
 static const std::string NPC_PLACEHOLDER_TEXT = "<NPC>";
 static const std::string ADELINE = "adeline";
 static const std::string BALOR = "balor";
-//static const std::string CALDARUS = "caldarus";
+static const std::string CALDARUS = "caldarus";
 static const std::string CELINE = "celine";
 static const std::string DARCY = "darcy";
 static const std::string DELL = "dell";
@@ -70,6 +70,9 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Balor/Museum Lines/sapphire_betta/sapphire_betta/init", { BALOR, "sapphire_betta" }},
 	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_juniper/7", { BALOR, "ruby" }},
 	// Caldarus
+	{ "Conversations/Bank/Caldarus/Statue Lines/general_lines/general_lines_29/1", { CALDARUS, "beet_soup" }},
+	{ "Conversations/Bank/Caldarus/Statue Lines/general_lines/general_lines_30/1", { CALDARUS, "mont_blanc" }},
+	{ "Conversations/Bank/Caldarus/Banked Lines/items/spirit_mushroom_0/1", { CALDARUS, "spirit_mushroom_tea" }},
 	// Celine
 	{ "Conversations/Bank/Celine/Banked Lines/daisies/daisies/init", { CELINE, "daisy" }},
 	{ "Conversations/Bank/Celine/Market Lines/market_darcy_3/market_darcy_3/init", { CELINE, "rose_tea" }},
@@ -334,21 +337,16 @@ void ParseCustomModDialogue(CInstance* Self, CInstance* Other, std::string dialo
 		tokens.push_back(token);
 	}
 
-	// Validate that the input has the expected prefix and minimum number of tokens.
-	// Expected tokens: "Conversations", "Mods", <mod_name>, then at least one group of
-	// ["gift_hint_<#>", <npc_name>, <item_name>] and finally the conversation name.
-	if (tokens.size() < 7 || tokens[0] != "Conversations" || tokens[1] != "Mods") {
+	if (tokens.size() < 7 || tokens[0] != "conversations" || tokens[1] != "mods") {
 		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Invalid custom mod dialogue key detected: %s", VERSION, dialogue_key.c_str());
 		return;
 	}
 
-	// The mod name is the third token.
-	std::string mod_name = tokens[2];
+	//std::string mod_name = tokens[2];
 
-	// The last token is the conversation name (ignored).
 	// Gift hint groups are found in the tokens from index 3 up to tokens.size() - 2.
-	size_t giftHintTokenCount = tokens.size() - 4; // subtracting 3 initial tokens and the last conversation token
-	if (giftHintTokenCount % 3 != 0) {
+	size_t gift_hint_token_count = tokens.size() - 4; // Exclude the 3 initial tokens and the last conversation token
+	if (gift_hint_token_count % 3 != 0) {
 		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Invalid custom mod dialogue key detected: %s", VERSION, dialogue_key.c_str());
 		return;
 	}
@@ -361,16 +359,13 @@ void ParseCustomModDialogue(CInstance* Self, CInstance* Other, std::string dialo
 			return;
 		}
 
-		std::string npc_name = tokens[i + 1];  // second token of the group: NPC name
-		std::transform(npc_name.begin(), npc_name.end(), npc_name.begin(), [](unsigned char c) { return std::tolower(c); });
-
-		std::string item_name = tokens[i + 2]; // third token of the group: Item name
-		std::transform(item_name.begin(), item_name.end(), item_name.begin(), [](unsigned char c) { return std::tolower(c); });
-
+		std::string npc_name = tokens[i + 1];
 		if (gifts_to_unlock.count(npc_name) <= 0)
 			gifts_to_unlock[npc_name] = {};
 
-		gifts_to_unlock[npc_name].push_back(item_name);
+		std::string item_name = tokens[i + 2];
+		if (std::find(gifts_to_unlock[npc_name].begin(), gifts_to_unlock[npc_name].end(), item_name) == gifts_to_unlock[npc_name].end())
+			gifts_to_unlock[npc_name].push_back(item_name);
 
 		// Display the notification.
 		gift_preference_npc_name = npc_name;
@@ -419,8 +414,8 @@ void ObjectCallback(
 			UnlockGifts(self, ADELINE);
 		if (gifts_to_unlock.contains(BALOR) && strstr(self->m_Object->m_Name, "obj_balor"))
 			UnlockGifts(self, BALOR);
-		//if (gifts_to_unlock.contains(CALDARUS) && strstr(self->m_Object->m_Name, "obj_caldarus"))
-		//	UnlockGifts(self, CALDARUS);
+		if (gifts_to_unlock.contains(CALDARUS) && strstr(self->m_Object->m_Name, "obj_caldarus"))
+			UnlockGifts(self, CALDARUS);
 		if (gifts_to_unlock.contains(CELINE) && strstr(self->m_Object->m_Name, "obj_celine"))
 			UnlockGifts(self, CELINE);
 		if (gifts_to_unlock.contains(DARCY) && strstr(self->m_Object->m_Name, "obj_darcy"))
@@ -634,7 +629,9 @@ RValue& GmlScriptTranslateCallback(
 )
 {
 	std::string dialog_string = Arguments[0]->AsString().data();
-	if (dialog_string.find("Conversations/Mods") != std::string::npos)
+	std::string dialog_string_lowercase = Arguments[0]->AsString().data();
+	std::transform(dialog_string_lowercase.begin(), dialog_string_lowercase.end(), dialog_string_lowercase.begin(), [](unsigned char c) { return std::tolower(c); });
+	if (dialog_string_lowercase.find("conversations/mods") != std::string::npos && dialog_string_lowercase.find("gift_hint_") != std::string::npos)
 	{
 		ParseCustomModDialogue(Self, Other, dialog_string);
 	}
