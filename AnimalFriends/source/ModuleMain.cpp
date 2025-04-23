@@ -9,15 +9,18 @@ using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
-static const char* const VERSION = "1.1.1-TEST";
+static const char* const VERSION = "1.2.0";
 static const char* const FRIENDSHIP_MULTIPLIER_KEY = "friendship_multiplier";
 static const char* const AUTO_PET_KEY = "auto_pet";
 static const char* const AUTO_FEED_KEY = "auto_feed";
 static const char* const PREVENT_FRIENDSHIP_LOSS_KEY = "prevent_friendship_loss";
+static const char* const AUTO_BELL_KEY = "auto_bell";
+static const char* const ANIMAL_BED_TIME_KEY = "animal_bed_time";
 static const int DEFAULT_FRIENDSHIP_MULTIPLIER = 5;
 static const bool DEFAULT_PREVENT_FRIENDSHIP_LOSS = true;
 static const bool DEFAULT_AUTO_PET = false;
 static const bool DEFAULT_AUTO_FEED = false;
+static const bool DEFAULT_AUTO_BELL = false;
 static const int SIX_PM_IN_SECONDS = 64800;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
@@ -26,6 +29,8 @@ static int friendship_multiplier = DEFAULT_FRIENDSHIP_MULTIPLIER;
 static bool prevent_friendship_loss = DEFAULT_PREVENT_FRIENDSHIP_LOSS;
 static bool auto_pet = DEFAULT_AUTO_PET;
 static bool auto_feed = DEFAULT_AUTO_FEED;
+static bool auto_bell = DEFAULT_AUTO_BELL;
+static int animal_bed_time = SIX_PM_IN_SECONDS;
 static std::map<std::string, int> weather_name_to_id_map = {};
 static bool once_per_day = true;
 static int current_time_in_seconds = 0;
@@ -42,7 +47,7 @@ bool EnumFunction(
 
 bool IsAnimalBedtime(int clock_time_in_seconds)
 {
-	if (clock_time_in_seconds >= SIX_PM_IN_SECONDS)
+	if (clock_time_in_seconds >= animal_bed_time)
 		return true;
 	return false;
 }
@@ -73,11 +78,15 @@ void LogDefaultConfigValues()
 	prevent_friendship_loss = DEFAULT_PREVENT_FRIENDSHIP_LOSS;
 	auto_pet = DEFAULT_AUTO_PET;
 	auto_feed = DEFAULT_AUTO_FEED;
+	auto_bell = DEFAULT_AUTO_BELL;
+	animal_bed_time = SIX_PM_IN_SECONDS;
 
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, PREVENT_FRIENDSHIP_LOSS_KEY, DEFAULT_PREVENT_FRIENDSHIP_LOSS ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_PET_KEY, DEFAULT_AUTO_PET ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_FEED_KEY, DEFAULT_AUTO_FEED ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_KEY, DEFAULT_AUTO_BELL ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
 }
 
 void LoadWeather()
@@ -259,54 +268,57 @@ void ObjectCallback(
 
 	if (strstr(self->m_Object->m_Name, "obj_farm_bell"))
 	{
-		RValue bell_out_exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "bell_out" });
-		RValue bell_in_exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "bell_in" });
-		if (bell_out_exists.m_Kind == VALUE_BOOL && bell_out_exists.m_Real == 1 && bell_in_exists.m_Kind == VALUE_BOOL && bell_in_exists.m_Real == 1)
+		if (auto_bell)
 		{
-			if (!IsAnimalBedtime(current_time_in_seconds) && is_sunny)
+			RValue bell_out_exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "bell_out" });
+			RValue bell_in_exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "bell_in" });
+			if (bell_out_exists.m_Kind == VALUE_BOOL && bell_out_exists.m_Real == 1 && bell_in_exists.m_Kind == VALUE_BOOL && bell_in_exists.m_Real == 1)
 			{
-				RValue bell_out = g_ModuleInterface->CallBuiltin("struct_exists", { self, "__animal_friends__bell_out" });
-				if (bell_out.m_Kind == VALUE_BOOL && bell_out.m_Real == 0)
+				if (!IsAnimalBedtime(current_time_in_seconds) && is_sunny)
 				{
-					CScript* gml_script_bell_out = nullptr;
-					g_ModuleInterface->GetNamedRoutinePointer(
-						"gml_Script_bell_out@gml_Object_obj_farm_bell_Create_0",
-						(PVOID*)&gml_script_bell_out
-					);
+					RValue bell_out = g_ModuleInterface->CallBuiltin("struct_exists", { self, "__animal_friends__bell_out" });
+					if (bell_out.m_Kind == VALUE_BOOL && bell_out.m_Real == 0)
+					{
+						CScript* gml_script_bell_out = nullptr;
+						g_ModuleInterface->GetNamedRoutinePointer(
+							"gml_Script_bell_out@gml_Object_obj_farm_bell_Create_0",
+							(PVOID*)&gml_script_bell_out
+						);
 
-					RValue result;
-					gml_script_bell_out->m_Functions->m_ScriptFunction(
-						self,
-						self,
-						result,
-						0,
-						nullptr
-					);
+						RValue result;
+						gml_script_bell_out->m_Functions->m_ScriptFunction(
+							self,
+							self,
+							result,
+							0,
+							nullptr
+						);
 
-					g_ModuleInterface->CallBuiltin("struct_set", { self, "__animal_friends__bell_out", true });
+						g_ModuleInterface->CallBuiltin("struct_set", { self, "__animal_friends__bell_out", true });
+					}
 				}
-			}
-			else
-			{
-				RValue bell_in = g_ModuleInterface->CallBuiltin("struct_exists", { self, "__animal_friends__bell_in" });
-				if (bell_in.m_Kind == VALUE_BOOL && bell_in.m_Real == 0)
+				else
 				{
-					CScript* gml_script_bell_in = nullptr;
-					g_ModuleInterface->GetNamedRoutinePointer(
-						"gml_Script_bell_in@gml_Object_obj_farm_bell_Create_0",
-						(PVOID*)&gml_script_bell_in
-					);
+					RValue bell_in = g_ModuleInterface->CallBuiltin("struct_exists", { self, "__animal_friends__bell_in" });
+					if (bell_in.m_Kind == VALUE_BOOL && bell_in.m_Real == 0)
+					{
+						CScript* gml_script_bell_in = nullptr;
+						g_ModuleInterface->GetNamedRoutinePointer(
+							"gml_Script_bell_in@gml_Object_obj_farm_bell_Create_0",
+							(PVOID*)&gml_script_bell_in
+						);
 
-					RValue result;
-					gml_script_bell_in->m_Functions->m_ScriptFunction(
-						self,
-						self,
-						result,
-						0,
-						nullptr
-					);
+						RValue result;
+						gml_script_bell_in->m_Functions->m_ScriptFunction(
+							self,
+							self,
+							result,
+							0,
+							nullptr
+						);
 
-					g_ModuleInterface->CallBuiltin("struct_set", { self, "__animal_friends__bell_in", true });
+						g_ModuleInterface->CallBuiltin("struct_set", { self, "__animal_friends__bell_in", true });
+					}
 				}
 			}
 		}
@@ -322,13 +334,19 @@ RValue& GmlScriptAddHeartPointsAnimalCallback(
 )
 {
 	int original_heart_points = static_cast<int>(Arguments[0]->m_Real);
-	if (original_heart_points < 0)
+
+	// Prevent friendship loss.
+	if (prevent_friendship_loss)
 	{
-		original_heart_points = 0;
-		Arguments[0]->m_Real = 0.0;
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Prevented an animal's heart points from being reduced!", VERSION);
+		if (original_heart_points < 0)
+		{
+			original_heart_points = 0;
+			Arguments[0]->m_Real = 0.0;
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Prevented an animal's heart points from being reduced!", VERSION);
+		}
 	}
 
+	// Boost friendship gained.
 	int modified_heart_points = std::round(Arguments[0]->m_Real * friendship_multiplier);
 	Arguments[0]->m_Real = static_cast<double>(modified_heart_points);
 	if (modified_heart_points > 0)
@@ -457,6 +475,40 @@ RValue& GmlScriptSetupMainScreenCallback(
 							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_FEED_KEY, config_file.c_str());
 							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_FEED_KEY, DEFAULT_AUTO_FEED ? "true" : "false");
 						}
+
+						// Try loading the auto_bell value.
+						if (json_object.contains(AUTO_BELL_KEY))
+						{
+							auto_bell = json_object[AUTO_BELL_KEY];
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, AUTO_BELL_KEY, auto_bell ? "true" : "false");
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_BELL_KEY, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_KEY, DEFAULT_AUTO_BELL ? "true" : "false");
+						}
+
+						// Try loading the animal_bed_time value.
+						if (json_object.contains(ANIMAL_BED_TIME_KEY))
+						{
+							animal_bed_time = json_object[ANIMAL_BED_TIME_KEY];
+							if (animal_bed_time < 21600 || animal_bed_time > 86400)
+							{
+								g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, ANIMAL_BED_TIME_KEY, animal_bed_time, config_file.c_str());
+								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the value is a valid integer between 21600 and 86400 (inclusive)!", VERSION);
+								g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
+								animal_bed_time = SIX_PM_IN_SECONDS;
+							}
+							else
+							{
+								g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, animal_bed_time);
+							}
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, ANIMAL_BED_TIME_KEY, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
+						}
 					}
 				}
 				catch (...)
@@ -480,7 +532,9 @@ RValue& GmlScriptSetupMainScreenCallback(
 					{FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER},
 					{PREVENT_FRIENDSHIP_LOSS_KEY, DEFAULT_PREVENT_FRIENDSHIP_LOSS},
 					{AUTO_PET_KEY, DEFAULT_AUTO_PET},
-					{AUTO_FEED_KEY, DEFAULT_AUTO_FEED}
+					{AUTO_FEED_KEY, DEFAULT_AUTO_FEED},
+					{AUTO_BELL_KEY, DEFAULT_AUTO_BELL},
+					{ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS}
 				};
 						
 				std::ofstream out_stream(config_file);
