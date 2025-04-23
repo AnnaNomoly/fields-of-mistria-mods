@@ -8,7 +8,13 @@
 using namespace Aurie;
 using namespace YYTK;
 
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.0.2";
+static const std::string MINES_ENTRY = "mines_entry";
+static const std::string DUNGEON = "dungeon";
+static const std::string WATER_SEAL = "water_seal";
+static const std::string EARTH_SEAL = "earth_seal";
+static const std::string FIRE_SEAL = "fire_seal";
+static const std::string RUINS_SEAL = "ruins_seal";
 static const double UNSET_INT = -1;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
@@ -20,7 +26,7 @@ static int ari_y = UNSET_INT;
 static int ari_room_id = UNSET_INT;
 static int saved_x = UNSET_INT;
 static int saved_y = UNSET_INT;
-static int saved_room_id = UNSET_INT;
+static std::string saved_room_name = "";
 static bool wait_to_teleport_ari = false;
 static bool ready_to_teleport_ari = false;
 static bool wait_to_reposition_ari = false;
@@ -28,8 +34,8 @@ static bool ready_to_reposition_ari = false;
 static std::string save_prefix = "";
 static std::string save_folder = "";
 static std::string mod_folder = "";
-static int mines_entry_location_id = UNSET_INT;
-static std::map<int, const char*> location_id_to_name_map = {};
+static std::map<int, std::string> location_id_to_name_map = {};
+static std::map<std::string, int> location_name_to_id_map = {};
 
 void ResetStaticFields(bool returnedToTitleScreen)
 {
@@ -44,7 +50,7 @@ void ResetStaticFields(bool returnedToTitleScreen)
 	ari_room_id = UNSET_INT;
 	saved_x = UNSET_INT;
 	saved_y = UNSET_INT;
-	saved_room_id = UNSET_INT;
+	saved_room_name = "";
 	wait_to_teleport_ari = false;
 	ready_to_teleport_ari = false;
 	wait_to_reposition_ari = false;
@@ -60,35 +66,26 @@ void WriteModFile()
 		bool dungeon_location_override = false;
 		if (location_id_to_name_map.count(ari_room_id) > 0)
 		{
-			if (std::strcmp(location_id_to_name_map[ari_room_id], "dungeon") == 0)
-			{
+			if (location_id_to_name_map[ari_room_id] == DUNGEON)
 				dungeon_location_override = true;
-			}
-
-			if (std::strcmp(location_id_to_name_map[ari_room_id], "earth_seal") == 0)
-			{
+			if (location_id_to_name_map[ari_room_id] == WATER_SEAL)
 				dungeon_location_override = true;
-			}
-
-			if (std::strcmp(location_id_to_name_map[ari_room_id], "fire_seal") == 0)
-			{
+			if (location_id_to_name_map[ari_room_id] == EARTH_SEAL)
 				dungeon_location_override = true;
-			}
-
-			if (std::strcmp(location_id_to_name_map[ari_room_id], "water_seal") == 0)
-			{
+			if (location_id_to_name_map[ari_room_id] == FIRE_SEAL)
 				dungeon_location_override = true;
-			}
+			if (location_id_to_name_map[ari_room_id] == RUINS_SEAL)
+				dungeon_location_override = true;
 		}
 
 		if (dungeon_location_override)
 		{
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SaveAnywhere %s] - You are currently in the dungeon! Your location will be saved as \"mines_entry\" to avoid errors.", VERSION);
-			outfile << std::to_string(mines_entry_location_id) + " " + std::to_string(216) + " " + std::to_string(198);
+			outfile << MINES_ENTRY + " " + std::to_string(216) + " " + std::to_string(198);
 			g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Saved your game at the fallback location: \"mines_entry\".", VERSION);
 		}
 		else {
-			outfile << std::to_string(ari_room_id) + " " + std::to_string(ari_x) + " " + std::to_string(ari_y);
+			outfile << location_id_to_name_map[ari_room_id] + " " + std::to_string(ari_x) + " " + std::to_string(ari_y);
 			g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Saved your game at your current location: \"%s\".", VERSION, location_id_to_name_map[ari_room_id]);
 		}
 	}
@@ -137,39 +134,25 @@ void DisplaySaveNotification(CInstance* Self, CInstance* Other)
 	);
 }
 
-bool LoadLocationIds(CInstance* Self, CInstance* Other)
+bool LoadLocationIds()
 {
-	for (double i = 0; i < 200; i++)
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	// Load locations.
+	size_t array_length;
+	RValue location_ids = global_instance->at("__location_id__");
+	g_ModuleInterface->GetArraySize(location_ids, array_length);
+	for (size_t i = 0; i < array_length; i++)
 	{
-		CScript* gml_script_try_location_id_to_string = nullptr;
-		g_ModuleInterface->GetNamedRoutinePointer(
-			"gml_Script_try_location_id_to_string",
-			(PVOID*)&gml_script_try_location_id_to_string
-		);
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(location_ids, i, array_element);
 
-		RValue location_name;
-		RValue location_id = i;
-		RValue* location_id_ptr = &location_id;
-		gml_script_try_location_id_to_string->m_Functions->m_ScriptFunction(
-			Self,
-			Other,
-			location_name,
-			1,
-			{ &location_id_ptr }
-		);
-
-		if (location_name.m_Kind != VALUE_NULL && location_name.m_Kind != VALUE_UNSET && location_name.m_Kind != VALUE_UNDEFINED)
-		{
-			if (location_id_to_name_map.count(i) <= 0)
-			{
-				location_id_to_name_map[i] = location_name.AsString().data();
-				if(std::strcmp(location_name.AsString().data(), "mines_entry") == 0)
-					mines_entry_location_id = i;
-			}
-		}
+		location_id_to_name_map[i] = array_element->AsString().data();
+		location_name_to_id_map[array_element->AsString().data()] = i;
 	}
 
-	if (location_id_to_name_map.size() > 0)
+	if (location_id_to_name_map.size() > 0 && location_name_to_id_map.size() > 0)
 	{
 		return true;
 	}
@@ -233,7 +216,7 @@ void ObjectCallback(
 			);
 
 			RValue result;
-			RValue location_id = saved_room_id;
+			RValue location_id = location_name_to_id_map[saved_room_name];
 			RValue* location_id_ptr = &location_id;
 			gml_script_goto_location_id->m_Functions->m_ScriptFunction(
 				self,
@@ -243,7 +226,7 @@ void ObjectCallback(
 				{ &location_id_ptr }
 			);
 
-			saved_room_id = UNSET_INT;
+			saved_room_name = "";
 			wait_to_teleport_ari = false;
 			ready_to_teleport_ari = false;
 			wait_to_reposition_ari = true;
@@ -332,10 +315,10 @@ RValue& GmlScriptLoadGameCallback(
 			std::ifstream file(mod_folder + "\\" + save_name);
 			if (file.good())
 			{
-				file >> saved_room_id >> saved_x >> saved_y;
+				file >> saved_room_name >> saved_x >> saved_y;
 				wait_to_teleport_ari = true;
 
-				g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Loaded your saved location: \"%s\".", VERSION, location_id_to_name_map[saved_room_id]);
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Loaded your saved location: \"%s\".", VERSION, saved_room_name.c_str());
 			}
 			file.close();
 		}
@@ -475,15 +458,16 @@ RValue& GmlScriptSetupMainScreenCallback(
 				std::string fields_of_mistria_folder = wstr_to_string(localAppDataFolder) + "\\FieldsOfMistria";
 				if (std::filesystem::exists(fields_of_mistria_folder))
 				{
-					// Try to find the AppData\Local\FieldsOfMistria\mod_data directory.
-					std::string mod_data_folder = fields_of_mistria_folder + "\\mod_data";
+					// Try to find the mod_data directory.
+					std::string current_dir = std::filesystem::current_path().string();
+					std::string mod_data_folder = current_dir + "\\mod_data";
 					if (!std::filesystem::exists(mod_data_folder))
 					{
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SaveAnywhere %s] - The \"mod_data\" directory was not found. Creating directory: %s", VERSION, mod_data_folder.c_str());
 						std::filesystem::create_directory(mod_data_folder);
 					}
 
-					// Try to find the AppData\Local\FieldsOfMistria\mod_data\SaveAnywhere directory.
+					// Try to find the mod_data\SaveAnywhere directory.
 					std::string save_anywhere_folder = mod_data_folder + "\\SaveAnywhere";
 					if (!std::filesystem::exists(save_anywhere_folder))
 					{
@@ -513,7 +497,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 			handle_eptr(eptr);
 		}
 
-		mod_healthy = mod_healthy && LoadLocationIds(Self, Other);
+		mod_healthy = mod_healthy && LoadLocationIds();
 		if (!mod_healthy)
 		{
 			g_ModuleInterface->Print(CM_LIGHTRED, "[SaveAnywhere %s] - The mod is not healthy and will NOT function!", VERSION);
