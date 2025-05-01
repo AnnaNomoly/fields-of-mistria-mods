@@ -181,7 +181,7 @@ RValue& GmlScriptGiveItemCallback(
 				"get_integer",
 				{
 					"Dig Up Anything\r\n"
-					"--------------------------------------------------\r\n"
+					"--------------------\r\n"
 					"How many of the item would you like?\r\n"
 					"Input a number between 1 and 999.\r\n",
 					1
@@ -259,7 +259,7 @@ RValue& GmlScriptHeldItemCallback(
 			"get_string",
 			{
 				"Dig Up Anything\r\n"
-				"--------------------------------------------------\r\n"
+				"--------------------\r\n"
 				"Input the desired item's internal name.\r\n"
 				"Example: rosehip_jam\r\n"
 				"More Info: https://github.com/AnnaNomoly/YYToolkit/tree/stable/DigUpAnything",
