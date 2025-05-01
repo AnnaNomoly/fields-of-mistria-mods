@@ -766,5 +766,6 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		return status;
 	}
 
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Plugin started!", VERSION);
 	return AURIE_SUCCESS;
 }
