@@ -1,9 +1,5 @@
 #include <random>
-#include <iostream>
 #include <fstream>
-#include <codecvt>
-#include <shlobj.h>
-#include <filesystem>
 #include <nlohmann/json.hpp>
 #include <YYToolkit/Shared.hpp>
 using namespace Aurie;
@@ -14,15 +10,14 @@ static const char* const YYTK_KEY = "__YYTK";
 static const char* const DIG_UP_ANYTHING_KEY = "DigUpAnything";
 static const char* const SECRET_SANTA_KEY = "SecretSanta";
 static const char* const IGNORE_NEXT_DIG_SPOT_KEY = "ignore_next_dig_spot";
-static const char* const VERSION = "1.0.0";
-static const double MAX_HEART_POINTS = 705; // 6 hearts is the current max friendship as of v0.12. See "misc/npc_heart_point_table" in fiddle file for heart points per level.
+static const char* const VERSION = "1.1.0";
 static const double UNSET_INT = -1;
 static const double UNSET_DOUBLE = -1.0;
 static const std::string GIFTS[] = {
-	"berry_bowl", "beet_soup", "fried_rice", "vegetable_pot_pie", "floral_tea", 
+	"berry_bowl", "beet_soup", "fried_rice", "vegetable_pot_pie", "floral_tea",
 	"tulip_cake", "sushi_platter", "lobster_roll", "summer_salad", "vegetable_quiche"
 };
-static const std::string ACTIVE_NPC_NAMES[] = { 
+static const std::string ACTIVE_NPC_NAMES[] = {
 	"adeline", "balor", "celine", "darcy", "dell", "dozy", "eiland",
 	"elsie", "errol", "hayden", "hemlock", "henrietta", "holt", "josephine",
 	"juniper", "landen", "luc", "louis", "maple", "march", "merri",
@@ -33,23 +28,54 @@ static const std::string ACTIVE_NPC_NAMES[] = {
 static const std::string SENDER_KEY = "sender";
 static const std::string RECIPIENT_KEY = "recipient";
 static const std::string MAIL_SENT_KEY = "mail_sent";
-static const std::string GIFT_GIVEN_KEY = "gift_given";
+
+// Gif received dialogue.
+static const std::string ADELINE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Adeline/init";
+static const std::string BALOR_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Balor/init";
+static const std::string CELINE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Celine/init";
+static const std::string DARCY_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Darcy/init";
+static const std::string DELL_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Dell/init";
+static const std::string DOZY_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Dozy/init";
+static const std::string EILAND_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Eiland/init";
+static const std::string ELSIE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Elsie/init";
+static const std::string ERROL_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Errol/init";
+static const std::string HAYDEN_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Hayden/init";
+static const std::string HEMLOCK_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Hemlock/init";
+static const std::string HENRIETTA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Henrietta/init";
+static const std::string HOLT_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Holt/init";
+static const std::string JOSEPHINE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Josephine/init";
+static const std::string JUNIPER_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Juniper/init";
+static const std::string LANDEN_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Landen/init";
+static const std::string LUC_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Luc/init";
+static const std::string LOUIS_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Louis/init";
+static const std::string MAPLE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Maple/init";
+static const std::string MARCH_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/March/init";
+static const std::string MERRI_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Merri/init";
+static const std::string OLRIC_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Olric/init";
+static const std::string NORA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Nora/init";
+static const std::string REINA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Reina/init";
+static const std::string RYIS_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Ryis/init";
+static const std::string TERITHIA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Terithia/init";
+static const std::string VALEN_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Valen/init";
+static const std::string VERA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Vera/init";
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static RValue __YYTK;
 static bool load_on_start = true;
-static bool mod_healthy = false;
+static bool mod_healthy = true;
 static int day = UNSET_DOUBLE;
 static int season = UNSET_DOUBLE;
 static int year = UNSET_DOUBLE;
 static int stinky_stamina_potion_id = UNSET_INT;
-static std::string save_file = "";
-static std::string config_file = "";
+static std::string save_prefix = "";
+static std::string mod_folder = "";
 static std::string secret_santa_sender = "";
 static std::string secret_santa_recipient = "";
 static json json_object = json::object();
+static RValue custom_dialogue_value;
+static RValue* custom_dialogue_value_ptr = nullptr;
 
-void handle_eptr(std::exception_ptr eptr)
+void PrintException(std::exception_ptr eptr)
 {
 	try {
 		if (eptr) {
@@ -61,49 +87,72 @@ void handle_eptr(std::exception_ptr eptr)
 	}
 }
 
-std::string wstr_to_string(std::wstring wstr)
-{
-	std::vector<char> buf(wstr.size());
-	std::use_facet<std::ctype<wchar_t>>(std::locale{}).narrow(wstr.data(), wstr.data() + wstr.size(), '?', buf.data());
-
-	return std::string(buf.data(), buf.size());
-}
-
-std::string GetSaveHash()
-{
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
-	RValue __ari = global_instance->at("__ari").m_Object;
-
-	std::string name = __ari.at("name").AsString().data();
-	std::string farm_name = __ari.at("farm_name").AsString().data();
-	std::string birthday = std::to_string(static_cast<int>(__ari.at("birthday").m_Real));
-
-	std::string concat = name + farm_name + birthday;
-	size_t hash = std::hash<std::string>{}(concat);
-	return std::to_string(hash);
-}
-
 std::string FormatDateString(int day, int season, int year)
 {
 	return std::to_string(day) + "-" + std::to_string(season) + "-" + std::to_string(year);
 }
 
-void CreateDefaultJson()
+void ReadModFile()
 {
-	json default_json = {};
-	json_object = default_json;
+	// Read the custom mod data file.
+	if (save_prefix.length() != 0 && mod_folder.length() != 0)
+	{
+		std::exception_ptr eptr;
+		try
+		{
+			std::ifstream in_stream(mod_folder + "\\" + save_prefix + ".json");
+			if (in_stream.good())
+			{
+				json_object = json::parse(in_stream);
+			}
+			else
+			{
+				json_object = {};
+			}
+		}
+		catch (...)
+		{
+			mod_healthy = false;
+			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - An error occurred reading the mod file.", VERSION);
+
+			eptr = std::current_exception();
+			PrintException(eptr);
+		}
+	}
+	else
+	{
+		mod_healthy = false;
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - No save prefix detected when trying to read the mod file!", VERSION);
+	}
 }
 
-void CreateDefaultConfigFile()
+void SaveModFile()
 {
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - The \"SecretSanta.json\" file was not found. Creating file: %s", VERSION, config_file.c_str());
-	CreateDefaultJson();
+	// Write the custom mod data file.
+	if (save_prefix.length() != 0 && mod_folder.length() != 0)
+	{
+		std::exception_ptr eptr;
+		try
+		{
+			std::ofstream out_stream(mod_folder + "\\" + save_prefix + ".json");
+			out_stream << std::setw(4) << json_object << std::endl;
+			out_stream.close();
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - Saved the mod file!", VERSION);
+		}
+		catch (...)
+		{
+			mod_healthy = false;
+			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - An error occurred writing the mod file.", VERSION);
 
-	std::ofstream out_stream(config_file);
-	out_stream << std::setw(4) << json_object << std::endl;
-	out_stream.close();
+			eptr = std::current_exception();
+			PrintException(eptr);
+		}
+	}
+	else
+	{
+		mod_healthy = false;
+		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - No save prefix detected when trying to save the mod file!", VERSION);
+	}
 }
 
 void SendMail(std::string mail_name_str)
@@ -192,7 +241,7 @@ int GetNpcId(std::string npc_name)
 			return static_cast<int>(i);
 		}
 	}
-	
+
 	return UNSET_INT;
 }
 
@@ -207,10 +256,7 @@ void AddHeartPoints(std::string npc_name)
 		RValue __npc_database = global_instance->at("__npc_database");
 		RValue npc_database_0 = __npc_database[npc_id];
 		RValue original_heart_points = npc_database_0.at("heart_points");
-
 		RValue modified_heart_points = original_heart_points.m_Real + 20.0;
-		if (modified_heart_points.m_Real > MAX_HEART_POINTS)
-			modified_heart_points.m_Real = MAX_HEART_POINTS;
 
 		g_ModuleInterface->CallBuiltin(
 			"struct_set", {
@@ -354,6 +400,22 @@ bool IgnoreNextDigSpot()
 	return false;
 }
 
+void ResetStaticFields(bool returnedToTitleScreen)
+{
+	if (returnedToTitleScreen)
+	{
+		day = UNSET_DOUBLE;
+		season = UNSET_DOUBLE;
+		year = UNSET_DOUBLE;
+		save_prefix = "";
+		secret_santa_sender = "";
+		secret_santa_recipient = "";
+		json_object = {};
+		custom_dialogue_value = "";
+		custom_dialogue_value_ptr = nullptr;
+	}
+}
+
 RValue& GmlScriptCalendarDayCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -444,272 +506,264 @@ RValue& GmlScriptPlayConversationCallback(
 	{
 		if (season == 4 && day == 27)
 		{
-			const char* conversation_name = Arguments[0]->AsString().data(); 
+			std::string conversation_name = Arguments[0]->AsString().data();
 			std::string conversation_name_lowercase = conversation_name;
 			std::transform(conversation_name_lowercase.begin(), conversation_name_lowercase.end(), conversation_name_lowercase.begin(), [](unsigned char c) { return std::tolower(c); });
 
 			// Dialog involves the secret santa recipient.
 			if (conversation_name_lowercase.find(secret_santa_recipient) != std::string::npos)
 			{
-				bool is_secret_santa_gift = false;
-
 				// Dialog is a gift line.
-				if (strstr(conversation_name, "gift_lines"))
-				{
-					is_secret_santa_gift = true;
-				}
-
-				if (is_secret_santa_gift)
+				if (conversation_name.find("gift_lines") != std::string::npos)
 				{
 					// Speaker is Adeline.
-					if (strstr(conversation_name, "Conversations/Bank/Adeline"))
+					if (conversation_name.find("Conversations/Bank/Adeline") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Adeline/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
-						Arguments[0] = custom_dialog_ptr;
+						custom_dialogue_value = ADELINE_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Balor.
-					if (strstr(conversation_name, "Conversations/Bank/Balor"))
+					if (conversation_name.find("Conversations/Bank/Balor") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Balor/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
-						Arguments[0] = custom_dialog_ptr;
+						custom_dialogue_value = BALOR_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Celine.
-					if (strstr(conversation_name, "Conversations/Bank/Celine"))
+					if (conversation_name.find("Conversations/Bank/Celine") != std::string::npos)
 					{
-						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Celine/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
-						Arguments[0] = custom_dialog_ptr;
+						custom_dialogue_value = CELINE_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Darcy.
-					if (strstr(conversation_name, "Conversations/Bank/Darcy"))
+					if (conversation_name.find("Conversations/Bank/Darcy") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Darcy/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
-						Arguments[0] = custom_dialog_ptr;
+						custom_dialogue_value = DARCY_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Dell.
-					if (strstr(conversation_name, "Conversations/Bank/Dell"))
+					if (conversation_name.find("Conversations/Bank/Dell") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Dell/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
-						Arguments[0] = custom_dialog_ptr;
+						custom_dialogue_value = DELL_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Dozy.
-					if (strstr(conversation_name, "Conversations/Bank/Dozy"))
+					if (conversation_name.find("Conversations/Bank/Dozy") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Dozy/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
-						Arguments[0] = custom_dialog_ptr;
+						custom_dialogue_value = DOZY_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Eiland.
-					if (strstr(conversation_name, "Conversations/Bank/Eiland"))
+					if (conversation_name.find("Conversations/Bank/Eiland") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Eiland/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = EILAND_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Elsie.
-					if (strstr(conversation_name, "Conversations/Bank/Elsie"))
+					if (conversation_name.find("Conversations/Bank/Elsie") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Elsie/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = ELSIE_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Errol.
-					if (strstr(conversation_name, "Conversations/Bank/Errol"))
+					if (conversation_name.find("Conversations/Bank/Errol") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Errol/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = ERROL_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Hayden.
-					if (strstr(conversation_name, "Conversations/Bank/Hayden"))
+					if (conversation_name.find("Conversations/Bank/Hayden") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Hayden/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = HAYDEN_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Hemlock.
-					if (strstr(conversation_name, "Conversations/Bank/Hemlock"))
+					if (conversation_name.find("Conversations/Bank/Hemlock") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Hemlock/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = HEMLOCK_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Henrietta.
-					if (strstr(conversation_name, "Conversations/Bank/Henrietta"))
+					if (conversation_name.find("Conversations/Bank/Henrietta") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Henrietta/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = HENRIETTA_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Holt.
-					if (strstr(conversation_name, "Conversations/Bank/Holt"))
+					if (conversation_name.find("Conversations/Bank/Holt") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Holt/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = HOLT_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Josephine.
-					if (strstr(conversation_name, "Conversations/Bank/Josephine"))
+					if (conversation_name.find("Conversations/Bank/Josephine") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Josephine/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = JOSEPHINE_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Juniper.
-					if (strstr(conversation_name, "Conversations/Bank/Juniper"))
+					if (conversation_name.find("Conversations/Bank/Juniper") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Juniper/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = JUNIPER_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Landen.
-					if (strstr(conversation_name, "Conversations/Bank/Landen"))
+					if (conversation_name.find("Conversations/Bank/Landen") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Landen/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = LANDEN_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Luc.
-					if (strstr(conversation_name, "Conversations/Bank/Luc"))
+					if (conversation_name.find("Conversations/Bank/Luc") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Luc/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = LUC_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Louis.
-					if (strstr(conversation_name, "Conversations/Bank/Louis"))
+					if (conversation_name.find("Conversations/Bank/Louis") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Louis/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = LOUIS_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Maple.
-					if (strstr(conversation_name, "Conversations/Bank/Maple"))
+					if (conversation_name.find("Conversations/Bank/Maple") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Maple/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = MAPLE_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is March.
-					if (strstr(conversation_name, "Conversations/Bank/March"))
+					if (conversation_name.find("Conversations/Bank/March") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/March/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = MARCH_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Merri.
-					if (strstr(conversation_name, "Conversations/Bank/Merri"))
+					if (conversation_name.find("Conversations/Bank/Merri") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Merri/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = MERRI_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Olric.
-					if (strstr(conversation_name, "Conversations/Bank/Olric"))
+					if (conversation_name.find("Conversations/Bank/Olric") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Olric/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = OLRIC_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Nora.
-					if (strstr(conversation_name, "Conversations/Bank/Nora"))
+					if (conversation_name.find("Conversations/Bank/Nora") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Nora/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = NORA_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Reina.
-					if (strstr(conversation_name, "Conversations/Bank/Reina"))
+					if (conversation_name.find("Conversations/Bank/Reina") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Reina/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = REINA_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Ryis.
-					if (strstr(conversation_name, "Conversations/Bank/Ryis"))
+					if (conversation_name.find("Conversations/Bank/Ryis") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Ryis/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = RYIS_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Terithia.
-					if (strstr(conversation_name, "Conversations/Bank/Terithia"))
+					if (conversation_name.find("Conversations/Bank/Terithia") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Terithia/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = TERITHIA_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Valen.
-					if (strstr(conversation_name, "Conversations/Bank/Valen"))
+					if (conversation_name.find("Conversations/Bank/Valen") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Valen/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = VALEN_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Vera.
-					if (strstr(conversation_name, "Conversations/Bank/Vera"))
+					if (conversation_name.find("Conversations/Bank/Vera") != std::string::npos)
 					{
 						// Override the gift dialog.
-						RValue custom_dialog = "Conversations/Bank/Vera/Secret Santa/init";
-						RValue* custom_dialog_ptr = &custom_dialog;
+						custom_dialogue_value = VERA_GIFT_RECEIVED_DIALOGUE_KEY;
+						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
@@ -740,12 +794,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	IN RValue** Arguments
 )
 {
-	day = UNSET_DOUBLE;
-	season = UNSET_DOUBLE;
-	year = UNSET_DOUBLE;
-	save_file = "";
-	secret_santa_sender = "";
-	secret_santa_recipient = "";
+	ResetStaticFields(true);
 
 	if (load_on_start)
 	{
@@ -755,77 +804,32 @@ RValue& GmlScriptSetupMainScreenCallback(
 		std::exception_ptr eptr;
 		try
 		{
-			// Try to find the AppData\Local directory.
-			wchar_t* localAppDataFolder;
-			if (SHGetKnownFolderPath(FOLDERID_LocalAppData, KF_FLAG_CREATE, NULL, &localAppDataFolder) == S_OK)
+			// Try to find the mod_data directory.
+			std::string current_dir = std::filesystem::current_path().string();
+			std::string mod_data_folder = current_dir + "\\mod_data";
+			if (!std::filesystem::exists(mod_data_folder))
 			{
-				// Try to find the AppData\Local\FieldsOfMistria directory.
-				std::string fields_of_mistria_folder = wstr_to_string(localAppDataFolder) + "\\FieldsOfMistria";
-				if (std::filesystem::exists(fields_of_mistria_folder))
-				{
-					// Try to find the AppData\Local\FieldsOfMistria\mod_data directory.
-					std::string mod_data_folder = fields_of_mistria_folder + "\\mod_data";
-					if (!std::filesystem::exists(mod_data_folder))
-					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - The \"mod_data\" directory was not found. Creating directory: %s", VERSION, mod_data_folder.c_str());
-						std::filesystem::create_directory(mod_data_folder);
-					}
-
-					// Try to find the AppData\Local\FieldsOfMistria\mod_data\SecretSanta directory.
-					std::string secret_santa_folder = mod_data_folder + "\\SecretSanta";
-					if (!std::filesystem::exists(secret_santa_folder))
-					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - The \"SecretSanta\" directory was not found. Creating directory: %s", VERSION, secret_santa_folder.c_str());
-						std::filesystem::create_directory(secret_santa_folder);
-					}
-
-					// Try to find the AppData\Local\FieldsOfMistria\mod_data\SecretSanta\SecretSanta.json config file.
-					config_file = secret_santa_folder + "\\" + "SecretSanta.json";
-					std::ifstream in_stream(config_file);
-					if (in_stream.good())
-					{
-						try
-						{
-							json_object = json::parse(in_stream);
-							mod_healthy = true;
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - Loaded configuration file: %s", VERSION, config_file.c_str());
-						}
-						catch (...)
-						{
-							eptr = std::current_exception();
-							handle_eptr(eptr);
-
-							g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to parse JSON from configuration file: %s", VERSION, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - Make sure the file is valid JSON!", VERSION);
-						}
-
-						in_stream.close();
-					}
-					else
-					{
-						in_stream.close();
-
-						// Create the new config file.
-						CreateDefaultConfigFile();
-						mod_healthy = true;
-					}
-				}
-				else
-				{
-					g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to find the \"%s\" directory.", VERSION, "AppData\\Local\\FieldsOfMistria");
-				}
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - The \"mod_data\" directory was not found. Creating directory: %s", VERSION, mod_data_folder.c_str());
+				std::filesystem::create_directory(mod_data_folder);
 			}
-			else
+
+			// Try to find the mod_data\SecretSanta directory.
+			std::string secret_santa_folder = mod_data_folder + "\\SecretSanta";
+			if (!std::filesystem::exists(secret_santa_folder))
 			{
-				g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to find the \"%s\" directory.", VERSION, "AppData\\Local");
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - The \"SecretSanta\" directory was not found. Creating directory: %s", VERSION, secret_santa_folder.c_str());
+				std::filesystem::create_directory(secret_santa_folder);
 			}
+
+			mod_folder = secret_santa_folder;
 		}
 		catch (...)
 		{
-			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - An error occurred loading the mod configuration file.", VERSION);
-			
+			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - An error occurred when locating the mod directory.", VERSION);
+
 			eptr = std::current_exception();
-			handle_eptr(eptr);
+			PrintException(eptr);
+			mod_healthy = false;
 		}
 
 		int item_id = GetItemId(Self, Other, "stinky_stamina_potion");
@@ -839,21 +843,12 @@ RValue& GmlScriptSetupMainScreenCallback(
 			mod_healthy = false;
 		}
 
-		load_on_start = false;
-
 		if (!mod_healthy)
 		{
 			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - The mod has an unhealthy configuration and will NOT function!", VERSION);
 		}
-	}
-	else
-	{
-		if (mod_healthy)
-		{
-			// Reload the config file.
-			std::ifstream in_stream(config_file);
-			json_object = json::parse(in_stream);
-		}
+
+		load_on_start = false;
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
@@ -878,17 +873,14 @@ RValue& GmlScriptShowRoomTitleCallback(
 {
 	if (mod_healthy)
 	{
-		// The hash value used to group different saves for the same playthrough.
-		std::string save_hash = GetSaveHash();
-
 		// Formatted date strings.
 		std::string current_year_winter_20_date_string = FormatDateString(20, 4, year);
 		std::string current_year_winter_26_date_string = FormatDateString(26, 4, year);
 		std::string current_year_winter_27_date_string = FormatDateString(27, 4, year);
 		std::string current_year_object_key = "year-" + std::to_string(year);
 
-		// Check if an entry for the save hash doesn't exist in the JSON.
-		if (!json_object.contains(save_hash))
+		// Check if the JSON object doesn't have the current year.
+		if (!json_object.contains(current_year_object_key))
 		{
 			// Randomly determine the secret santa sender and recipient.
 			std::random_device rd;
@@ -911,114 +903,19 @@ RValue& GmlScriptShowRoomTitleCallback(
 
 			json current_year_winter_27_object = json::object();
 			current_year_winter_27_object[MAIL_SENT_KEY] = false;
-			current_year_winter_27_object[GIFT_GIVEN_KEY] = false;
 
-			// Create the save file object.
-			json save_file_object = json::object();
-			save_file_object[current_year_winter_20_date_string] = current_year_winter_20_object;
-			save_file_object[current_year_winter_26_date_string] = current_year_winter_26_object;
-			save_file_object[current_year_winter_27_date_string] = current_year_winter_27_object;
+			// Add the date objects to the current year object.
+			current_year_object[current_year_winter_20_date_string] = current_year_winter_20_object;
+			current_year_object[current_year_winter_26_date_string] = current_year_winter_26_object;
+			current_year_object[current_year_winter_27_date_string] = current_year_winter_27_object;
 
-			// Create the save hash object.
-			json save_hash_object = json::object();
-			save_hash_object[current_year_object_key] = current_year_object;
-			save_hash_object[save_file] = save_file_object;
-
-			// Write values back.
-			json_object[save_hash] = save_hash_object;
+			// Update the JSON object.
+			json_object[current_year_object_key] = current_year_object;
 		}
 
-		json save_hash_object = json_object[save_hash];
-
-		// Check if an entry for the current year didn't exist in the save hash object.
-		if (!save_hash_object.contains(current_year_object_key))
-		{
-			// Randomly determine the secret santa sender and recipient.
-			std::random_device rd;
-			std::mt19937 gen(rd());
-			std::uniform_int_distribution<> distr(0, static_cast<int>(ACTIVE_NPC_NAMES->size() - 1));
-			int random_sender = distr(gen);
-			int random_recipient = distr(gen);
-
-			// Create the current year object.
-			json current_year_object = json::object();
-			current_year_object[SENDER_KEY] = ACTIVE_NPC_NAMES[random_sender];
-			current_year_object[RECIPIENT_KEY] = ACTIVE_NPC_NAMES[random_recipient];
-
-			// Write the values back.
-			save_hash_object[current_year_object_key] = current_year_object;
-			json_object[save_hash] = save_hash_object;
-		}
-
-		// Check if an entry for the save file didn't exist in the save hash object.
-		if (!save_hash_object.contains(save_file))
-		{
-			// Create the date objects.
-			json current_year_winter_20_object = json::object();
-			current_year_winter_20_object[MAIL_SENT_KEY] = false;
-
-			json current_year_winter_26_object = json::object();
-			current_year_winter_26_object[MAIL_SENT_KEY] = false;
-
-			json current_year_winter_27_object = json::object();
-			current_year_winter_27_object[MAIL_SENT_KEY] = false;
-			current_year_winter_27_object[GIFT_GIVEN_KEY] = false;
-
-			// Create the save file object.
-			json save_file_object = json::object();
-			save_file_object[current_year_winter_20_date_string] = current_year_winter_20_object;
-			save_file_object[current_year_winter_26_date_string] = current_year_winter_26_object;
-			save_file_object[current_year_winter_27_date_string] = current_year_winter_27_object;
-
-			// Write values back.
-			save_hash_object[save_file] = save_file_object;
-			json_object[save_hash] = save_hash_object;
-		}
-
-		json save_file_object = save_hash_object[save_file];
-
-		// Check if Winter 20 data for the current save file doesn't exist.
-		if (!save_file_object.contains(current_year_winter_20_date_string))
-		{
-			// Create the date object.
-			json current_year_winter_20_object = json::object();
-			current_year_winter_20_object[MAIL_SENT_KEY] = false;
-
-			// Write values back.
-			save_file_object[current_year_winter_20_date_string] = current_year_winter_20_object;
-			save_hash_object[save_file] = save_file_object;
-			json_object[save_hash] = save_hash_object;
-		}
-
-		// Check if Winter 26 data for the current save file doesn't exist.
-		if (!save_file_object.contains(current_year_winter_26_date_string))
-		{
-			// Create the date object.
-			json current_year_winter_26_object = json::object();
-			current_year_winter_26_object[MAIL_SENT_KEY] = false;
-
-			// Write values back.
-			save_file_object[current_year_winter_26_date_string] = current_year_winter_26_object;
-			save_hash_object[save_file] = save_file_object;
-			json_object[save_hash] = save_hash_object;
-		}
-
-		// Check if Winter 27 data for the current save file doesn't exist.
-		if (!save_file_object.contains(current_year_winter_27_date_string))
-		{
-			// Create the date object.
-			json current_year_winter_27_object = json::object();
-			current_year_winter_27_object[MAIL_SENT_KEY] = false;
-			current_year_winter_27_object[GIFT_GIVEN_KEY] = false;
-
-			// Write values back.
-			save_file_object[current_year_winter_27_date_string] = current_year_winter_27_object;
-			save_hash_object[save_file] = save_file_object;
-			json_object[save_hash] = save_hash_object;
-		}
-
-		secret_santa_sender = json_object[save_hash][current_year_object_key][SENDER_KEY];
-		secret_santa_recipient = json_object[save_hash][current_year_object_key][RECIPIENT_KEY];
+		// Set the static sender and recipient fields using the JSON data.
+		secret_santa_sender = json_object[current_year_object_key][SENDER_KEY];
+		secret_santa_recipient = json_object[current_year_object_key][RECIPIENT_KEY];
 
 		if (season == 4) // winter
 		{
@@ -1027,31 +924,31 @@ RValue& GmlScriptShowRoomTitleCallback(
 
 			if (day == 20)
 			{
-				bool mail_sent = json_object[save_hash][save_file][current_year_winter_20_date_string][MAIL_SENT_KEY];
+				bool mail_sent = json_object[current_year_object_key][current_year_winter_20_date_string][MAIL_SENT_KEY];
 				if (!mail_sent)
 				{
 					std::string mail_name_str = "secret_santa_notice_" + secret_santa_recipient;
 					SendMail(mail_name_str);
 
-					json_object[save_hash][save_file][current_year_winter_20_date_string][MAIL_SENT_KEY] = true;
+					json_object[current_year_object_key][current_year_winter_20_date_string][MAIL_SENT_KEY] = true;
 				}
 			}
 
 			if (day == 26)
 			{
-				bool mail_sent = json_object[save_hash][save_file][current_year_winter_26_date_string][MAIL_SENT_KEY];
+				bool mail_sent = json_object[current_year_object_key][current_year_winter_26_date_string][MAIL_SENT_KEY];
 				if (!mail_sent)
 				{
 					std::string mail_name_str = "secret_santa_reminder_" + secret_santa_recipient;
 					SendMail(mail_name_str);
 
-					json_object[save_hash][save_file][current_year_winter_26_date_string][MAIL_SENT_KEY] = true;
+					json_object[current_year_object_key][current_year_winter_26_date_string][MAIL_SENT_KEY] = true;
 				}
 			}
 
 			if (day == 27)
 			{
-				bool mail_sent = json_object[save_hash][save_file][current_year_winter_27_date_string][MAIL_SENT_KEY];
+				bool mail_sent = json_object[current_year_object_key][current_year_winter_27_date_string][MAIL_SENT_KEY];
 				if (!mail_sent)
 				{
 					// Randomly select a gift.
@@ -1065,7 +962,7 @@ RValue& GmlScriptShowRoomTitleCallback(
 					std::string mail_name_str = "secret_santa_" + secret_santa_sender + "_" + random_gift_str;
 					SendMail(mail_name_str);
 
-					json_object[save_hash][save_file][current_year_winter_27_date_string][MAIL_SENT_KEY] = true;
+					json_object[current_year_object_key][current_year_winter_27_date_string][MAIL_SENT_KEY] = true;
 				}
 			}
 		}
@@ -1093,10 +990,18 @@ RValue& GmlScriptLoadGameCallback(
 {
 	if (mod_healthy)
 	{
-		// Get the file name of the save.
-		std::string arg0_str = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
-		std::size_t index = arg0_str.find_last_of("/");
-		save_file = arg0_str.substr(index + 1);
+		// Get the save file name.
+		std::string save_file = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
+		std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
+		std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
+
+		// Get the save prefix.
+		std::size_t first_hyphen_index = save_name.find_first_of("-") + 1;
+		std::size_t second_hyphen_index = save_name.find_last_of("-");
+		save_prefix = save_name.substr(first_hyphen_index, (second_hyphen_index - first_hyphen_index));
+
+		// Read from the custom mod data file.
+		ReadModFile();
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_load_game"));
@@ -1119,6 +1024,29 @@ RValue& GmlScriptSaveGameCallback(
 	IN RValue** Arguments
 )
 {
+	if (mod_healthy)
+	{
+		// No save prefix has been detected. This should only happen when a new game is started.
+		if (save_prefix.size() == 0)
+		{
+			// Get the save file name.
+			std::string save_file = Arguments[0]->AsString().data();
+			std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
+			std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
+
+			// Check it's a valid value.
+			if (save_name.find("undefined") == std::string::npos)
+			{
+				// Get the save prefix.
+				std::size_t first_hyphen_index = save_name.find_first_of("-") + 1;
+				std::size_t second_hyphen_index = save_name.find_last_of("-");
+				save_prefix = save_name.substr(first_hyphen_index, (second_hyphen_index - first_hyphen_index));
+			}
+		}
+
+		SaveModFile();
+	}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_save_game"));
 	original(
 		Self,
@@ -1127,14 +1055,6 @@ RValue& GmlScriptSaveGameCallback(
 		ArgumentCount,
 		Arguments
 	);
-
-	if (mod_healthy)
-	{
-		// Update the config file.
-		std::ofstream out_stream(config_file);
-		out_stream << std::setw(4) << json_object << std::endl;
-		out_stream.close();
-	}
 
 	return Result;
 }
@@ -1158,7 +1078,7 @@ RValue& GmlScriptChooseRandomArtifactCallback(
 
 	if (mod_healthy)
 	{
-		if(!IgnoreNextDigSpot())
+		if (!IgnoreNextDigSpot())
 		{
 			if (season == 4) // winter
 			{
@@ -1440,9 +1360,9 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	UNREFERENCED_PARAMETER(ModulePath);
 
 	AurieStatus status = AURIE_SUCCESS;
-	
+
 	status = ObGetInterface(
-		"YYTK_Main", 
+		"YYTK_Main",
 		(AurieInterfaceBase*&)(g_ModuleInterface)
 	);
 
