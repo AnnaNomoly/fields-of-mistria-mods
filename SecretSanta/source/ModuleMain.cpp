@@ -23,6 +23,7 @@ static const std::string ACTIVE_NPC_NAMES[] = {
 	"juniper", "landen", "luc", "louis", "maple", "march", "merri",
 	"olric", "nora", "reina", "ryis", "terithia", "valen", "vera"
 };
+static const std::string MAGICAL_SNOWFLAKE_ITEM_NAME = "magical_snowflake";
 
 // JSON key names
 static const std::string SENDER_KEY = "sender";
@@ -66,7 +67,7 @@ static bool mod_healthy = true;
 static int day = UNSET_DOUBLE;
 static int season = UNSET_DOUBLE;
 static int year = UNSET_DOUBLE;
-static int stinky_stamina_potion_id = UNSET_INT;
+static int magical_snowflake_item_id = UNSET_INT;
 static std::string save_prefix = "";
 static std::string mod_folder = "";
 static std::string secret_santa_sender = "";
@@ -273,28 +274,14 @@ void AddHeartPoints(std::string npc_name)
 
 }
 
-int GetItemId(CInstance* self, CInstance* other, std::string item_name)
+int RValueAsInt(RValue value)
 {
-	CScript* gml_script_try_string_to_item_id = nullptr;
-	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_try_string_to_item_id",
-		(PVOID*)&gml_script_try_string_to_item_id
-	);
-
-	RValue result;
-	RValue argument = item_name;
-	RValue* argument_ptr = &argument;
-	gml_script_try_string_to_item_id->m_Functions->m_ScriptFunction(
-		self,
-		other,
-		result,
-		1,
-		{ &argument_ptr }
-	);
-
-	if (result.m_Kind == VALUE_INT64)
-		return result.m_i64;
-	return UNSET_INT;
+	if (value.m_Kind == VALUE_REAL)
+		return static_cast<int>(value.m_Real);
+	if (value.m_Kind == VALUE_INT64)
+		return static_cast<int>(value.m_i64);
+	if (value.m_Kind == VALUE_INT32)
+		return static_cast<int>(value.m_i32);
 }
 
 bool RValueAsBool(RValue value)
@@ -398,6 +385,30 @@ bool IgnoreNextDigSpot()
 	}
 
 	return false;
+}
+
+int GetItemId(CInstance* self, CInstance* other, std::string item_name)
+{
+	CScript* gml_script_try_string_to_item_id = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_try_string_to_item_id",
+		(PVOID*)&gml_script_try_string_to_item_id
+	);
+
+	RValue result;
+	RValue argument = item_name;
+	RValue* argument_ptr = &argument;
+	gml_script_try_string_to_item_id->m_Functions->m_ScriptFunction(
+		self,
+		other,
+		result,
+		1,
+		{ &argument_ptr }
+	);
+
+	if (result.m_Kind == VALUE_REAL || result.m_Kind == VALUE_INT64 || result.m_Kind == VALUE_INT32)
+		return RValueAsInt(result);
+	return UNSET_INT;
 }
 
 void ResetStaticFields(bool returnedToTitleScreen)
@@ -832,14 +843,14 @@ RValue& GmlScriptSetupMainScreenCallback(
 			mod_healthy = false;
 		}
 
-		int item_id = GetItemId(Self, Other, "stinky_stamina_potion");
+		int item_id = GetItemId(Self, Other, MAGICAL_SNOWFLAKE_ITEM_NAME);
 		if (item_id != UNSET_INT)
 		{
-			stinky_stamina_potion_id = item_id;
+			magical_snowflake_item_id = item_id;
 		}
 		else
 		{
-			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to look up item ID for: stinky_stamina_potion.", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to look up item ID for: magical_snowflake.", VERSION);
 			mod_healthy = false;
 		}
 
@@ -1091,7 +1102,7 @@ RValue& GmlScriptChooseRandomArtifactCallback(
 				if (random_int == 7)
 				{
 					g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - You found a Magical Snowflake!", VERSION);
-					Result.m_i64 = stinky_stamina_potion_id;
+					Result.m_i64 = magical_snowflake_item_id;
 				}
 			}
 		}
