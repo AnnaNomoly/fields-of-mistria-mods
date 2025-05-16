@@ -562,8 +562,8 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 730 | duck_feather | Duck Feather |
 | 731 | duck_mayonnaise | Duck Mayonnaise |
 | 732 | duck_plushie | Duck Plushie |
-| 733 | dungeon_fountain_health | Fountain Health 33 |
-| 734 | dungeon_fountain_stamina | Fountain Stamina 33 |
+| 733 | dungeon_fountain_health | Fountain Health 33 | **GLITCHED** |
+| 734 | dungeon_fountain_stamina | Fountain Stamina 33 | **GLITCHED** |
 | 735 | earth_eel | Earth Eel |
 | 736 | earth_infused_stone | Earth-Infused Stone |
 | 737 | earth_tablet_rubbing | Earth Tablet Rubbing |
@@ -745,7 +745,7 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 984 | hay | Hay |
 | 985 | haydens_weathervane | Hayden's Weathervane |
 | 986 | heal_syrup | Healing Syrup |
-| 987 | heart_crystal | Heart Crystal |
+| 987 | heart_crystal | Heart Crystal | Increases Max HP |
 | 988 | heart_shaped_alpaca_treat | Heart Shaped Alpaca Treat |
 | 989 | heart_shaped_capybara_treat | Heart Shaped Capybara Treat |
 | 990 | heart_shaped_chicken_treat | Heart Shaped Chicken Treat |
@@ -1060,7 +1060,7 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 1366 | pumpkin_pie | Pumpkin Pie |
 | 1367 | pumpkin_stew | Pumpkin Stew |
 | 1368 | purple_mushroom | Purple Mushroom |
-| 1369 | purse | Purse of Tesserae |
+| 1369 | purse | Purse of Tesserae | **DISABLED** |
 | 1370 | quality_hay | Quality Large Animal Feed |
 | 1371 | quality_small_animal_feed | Quality Small Animal Feed |
 | 1372 | question_mark_butterfly | Question Mark Butterfly |
@@ -1308,7 +1308,7 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 1647 | square_tile_floor | Square Tile Floor |
 | 1648 | squid | Squid |
 | 1649 | stamina_syrup | Stamina Syrup |
-| 1650 | stamina_up | Stamina Up |
+| 1650 | stamina_up | Stamina Up | Increases Max Stamina |
 | 1651 | star_brooch | Star Brooch |
 | 1657 | star_cushion | Star Cushion |
 | 1662 | star_lantern | Star Lantern |
@@ -1507,7 +1507,7 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 1887 | witch_queen_throne | Witch Queen Throne |
 | 1888 | witch_queen_wallpaper | Witch Queen Wallpaper |
 | 1889 | woodcrafting_station | Crafting Station |
-| 1890 | world_fountain | World Fountain 20 |
+| 1890 | world_fountain | World Fountain 20 | **GLITCHED** |
 | 1891 | worm | Worm |
 | 1892 | worn_bed | Worn Bed |
 | 1893 | worn_chair | Worn Chair |
