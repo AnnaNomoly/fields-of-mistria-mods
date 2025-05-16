@@ -8,7 +8,7 @@
 using namespace Aurie;
 using namespace YYTK;
 
-static const char* const VERSION = "1.0.2";
+static const char* const VERSION = "1.0.3";
 static const std::string MINES_ENTRY = "mines_entry";
 static const std::string DUNGEON = "dungeon";
 static const std::string WATER_SEAL = "water_seal";
@@ -55,6 +55,30 @@ void ResetStaticFields(bool returnedToTitleScreen)
 	ready_to_teleport_ari = false;
 	wait_to_reposition_ari = false;
 	ready_to_reposition_ari = false;
+}
+
+bool IsNumericString(std::string some_string)
+{
+	if (some_string.empty())
+		return false;
+
+	for (int i = 0; i < some_string.size(); i++)
+	{
+		if (!isdigit(some_string[i]))
+			return false;
+	}
+
+	return true;
+}
+
+void OldModFileCompatibility()
+{
+	bool save_location_is_numeric = IsNumericString(saved_room_name);
+	if (save_location_is_numeric)
+	{
+		int save_location = std::stoi(saved_room_name);
+		saved_room_name = location_id_to_name_map[save_location];
+	}
 }
 
 void WriteModFile()
@@ -316,8 +340,9 @@ RValue& GmlScriptLoadGameCallback(
 			if (file.good())
 			{
 				file >> saved_room_name >> saved_x >> saved_y;
-				wait_to_teleport_ari = true;
+				OldModFileCompatibility();
 
+				wait_to_teleport_ari = true;
 				g_ModuleInterface->Print(CM_LIGHTGREEN, "[SaveAnywhere %s] - Loaded your saved location: \"%s\".", VERSION, saved_room_name.c_str());
 			}
 			file.close();
