@@ -1,13 +1,28 @@
 #include <map>
+#include <random>
+#include <fstream>
+#include <nlohmann/json.hpp>
 #include <YYToolkit/Shared.hpp>
 using namespace Aurie;
 using namespace YYTK;
+using json = nlohmann::json;
 
 static const char* const MOD_NAME = "StatueOfBoons";
 static const char* const VERSION = "1.0.0";
+static const char* const MANA_COST_KEY = "mana_cost"; // Used in mod config file
+static const char* const ESSENCE_COST_KEY = "essence_cost"; // Used in mod config file
+static const char* const MANA_IS_REQUIRED_KEY = "mana_is_required"; // Used in mod config file
+static const char* const ESSENCE_IS_REQUIRED_KEY = "essence_is_required"; // Used in mod config file
+static const char* const ACTIVE_BOON_KEY = "active_boon"; // Used in mod save file
+static const char* const PREVIOUS_BOON_KEY = "previous_boon"; // Used in mod save file
+static const char* const DRAGON_FAIRY_LOCATION_KEY = "dragon_fairy_location"; // Used in mod save file
+static const char* const DRAGON_FAIRY_CAUGHT_KEY = "dragon_fairy_caught"; // Used in mod save file
 static const char* const GML_SCRIPT_TRY_STRING_TO_ITEM_ID = "gml_Script_try_string_to_item_id";
 static const char* const GML_SCRIPT_TRY_OBJECT_ID_TO_STRING = "gml_Script_try_object_id_to_string";
+static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_SPAWN_BUG = "gml_Script_spawn_bug";
+static const char* const GML_SCRIPT_GET_MANA = "gml_Script_get_mana@Ari@Ari";
+static const char* const GML_SCRIPT_GET_ESSENCE = "gml_Script_get_essence@Ari@Ari";
 static const char* const GML_SCRIPT_GET_FISHING_CELEBRATION_DATA = "gml_Script_get_celebration_data_essence_exp@anon@14736@Fish@Fish";
 static const char* const GML_SCRIPT_GET_DIVING_CELEBRATION_DATA = "gml_Script_get_celebration_data@anon@15509@DiveSpot@Fish";
 static const char* const GML_SCRIPT_GIVE_ARI_ITEM = "gml_Script_give_item@Ari@Ari";
@@ -18,10 +33,13 @@ static const char* const GML_SCRIPT_CREATE_BUG = "gml_Script_setup@gml_Object_ob
 static const char* const GML_SCRIPT_ADD_HEART_POINTS = "gml_Script_add_heart_points@Npc@Npc";
 static const char* const GML_SCRIPT_MODIFY_STAMINA = "gml_Script_modify_stamina@Ari@Ari";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
-static const char* const GML_SCRIPT_ON_NEW_DAY = "gml_Script_on_new_day@Ari@Ari";
+static const char* const GML_SCRIPT_END_DAY = "gml_Script_end_day";
 static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
+static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
+static const char* const GML_SCRIPT_LOAD_GAME = "gml_Script_load_game";
+static const std::string NONE = "none";
 static const std::string LOCATION_FARM = "farm";
 static const std::string OBJECT_CATEGORY_BUSH = "bush";
 static const std::string OBJECT_CATEGORY_CROP = "crop";
@@ -30,8 +48,21 @@ static const std::string OBJECT_CATEGORY_STUMP = "stump";
 static const std::string OBJECT_CATEGORY_TREE = "tree";
 static const std::string CUSTOM_ITEM_NAME = "dragon_fairy";
 static const std::string CUSTOM_OBJECT_NAME = "statue_of_boons";
+static const std::string BOON_OF_SPEED = "boon_of_speed";
+static const std::string BOON_OF_FORAGE = "boon_of_forage";
+static const std::string BOON_OF_FISHING = "boon_of_fishing";
+static const std::string BOON_OF_BUTTERFLY = "boon_of_butterfly";
+static const std::string BOON_OF_FRIENDSHIP = "boon_of_friendship";
+static const std::string BOON_OF_STAMINA = "boon_of_stamina";
+static const std::string WESTERN_RUINS = "western_ruins";
+static const std::string EASTERN_ROAD = "eastern_road";
+static const std::string NARROWS = "narrows";
+static const std::string HAYDENS_FARM = "haydens_farm";
+static const std::string BEACH = "beach";
 static const std::string STATUE_OF_BOONS_CONVERSATION_KEY = "Conversations/Mods/Statue of Boons/statue_of_boons";
 static const std::string STATUE_OF_BOONS_PLACEHOLDER_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/placeholder";
+static const std::string STATUE_OF_BOONS_INSUFFICIENT_MANA_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/insufficient_mana";
+static const std::string STATUE_OF_BOONS_INSUFFICIENT_ESSENCE_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/insufficient_essence";
 static const std::string STATUE_OF_BOONS_BOON_OF_SPEED_GRANTED_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/boon_of_speed/granted"; // "Boon of the Wind"
 static const std::string STATUE_OF_BOONS_BOON_OF_FORAGE_GRANTED_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/boon_of_forage/granted"; // "Boon of the Land"
 static const std::string STATUE_OF_BOONS_BOON_OF_FISHING_GRANTED_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/boon_of_fishing/granted"; // "Boon of the Sea"
@@ -44,17 +75,32 @@ static const std::string STATUE_OF_BOONS_BOON_OF_FISHING_ACTIVE_DIALOGUE_KEY = "
 static const std::string STATUE_OF_BOONS_BOON_OF_BUTTERFLY_ACTIVE_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/boon_of_butterfly/active";
 static const std::string STATUE_OF_BOONS_BOON_OF_FRIENDSHIP_ACTIVE_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/boon_of_friendship/active";
 static const std::string STATUE_OF_BOONS_BOON_OF_STAMINA_ACTIVE_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/boon_of_stamina/active";
-static const std::string MYSTERIOUS_BUTTERFLY_DETECTED_DIALOGUE_KEY = "Notifications/Mods/Statue of Boons/boon_of_butterfly/detected";
+static const std::string BOON_OF_BUTTERFLY_DETECTED_DIALOGUE_KEY = "Notifications/Mods/Statue of Boons/boon_of_butterfly/detected";
+static const std::vector<std::string> LIST_OF_BOONS = { BOON_OF_SPEED, BOON_OF_FORAGE, BOON_OF_FISHING, BOON_OF_BUTTERFLY, BOON_OF_FRIENDSHIP, BOON_OF_STAMINA };
+static const std::vector<std::string> LIST_OF_LOCATIONS = { WESTERN_RUINS, EASTERN_ROAD, NARROWS, HAYDENS_FARM, BEACH };
 static const std::map<std::string, std::vector<std::vector<int>>> CUSTOM_BUG_SPAWN_LOCATIONS = {
-	{"western_ruins", {{158,127},{177,98},{193, 164}}},
-	{"eastern_road", {{63,69},{131,69},{31,127},{190,95},{114,144},{39,186},{111,241},{32,259}}}
+	{WESTERN_RUINS, {{145,128},{177,98},{177,166}}}, // working
+	{EASTERN_ROAD, {{63,69},{131,69},{31,127},{190,95},{114,144},{39,186},{111,241},{32,259}}}, // working
+	{NARROWS, {{138,52},{41,108},{130,117},{176,145},{114,189},{195,217}}}, // working
+	{HAYDENS_FARM, {{73,45},{49,83},{70,105},{164,54},{185,115},{121,104}}}, // working
+	{BEACH, {{303,77},{162,45},{175,75},{267,74},{259,37}}} // working
 };
+static const int DEFAULT_MANA_COST = 1;
+static const int DEFAULT_ESSENCE_COST = 5;
+static const bool DEFAULT_MANA_IS_REQUIRED = true;
+static const bool DEFAULT_ESSENCE_IS_REQUIRED = false;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
 static bool game_is_active = false;
 static bool custom_object_used = false;
-static std::string ari_current_location = "";
+static int mana_cost = DEFAULT_MANA_COST;
+static int essence_cost = DEFAULT_ESSENCE_COST;
+static bool mana_is_required = DEFAULT_MANA_IS_REQUIRED;
+static bool essence_is_required = DEFAULT_ESSENCE_IS_REQUIRED;
+static int ari_current_mana = -1;
+static int ari_current_essence = -1;
+static std::string ari_current_location = NONE;
 static RValue custom_conversation_value;
 static RValue* custom_conversation_value_ptr = nullptr;
 static RValue custom_dialogue_value;
@@ -66,16 +112,40 @@ static bool boon_of_butterfly = false;
 static bool boon_of_friendship = false;
 static bool boon_of_stamina = false;
 static bool modify_items_added = false;
+static bool dragon_fairy_caught = false; // Used to track if the bug has been caught
 static bool spawning_dragon_fairy = false; // Used to track when the bug is being spawned during script call stack
+static std::string dragon_fairy_location = NONE; // Used to track the randomly selected location
+static std::string previous_boon = NONE;
 static int dragon_fairy_item_id = -1;
 static std::map<std::string, int> object_category_to_id_map = {};
-static std::vector<int> bounty_boon_objects = {};
+static std::vector<int> forage_boon_objects = {};
 static std::map<int, std::string> object_id_to_name_map = {};
+static std::random_device rd;
+static std::mt19937 gen(rd());
+static std::string save_prefix = "";
+static std::string mod_folder = "";
 
-// DEBUG VARS------------------
+// DEBUG------------------------------------------------------
 static int interact_count = 0;
 static int bug_spawn_count = 0;
-//-----------------------------
+static std::vector<std::string> struct_field_names = {};
+bool EnumFunction(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
+	return false;
+}
+bool GetStructFieldNames(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	struct_field_names.push_back(MemberName);
+	return false;
+}
+//------------------------------------------------------------
 
 int RValueAsInt(RValue value)
 {
@@ -215,37 +285,31 @@ void LoadObjectItemData()
 
 		if (object_is_eligible)
 		{
-			auto it = std::find(bounty_boon_objects.begin(), bounty_boon_objects.end(), object_id);
-			if (it == bounty_boon_objects.end())
-				bounty_boon_objects.push_back(object_id);
+			auto it = std::find(forage_boon_objects.begin(), forage_boon_objects.end(), object_id);
+			if (it == forage_boon_objects.end())
+				forage_boon_objects.push_back(object_id);
 		}
 	}
 }
 
-void ModifyBug(CInstance* Self)
+void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
 {
-	//if (!StructVariableExists(Self, "__statue_of_boons__processed_bug"))
-	//{
-	//	if (StructVariableExists(Self, "item_id") && StructVariableExists(Self, "idle_sprite") && StructVariableExists(Self, "move_sprite"))
-	//	{
-	//		StructVariableSet(Self, "__statue_of_boons__processed_bug", true);
-	//		StructVariableSet(Self, "item_id", dragon_fairy_item_id);
+	CScript* gml_script_create_notification = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CREATE_NOTIFICATION,
+		(PVOID*)&gml_script_create_notification
+	);
 
-	//		RValue spr_insect_dragon_fairy_entity_idle = g_ModuleInterface->CallBuiltin(
-	//			"asset_get_index", {
-	//				"spr_insect_dragonfairy_entity_idle"
-	//			}
-	//		);
-	//		StructVariableSet(Self, "idle_sprite", spr_insect_dragon_fairy_entity_idle);
-
-	//		RValue spr_insect_dragon_fairy_entity_move = g_ModuleInterface->CallBuiltin(
-	//			"asset_get_index", {
-	//				"spr_insect_dragonfairy_entity_move"
-	//			}
-	//		);
-	//		StructVariableSet(Self, "move_sprite", spr_insect_dragon_fairy_entity_move);
-	//	}
-	//}
+	RValue result;
+	RValue notification = notification_localization_str;
+	RValue* notification_ptr = &notification;
+	gml_script_create_notification->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &notification_ptr }
+	);
 }
 
 RValue SpawnBug(CInstance* Self, CInstance* Other, int x_coord, int y_coord)
@@ -277,24 +341,352 @@ RValue SpawnBug(CInstance* Self, CInstance* Other, int x_coord, int y_coord)
 	return result;
 }
 
-void ResetStaticFields()
+RValue GetCurrentMana(CInstance* Self, CInstance* Other)
 {
-	static bool game_is_active = false;
-	static bool custom_object_used = false;
-	static std::string ari_current_location = "";
-	static RValue custom_conversation_value;
-	static RValue* custom_conversation_value_ptr = nullptr;
-	static RValue custom_dialogue_value;
-	static RValue* custom_dialogue_value_ptr = nullptr;
-	static bool boon_of_speed = false;
-	static bool boon_of_forage = false;
-	static bool boon_of_fishing = false;
-	static bool boon_of_butterfly = false;
-	static bool boon_of_friendship = false;
-	static bool boon_of_stamina = false;
-	static bool modify_items_added = false;
+	CScript* gml_script_get_mana = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_MANA,
+		(PVOID*)&gml_script_get_mana
+	);
+
+	RValue current_mana;
+	gml_script_get_mana->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		current_mana,
+		0,
+		nullptr
+	);
+
+	return current_mana;
 }
 
+RValue GetCurrentEssence(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_get_essence = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_ESSENCE,
+		(PVOID*)&gml_script_get_essence
+	);
+
+	RValue current_essence;
+	gml_script_get_essence->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		current_essence,
+		0,
+		nullptr
+	);
+
+	return current_essence;
+}
+
+bool AnyBoonIsActive()
+{
+	if (boon_of_speed || boon_of_forage || boon_of_fishing || boon_of_butterfly || boon_of_friendship || boon_of_stamina)
+		return true;
+	return false;
+}
+
+std::string GetActiveBoonString()
+{
+	if (boon_of_speed)
+		return BOON_OF_SPEED;
+	if (boon_of_forage)
+		return BOON_OF_FORAGE;
+	if (boon_of_fishing)
+		return BOON_OF_FISHING;
+	if (boon_of_butterfly)
+		return BOON_OF_BUTTERFLY;
+	if (boon_of_friendship)
+		return BOON_OF_FRIENDSHIP;
+	if (boon_of_stamina)
+		return BOON_OF_STAMINA;
+	return NONE;
+}
+
+void LoadActiveBoonString(std::string input)
+{
+	if (input == BOON_OF_SPEED)
+		boon_of_speed = true;
+	if (input == BOON_OF_FORAGE)
+		boon_of_forage = true;
+	if (input == BOON_OF_FISHING)
+		boon_of_fishing = true;
+	if (input == BOON_OF_BUTTERFLY)
+		boon_of_butterfly = true;
+	if (input == BOON_OF_FRIENDSHIP)
+		boon_of_friendship = true;
+	if (input == BOON_OF_STAMINA)
+		boon_of_stamina = true;
+}
+
+void PrintError(std::exception_ptr eptr)
+{
+	try {
+		if (eptr) {
+			std::rethrow_exception(eptr);
+		}
+	}
+	catch (const std::exception& e) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
+	}
+}
+
+void WriteModSaveFile()
+{
+	// Write the custom mod data file.
+	if (save_prefix.length() != 0 && mod_folder.length() != 0)
+	{
+		json mod_save_data = {};
+		mod_save_data[ACTIVE_BOON_KEY] = GetActiveBoonString();
+		mod_save_data[PREVIOUS_BOON_KEY] = previous_boon;
+		mod_save_data[DRAGON_FAIRY_LOCATION_KEY] = dragon_fairy_location;
+		mod_save_data[DRAGON_FAIRY_CAUGHT_KEY] = dragon_fairy_caught;
+
+		std::exception_ptr eptr;
+		try
+		{
+			std::ofstream out_stream(mod_folder + "\\" + save_prefix + ".json");
+			out_stream << std::setw(4) << mod_save_data << std::endl;
+			out_stream.close();
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully saved the mod file!", MOD_NAME, VERSION);
+		}
+		catch (...)
+		{
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred writing the mod file.", MOD_NAME, VERSION);
+
+			eptr = std::current_exception();
+			PrintError(eptr);
+		}
+	}
+}
+
+void ReadModSaveFile()
+{
+	std::exception_ptr eptr;
+	try
+	{
+		std::ifstream in_stream(mod_folder + "\\" + save_prefix + ".json");
+		if (in_stream.good())
+		{
+			json mod_save_data = json::parse(in_stream);
+			LoadActiveBoonString(mod_save_data[ACTIVE_BOON_KEY]);
+			previous_boon = mod_save_data[PREVIOUS_BOON_KEY];
+			dragon_fairy_location = mod_save_data[DRAGON_FAIRY_LOCATION_KEY];
+			dragon_fairy_caught = mod_save_data[DRAGON_FAIRY_CAUGHT_KEY];
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully loaded the mod file!", MOD_NAME, VERSION);
+		}
+	}
+	catch (...)
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred reading the mod file.", MOD_NAME, VERSION);
+
+		eptr = std::current_exception();
+		PrintError(eptr);
+	}
+}
+
+void LogDefaultConfigValues()
+{
+	mana_cost = DEFAULT_MANA_COST;
+	essence_cost = DEFAULT_ESSENCE_COST;
+	mana_is_required = DEFAULT_MANA_IS_REQUIRED;
+	essence_is_required = DEFAULT_ESSENCE_IS_REQUIRED;
+
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, MANA_COST_KEY, DEFAULT_MANA_COST);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, ESSENCE_COST_KEY, DEFAULT_ESSENCE_COST);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, MANA_IS_REQUIRED_KEY, DEFAULT_MANA_IS_REQUIRED ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ESSENCE_IS_REQUIRED_KEY, DEFAULT_ESSENCE_IS_REQUIRED ? "true" : "false");
+}
+
+void CreateOrLoadModConfigFile()
+{
+	// Load config file.
+	std::exception_ptr eptr;
+	try
+	{
+		// Try to find the mod_data directory.
+		std::string current_dir = std::filesystem::current_path().string();
+		std::string mod_data_folder = current_dir + "\\mod_data";
+		if (!std::filesystem::exists(mod_data_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
+			std::filesystem::create_directory(mod_data_folder);
+		}
+
+		// Try to find the mod_data/StatueOfBoons directory.
+		std::string statue_of_boons_folder = mod_data_folder + "\\StatueOfBoons";
+		if (!std::filesystem::exists(statue_of_boons_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"StatueOfBoons\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, statue_of_boons_folder.c_str());
+			std::filesystem::create_directory(statue_of_boons_folder);
+		}
+
+		mod_folder = statue_of_boons_folder;
+
+		// Try to find the mod_data/StatueOfBoons/StatueOfBoons.json config file.
+		std::string config_file = statue_of_boons_folder + "\\" + "StatueOfBoons.json";
+		std::ifstream in_stream(config_file);
+		if (in_stream.good())
+		{
+			try
+			{
+				json json_object = json::parse(in_stream);
+
+				// Check if the json_object is empty.
+				if (json_object.empty())
+				{
+					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in mod configuration file: %s!", MOD_NAME, VERSION, config_file.c_str());
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Add your desired values to the configuration file, otherwise defaults will be used.", MOD_NAME, VERSION);
+					LogDefaultConfigValues();
+				}
+				else
+				{
+					// Try loading the mana_cost value.
+					if (json_object.contains(MANA_COST_KEY))
+					{
+						mana_cost = json_object[MANA_COST_KEY];
+						if (mana_cost < 0 || mana_cost > 12)
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, MANA_COST_KEY, mana_cost, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - This value MUST be a valid integer between 0 and 12 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, MANA_COST_KEY, DEFAULT_MANA_COST);
+							mana_cost = DEFAULT_MANA_COST;
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, VERSION, MANA_COST_KEY, mana_cost);
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, MANA_COST_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, MANA_COST_KEY, DEFAULT_MANA_COST);
+						mana_cost = DEFAULT_MANA_COST;
+					}
+
+					// Try loading the essence_cost value.
+					if (json_object.contains(ESSENCE_COST_KEY))
+					{
+						essence_cost = json_object[ESSENCE_COST_KEY];
+						if (essence_cost < 0 || essence_cost > 100)
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, ESSENCE_COST_KEY, essence_cost, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - This value MUST be a valid integer between 0 and 100 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, ESSENCE_COST_KEY, DEFAULT_ESSENCE_COST);
+							essence_cost = DEFAULT_ESSENCE_COST;
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, VERSION, ESSENCE_COST_KEY, essence_cost);
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, ESSENCE_COST_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, ESSENCE_COST_KEY, DEFAULT_ESSENCE_COST);
+						essence_cost = DEFAULT_ESSENCE_COST;
+					}
+
+					// Try loading the mana_is_required value.
+					if (json_object.contains(MANA_IS_REQUIRED_KEY))
+					{
+						mana_is_required = json_object[MANA_IS_REQUIRED_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, MANA_IS_REQUIRED_KEY, mana_is_required ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, MANA_IS_REQUIRED_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, MANA_IS_REQUIRED_KEY, DEFAULT_MANA_IS_REQUIRED ? "true" : "false");
+						mana_is_required = DEFAULT_MANA_IS_REQUIRED;
+					}
+
+					// Try loading the essence_is_required value.
+					if (json_object.contains(ESSENCE_IS_REQUIRED_KEY))
+					{
+						essence_is_required = json_object[ESSENCE_IS_REQUIRED_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, ESSENCE_IS_REQUIRED_KEY, mana_is_required ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, ESSENCE_IS_REQUIRED_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ESSENCE_IS_REQUIRED_KEY, DEFAULT_ESSENCE_IS_REQUIRED ? "true" : "false");
+						essence_is_required = DEFAULT_ESSENCE_IS_REQUIRED;
+					}
+				}
+			}
+			catch (...)
+			{
+				eptr = std::current_exception();
+				PrintError(eptr);
+
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from configuration file: %s", MOD_NAME, VERSION, config_file.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the file is valid JSON!", MOD_NAME, VERSION);
+				LogDefaultConfigValues();
+			}
+
+			in_stream.close();
+		}
+		else
+		{
+			in_stream.close();
+
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"StatueOfBoons.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
+			json default_json = {
+				{MANA_COST_KEY, DEFAULT_MANA_COST},
+				{ESSENCE_COST_KEY, DEFAULT_ESSENCE_COST},
+				{MANA_IS_REQUIRED_KEY, DEFAULT_MANA_IS_REQUIRED},
+				{ESSENCE_IS_REQUIRED_KEY, DEFAULT_ESSENCE_IS_REQUIRED}
+			};
+
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << default_json << std::endl;
+			out_stream.close();
+
+			LogDefaultConfigValues();
+		}
+	}
+	catch (...)
+	{
+		eptr = std::current_exception();
+		PrintError(eptr);
+
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred loading the mod configuration file.", MOD_NAME, VERSION);
+		LogDefaultConfigValues();
+	}
+}
+
+void ResetStaticFields(bool returned_to_title_screen)
+{
+	if (returned_to_title_screen)
+	{
+		game_is_active = false;
+		ari_current_mana = -1;
+		ari_current_essence = -1;
+		ari_current_location = NONE;
+		custom_conversation_value = RValue();
+		custom_conversation_value_ptr = nullptr;
+		custom_dialogue_value = RValue();
+		custom_dialogue_value_ptr = nullptr;
+		previous_boon = NONE;
+		save_prefix = "";
+	}
+
+	custom_object_used = false;
+	boon_of_speed = false;
+	boon_of_forage = false;
+	boon_of_fishing = false;
+	boon_of_butterfly = false;
+	boon_of_friendship = false;
+	boon_of_stamina = false;
+	modify_items_added = false;
+	dragon_fairy_caught = false;
+	spawning_dragon_fairy = false;
+	dragon_fairy_location = NONE;
+}
+
+// TODO: This might not be needed with the custom bug being spawned directly.
 void ObjectCallback(
 	IN FWCodeEvent& CodeEvent
 )
@@ -307,10 +699,13 @@ void ObjectCallback(
 	if (!self->m_Object)
 		return;
 
-	if (strstr(self->m_Object->m_Name, "obj_bug"))
+	if (strstr(self->m_Object->m_Name, "obj_ari"))
 	{
-		// TODO: Add logic for if boon is active, we're in the randomly selected zone, and the bug hasn't already been spawned
-		ModifyBug(self);
+		CInstance* global_instance = nullptr;
+		g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+		ari_current_mana = RValueAsInt(GetCurrentMana(global_instance->at("__ari").m_Object, self));
+		ari_current_essence = RValueAsInt(GetCurrentEssence(global_instance->at("__ari").m_Object, self));
 	}
 }
 
@@ -368,6 +763,18 @@ RValue& GmlScriptGiveItemCallback(
 	IN RValue** Arguments
 )
 {
+	if (boon_of_butterfly && !dragon_fairy_caught && ari_current_location == dragon_fairy_location)
+	{
+		RValue item = Arguments[0]->m_Object;
+		int item_id = RValueAsInt(item.at("item_id"));
+
+		if(item_id == dragon_fairy_item_id)
+		{
+			dragon_fairy_caught = true;
+			WriteModSaveFile();
+		}
+	}
+
 	if (modify_items_added)
 	{
 		modify_items_added = false;
@@ -424,29 +831,22 @@ RValue& GmlScriptInteractCallback(
 	IN RValue** Arguments
 )
 {
-	//DEBUG----------
-	if (game_is_active)
-	{
-		if (CUSTOM_BUG_SPAWN_LOCATIONS.count(ari_current_location) > 0)
-		{
-			std::vector<std::vector<int>> bug_spawn_locations = CUSTOM_BUG_SPAWN_LOCATIONS.at(ari_current_location);
-			for (size_t i = 0; i < bug_spawn_locations.size(); i++)
-			{
-				std::vector<int> coordinates = bug_spawn_locations[i];
-				SpawnBug(Self, Other, coordinates[0], coordinates[1]);
-			}
-		}
-	}
-	//---------------
-
 	RValue object = Arguments[0]->m_Object;
 	int object_id = RValueAsInt(object.at("object_id"));
+	std::string object_name = object_id_to_name_map[object_id];
 
-	auto it = std::find(bounty_boon_objects.begin(), bounty_boon_objects.end(), object_id);
-	if (it != bounty_boon_objects.end())
+	// Statue of Boons
+	if (object_name.find(CUSTOM_OBJECT_NAME) != std::string::npos)
+		custom_object_used = true;
+	else 
 	{
-		if(boon_of_forage)
-			modify_items_added = true;
+		// Objects affected by Statue of Boons
+		auto it = std::find(forage_boon_objects.begin(), forage_boon_objects.end(), object_id);
+		if (it != forage_boon_objects.end())
+		{
+			if (boon_of_forage)
+				modify_items_added = true;
+		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_INTERACT));
@@ -457,28 +857,6 @@ RValue& GmlScriptInteractCallback(
 		ArgumentCount,
 		Arguments
 	);
-
-	/*
-	RValue object = Arguments[0]->m_Object;
-	if (StructVariableExists(object, "prototype"))
-	{
-		RValue prototype = StructVariableGet(object, "prototype");
-		if (StructVariableExists(prototype, "object_id"))
-		{
-			RValue object_id = StructVariableGet(prototype, "object_id");
-			int object_id_int = RValueAsInt(object_id);
-			std::string object_name = object_id_to_name_map[object_id_int];
-			int temp = 5;
-		}
-	}
-	
-	int object_id = RValueAsInt(object.at("object_id"));
-	std::string object_name = object_id_to_name_map[object_id];
-	if (object_name.find(CUSTOM_OBJECT_NAME) != std::string::npos)
-		custom_object_used = true;
-
-	int temp = 5;
-	*/
 	return Result;
 }
 
@@ -499,6 +877,18 @@ RValue& GmlScriptShowRoomTitleCallback(
 		Arguments
 	);
 
+	if (boon_of_butterfly && !dragon_fairy_caught)
+	{
+		if (ari_current_location == dragon_fairy_location)
+		{
+			std::vector<std::vector<int>> possible_spawn_points = CUSTOM_BUG_SPAWN_LOCATIONS.at(dragon_fairy_location);
+			std::uniform_int_distribution<> choose_random_spawn_point(0, static_cast<int>(possible_spawn_points.size() - 1));
+			std::vector<int> random_spawn_point = possible_spawn_points[choose_random_spawn_point(gen)];
+			SpawnBug(Self, Other, random_spawn_point[0], random_spawn_point[1]);
+			CreateNotification(BOON_OF_BUTTERFLY_DETECTED_DIALOGUE_KEY, Self, Other);
+		}
+	}
+
 	return Result;
 }
 
@@ -513,7 +903,7 @@ RValue& GmlScriptCreateBugCallback(
 	if (spawning_dragon_fairy)
 	{
 		spawning_dragon_fairy = false;
-		int fairy_bee_item_id = RValueAsInt(TryStringToItemId(Self, Other, "dragon_fairy")); // TODO: Testing spawning the custom bug directly
+		int fairy_bee_item_id = RValueAsInt(TryStringToItemId(Self, Other, "dragon_fairy"));
 		Arguments[0]->m_i64 = fairy_bee_item_id;
 	}
 
@@ -569,9 +959,8 @@ RValue& GmlScriptModifyStaminaCallback(
 		Arguments
 	);
 
-	if (boon_of_stamina)
-		if (Arguments[0]->m_Real < 0)
-			Arguments[0]->m_Real = 0;
+	if (boon_of_stamina && Arguments[0]->m_Real < 0)
+		Arguments[0]->m_Real = 0;
 
 	return Result;
 }
@@ -593,14 +982,13 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 		Arguments
 	);
 
-	if (game_is_active)
-		if (Result.m_Kind == VALUE_STRING)
-			ari_current_location = Result.AsString().data();
+	if (game_is_active && Result.m_Kind == VALUE_STRING)
+		ari_current_location = Result.AsString().data();
 
 	return Result;
 }
 
-RValue& GmlScriptOnNewDayCallback(
+RValue& GmlScriptEndDayCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
 	OUT RValue& Result,
@@ -608,7 +996,7 @@ RValue& GmlScriptOnNewDayCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_NEW_DAY));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_END_DAY));
 	original(
 		Self,
 		Other,
@@ -617,9 +1005,10 @@ RValue& GmlScriptOnNewDayCallback(
 		Arguments
 	);
 
-	// TODO: Reset Ari's movement speed if necessary
-	//ResetStaticFields();
-
+	previous_boon = GetActiveBoonString();
+	ResetStaticFields(false);
+	WriteModSaveFile(); // TODO: Should this be called here?
+	
 	return Result;
 }
 
@@ -634,95 +1023,87 @@ RValue& GmlScriptPlayTextCallback(
 	std::string conversation_name = Arguments[0]->AsString().data();
 	if (conversation_name.find(STATUE_OF_BOONS_PLACEHOLDER_DIALOGUE_KEY) != std::string::npos)
 	{
-		// TODO: Grant boons and stuff.
+		// Check if a boon is already active.
+		if (AnyBoonIsActive())
+		{
+			if (boon_of_speed)
+				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_SPEED_ACTIVE_DIALOGUE_KEY;
+			if (boon_of_forage)
+				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FORAGE_ACTIVE_DIALOGUE_KEY;
+			if (boon_of_fishing)
+				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FISHING_ACTIVE_DIALOGUE_KEY;
+			if (boon_of_butterfly)
+				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_BUTTERFLY_ACTIVE_DIALOGUE_KEY;
+			if (boon_of_friendship)
+				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FRIENDSHIP_ACTIVE_DIALOGUE_KEY;
+			if (boon_of_stamina)
+				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_STAMINA_ACTIVE_DIALOGUE_KEY;
+		}
+		else
+		{
+			// Check if mana or essence is required and that Ari has enough to activate the statue.
+			bool statue_activation_requirements_met = true;
+			if (mana_is_required && ari_current_mana < mana_cost)
+			{
+				statue_activation_requirements_met = false;
+				CreateNotification(STATUE_OF_BOONS_INSUFFICIENT_MANA_DIALOGUE_KEY, Self, Other);
+			}
+			if (essence_is_required && ari_current_mana < mana_cost)
+			{
+				statue_activation_requirements_met = false;
+				CreateNotification(STATUE_OF_BOONS_INSUFFICIENT_ESSENCE_DIALOGUE_KEY, Self, Other);
+			}
 
-		// DEBUG-----------------------------------------------------------------------------
-		if (interact_count == 0)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_SPEED_GRANTED_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 1)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FORAGE_GRANTED_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 2)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FISHING_GRANTED_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
+			if (statue_activation_requirements_met)
+			{
+				//std::uniform_int_distribution<> choose_random_boon(0, static_cast<int>(LIST_OF_BOONS.size() - 1));
+				//std::string random_boon = LIST_OF_BOONS[choose_random_boon(gen)];
+				std::string random_boon = BOON_OF_BUTTERFLY; // DEBUG
+
+				if (random_boon == BOON_OF_SPEED)
+				{
+					boon_of_speed = true;
+					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_SPEED_GRANTED_DIALOGUE_KEY;
+				}
+				if (random_boon == BOON_OF_FORAGE)
+				{
+					boon_of_forage = true;
+					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FORAGE_GRANTED_DIALOGUE_KEY;
+				}
+				if (random_boon == BOON_OF_FISHING)
+				{
+					boon_of_fishing = true;
+					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FISHING_GRANTED_DIALOGUE_KEY;
+				}
+				if (random_boon == BOON_OF_BUTTERFLY)
+				{
+					boon_of_butterfly = true;
+					dragon_fairy_caught = false;
+					spawning_dragon_fairy = false;
+					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_BUTTERFLY_GRANTED_DIALOGUE_KEY;
+
+					std::uniform_int_distribution<> choose_random_location(0, static_cast<int>(LIST_OF_LOCATIONS.size() - 1));
+					dragon_fairy_location = LIST_OF_LOCATIONS[choose_random_location(gen)];
+				}
+				if (random_boon == BOON_OF_FRIENDSHIP)
+				{
+					boon_of_friendship = true;
+					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FRIENDSHIP_GRANTED_DIALOGUE_KEY;
+				}
+				if (random_boon == BOON_OF_STAMINA)
+				{
+					boon_of_stamina = true;
+					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_STAMINA_GRANTED_DIALOGUE_KEY;
+				}
+
+				WriteModSaveFile();
+			}
 		}
 
-		if (interact_count == 3)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_BUTTERFLY_GRANTED_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 4)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FRIENDSHIP_GRANTED_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 5)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_STAMINA_GRANTED_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 6)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_SPEED_ACTIVE_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 7)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FORAGE_ACTIVE_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 8)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FISHING_ACTIVE_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 9)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_BUTTERFLY_ACTIVE_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 10)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FRIENDSHIP_ACTIVE_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 11)
-		{
-			custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_STAMINA_ACTIVE_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		if (interact_count == 12)
-		{
-			custom_dialogue_value = MYSTERIOUS_BUTTERFLY_DETECTED_DIALOGUE_KEY;
-			custom_dialogue_value_ptr = &custom_dialogue_value;
-			Arguments[0] = custom_dialogue_value_ptr;
-		}
-		interact_count++;
-		if (interact_count > 12)
-			interact_count = 0;
-		//---------------------------------------------------------------------------------------
+		custom_dialogue_value_ptr = &custom_dialogue_value;
+		Arguments[0] = custom_dialogue_value_ptr;
 	}
 	
-
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_TEXT));
 	original(
 		Self,
@@ -771,8 +1152,6 @@ RValue& GmlScriptSetupMainScreenCallback(
 	IN RValue** Arguments
 )
 {
-	ResetStaticFields();
-
 	if (load_on_start)
 	{
 		load_on_start = false;
@@ -780,10 +1159,10 @@ RValue& GmlScriptSetupMainScreenCallback(
 		LoadObjectCategories();
 		LoadObjectIds(Self, Other);
 		LoadObjectItemData();
-
-		//if (!object_id_to_name_map.empty())
-		//	mod_healthy = true;
+		CreateOrLoadModConfigFile();
 	}
+	else
+		ResetStaticFields(true);
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SETUP_MAIN_SCREEN));
 	original(
@@ -794,7 +1173,79 @@ RValue& GmlScriptSetupMainScreenCallback(
 		Arguments
 	);
 
-	// TODO
+	return Result;
+}
+
+RValue& GmlScriptSaveGameCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	// No save prefix has been detected. This should only happen when a new game is started.
+	if (save_prefix.size() == 0)
+	{
+		// Get the save file name.
+		std::string save_file = Arguments[0]->AsString().data();
+		std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
+		std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
+
+		// Check it's a valid value.
+		if (save_name.find("undefined") == std::string::npos)
+		{
+			// Get the save prefix.
+			std::size_t first_hyphen_index = save_name.find_first_of("-") + 1;
+			std::size_t second_hyphen_index = save_name.find_last_of("-");
+			save_prefix = save_name.substr(first_hyphen_index, (second_hyphen_index - first_hyphen_index));
+		}
+	}
+
+	// Write the custom mod data file.
+	WriteModSaveFile();
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SAVE_GAME));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptLoadGameCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	// Get the save file name.
+	std::string save_file = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
+	std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
+	std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
+
+	// Get the save prefix.
+	std::size_t first_hyphen_index = save_name.find_first_of("-") + 1;
+	std::size_t second_hyphen_index = save_name.find_last_of("-");
+	save_prefix = save_name.substr(first_hyphen_index, (second_hyphen_index - first_hyphen_index));
+
+	// Read from the custom mod data file.
+	ReadModSaveFile();
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_LOAD_GAME));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
 
 	return Result;
 }
@@ -1087,30 +1538,30 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptOnNewDay(AurieStatus& status)
+void CreateHookGmlScriptEndDay(AurieStatus& status)
 {
-	CScript* gml_script_on_new_day = nullptr;
+	CScript* gml_script_end_day = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_ON_NEW_DAY,
-		(PVOID*)&gml_script_on_new_day
+		GML_SCRIPT_END_DAY,
+		(PVOID*)&gml_script_end_day
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ON_NEW_DAY);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_END_DAY);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		GML_SCRIPT_ON_NEW_DAY,
-		gml_script_on_new_day->m_Functions->m_ScriptFunction,
-		GmlScriptOnNewDayCallback,
+		GML_SCRIPT_END_DAY,
+		gml_script_end_day->m_Functions->m_ScriptFunction,
+		GmlScriptEndDayCallback,
 		nullptr
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ON_NEW_DAY);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_END_DAY);
 	}
 }
 
@@ -1197,6 +1648,60 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptSaveGame(AurieStatus& status)
+{
+	CScript* gml_script_save_game = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SAVE_GAME,
+		(PVOID*)&gml_script_save_game
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SAVE_GAME);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_SAVE_GAME,
+		gml_script_save_game->m_Functions->m_ScriptFunction,
+		GmlScriptSaveGameCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SAVE_GAME);
+	}
+}
+
+void CreateHookGmlScriptLoadGame(AurieStatus& status)
+{
+	CScript* gml_script_load_game = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_LOAD_GAME,
+		(PVOID*)&gml_script_load_game
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_LOAD_GAME);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_LOAD_GAME,
+		gml_script_load_game->m_Functions->m_ScriptFunction,
+		GmlScriptLoadGameCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_LOAD_GAME);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -1222,13 +1727,6 @@ EXPORTED AurieStatus ModuleInitialize(
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
-
-	//CreateHookGmlSlashNode(status);
-	//if (!AurieSuccess(status))
-	//{
-	//	g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-	//	return status;
-	//}
 
 	CreateHookGmlScriptGetFishingCelebrationData(status);
 	if (!AurieSuccess(status))
@@ -1300,7 +1798,7 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
-	CreateHookGmlScriptOnNewDay(status);
+	CreateHookGmlScriptEndDay(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
@@ -1322,6 +1820,20 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptSaveGame(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptLoadGame(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
