@@ -23,6 +23,8 @@ static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_not
 static const char* const GML_SCRIPT_SPAWN_BUG = "gml_Script_spawn_bug";
 static const char* const GML_SCRIPT_GET_MANA = "gml_Script_get_mana@Ari@Ari";
 static const char* const GML_SCRIPT_GET_ESSENCE = "gml_Script_get_essence@Ari@Ari";
+static const char* const GML_SCRIPT_MODIFY_MANA = "gml_Script_modify_mana@Ari@Ari";
+static const char* const GML_SCRIPT_MODIFY_ESSENCE = "gml_Script_modify_essence@Ari@Ari";
 static const char* const GML_SCRIPT_GET_FISHING_CELEBRATION_DATA = "gml_Script_get_celebration_data_essence_exp@anon@14736@Fish@Fish";
 static const char* const GML_SCRIPT_GET_DIVING_CELEBRATION_DATA = "gml_Script_get_celebration_data@anon@15509@DiveSpot@Fish";
 static const char* const GML_SCRIPT_GIVE_ARI_ITEM = "gml_Script_give_item@Ari@Ari";
@@ -100,6 +102,8 @@ static bool mana_is_required = DEFAULT_MANA_IS_REQUIRED;
 static bool essence_is_required = DEFAULT_ESSENCE_IS_REQUIRED;
 static int ari_current_mana = -1;
 static int ari_current_essence = -1;
+static bool reduce_ari_mana = false;
+static bool reduce_ari_essence = false;
 static std::string ari_current_location = NONE;
 static RValue custom_conversation_value;
 static RValue* custom_conversation_value_ptr = nullptr;
@@ -379,6 +383,48 @@ RValue GetCurrentEssence(CInstance* Self, CInstance* Other)
 	);
 
 	return current_essence;
+}
+
+void ModifyMana(CInstance* Self, CInstance* Other, int value)
+{
+	CScript* gml_script_modify_mana = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_MODIFY_MANA,
+		(PVOID*)&gml_script_modify_mana
+	);
+
+	RValue result;
+	RValue mana_modifier = value;
+	RValue* mana_modifier_ptr = &mana_modifier;
+
+	gml_script_modify_mana->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &mana_modifier_ptr }
+	);
+}
+
+void ModifyEssence(CInstance* Self, CInstance* Other, int value)
+{
+	CScript* gml_script_modify_essence = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_MODIFY_ESSENCE,
+		(PVOID*)&gml_script_modify_essence
+	);
+
+	RValue result;
+	RValue essence_modifier = value;
+	RValue* essence_modifier_ptr = &essence_modifier;
+
+	gml_script_modify_essence->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &essence_modifier_ptr }
+	);
 }
 
 bool AnyBoonIsActive()
@@ -674,6 +720,8 @@ void ResetStaticFields(bool returned_to_title_screen)
 	}
 
 	custom_object_used = false;
+	reduce_ari_mana = false;
+	reduce_ari_essence = false;
 	boon_of_speed = false;
 	boon_of_forage = false;
 	boon_of_fishing = false;
@@ -686,7 +734,6 @@ void ResetStaticFields(bool returned_to_title_screen)
 	dragon_fairy_location = NONE;
 }
 
-// TODO: This might not be needed with the custom bug being spawned directly.
 void ObjectCallback(
 	IN FWCodeEvent& CodeEvent
 )
@@ -703,6 +750,18 @@ void ObjectCallback(
 	{
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+		if (reduce_ari_mana)
+		{
+			reduce_ari_mana = false;
+			ModifyMana(global_instance->at("__ari").m_Object, self, static_cast<double>(-1 * mana_cost));
+		}
+			
+		if (reduce_ari_essence)
+		{
+			reduce_ari_essence = false;
+			ModifyEssence(global_instance->at("__ari").m_Object, self, static_cast<double>(-1 * essence_cost));
+		}
 
 		ari_current_mana = RValueAsInt(GetCurrentMana(global_instance->at("__ari").m_Object, self));
 		ari_current_essence = RValueAsInt(GetCurrentEssence(global_instance->at("__ari").m_Object, self));
@@ -769,10 +828,7 @@ RValue& GmlScriptGiveItemCallback(
 		int item_id = RValueAsInt(item.at("item_id"));
 
 		if(item_id == dragon_fairy_item_id)
-		{
 			dragon_fairy_caught = true;
-			WriteModSaveFile();
-		}
 	}
 
 	if (modify_items_added)
@@ -1007,7 +1063,7 @@ RValue& GmlScriptEndDayCallback(
 
 	previous_boon = GetActiveBoonString();
 	ResetStaticFields(false);
-	WriteModSaveFile(); // TODO: Should this be called here?
+	WriteModSaveFile(); // TODO: Should this be called here? Save Game might get called automatically after this (CHECKING...)
 	
 	return Result;
 }
@@ -1046,16 +1102,21 @@ RValue& GmlScriptPlayTextCallback(
 			if (mana_is_required && ari_current_mana < mana_cost)
 			{
 				statue_activation_requirements_met = false;
-				CreateNotification(STATUE_OF_BOONS_INSUFFICIENT_MANA_DIALOGUE_KEY, Self, Other);
+				custom_dialogue_value = STATUE_OF_BOONS_INSUFFICIENT_MANA_DIALOGUE_KEY;
 			}
 			if (essence_is_required && ari_current_mana < mana_cost)
 			{
 				statue_activation_requirements_met = false;
-				CreateNotification(STATUE_OF_BOONS_INSUFFICIENT_ESSENCE_DIALOGUE_KEY, Self, Other);
+				custom_dialogue_value = STATUE_OF_BOONS_INSUFFICIENT_ESSENCE_DIALOGUE_KEY;
 			}
 
 			if (statue_activation_requirements_met)
 			{
+				if (mana_is_required)
+					reduce_ari_mana = true;
+				if (essence_is_required)
+					reduce_ari_essence = true;
+
 				//std::uniform_int_distribution<> choose_random_boon(0, static_cast<int>(LIST_OF_BOONS.size() - 1));
 				//std::string random_boon = LIST_OF_BOONS[choose_random_boon(gen)];
 				std::string random_boon = BOON_OF_BUTTERFLY; // DEBUG
@@ -1095,8 +1156,6 @@ RValue& GmlScriptPlayTextCallback(
 					boon_of_stamina = true;
 					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_STAMINA_GRANTED_DIALOGUE_KEY;
 				}
-
-				WriteModSaveFile();
 			}
 		}
 
