@@ -31,7 +31,7 @@ static const char* const GML_SCRIPT_GIVE_ARI_ITEM = "gml_Script_give_item@Ari@Ar
 static const char* const GML_SCRIPT_GET_MOVE_SPEED = "gml_Script_get_move_speed@Ari@Ari";
 static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact";
 static const char* const GML_SCRIPT_SHOW_ROOM_TITLE = "gml_Script_show_room_title";
-static const char* const GML_SCRIPT_CREATE_BUG = "gml_Script_setup@gml_Object_obj_bug_Create_0"; // TODO: This script isn't needed -- gml_Script_goto_gm_room
+static const char* const GML_SCRIPT_CREATE_BUG = "gml_Script_setup@gml_Object_obj_bug_Create_0";
 static const char* const GML_SCRIPT_ADD_HEART_POINTS = "gml_Script_add_heart_points@Npc@Npc";
 static const char* const GML_SCRIPT_MODIFY_STAMINA = "gml_Script_modify_stamina@Ari@Ari";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
@@ -128,28 +128,6 @@ static std::random_device rd;
 static std::mt19937 gen(rd());
 static std::string save_prefix = "";
 static std::string mod_folder = "";
-
-// DEBUG------------------------------------------------------
-static int interact_count = 0;
-static int bug_spawn_count = 0;
-static std::vector<std::string> struct_field_names = {};
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
-}
-bool GetStructFieldNames(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	struct_field_names.push_back(MemberName);
-	return false;
-}
-//------------------------------------------------------------
 
 int RValueAsInt(RValue value)
 {
@@ -836,8 +814,14 @@ RValue& GmlScriptGiveItemCallback(
 		modify_items_added = false;
 		if (ari_current_location != LOCATION_FARM)
 		{
-			Arguments[1]->m_Real = Arguments[1]->m_Real * 2;
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Doubled the item obtained.", MOD_NAME, VERSION);
+			const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GIVE_ARI_ITEM));
+			original(
+				Self,
+				Other,
+				Result,
+				ArgumentCount,
+				Arguments
+			);
 		}
 	}
 
@@ -983,6 +967,9 @@ RValue& GmlScriptAddHeartPointsCallback(
 	IN RValue** Arguments
 )
 {
+	if (boon_of_friendship)
+		Arguments[0]->m_Real = ceil(1.5 * Arguments[0]->m_Real);
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ADD_HEART_POINTS));
 	original(
 		Self,
@@ -991,9 +978,6 @@ RValue& GmlScriptAddHeartPointsCallback(
 		ArgumentCount,
 		Arguments
 	);
-
-	if (boon_of_friendship)
-		Arguments[0]->m_Real = ceil(1.5 * Arguments[0]->m_Real);
 
 	return Result;
 }
@@ -1006,6 +990,9 @@ RValue& GmlScriptModifyStaminaCallback(
 	IN RValue** Arguments
 )
 {
+	if (boon_of_stamina && Arguments[0]->m_Real < 0)
+		Arguments[0]->m_Real = 0;
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_MODIFY_STAMINA));
 	original(
 		Self,
@@ -1014,9 +1001,6 @@ RValue& GmlScriptModifyStaminaCallback(
 		ArgumentCount,
 		Arguments
 	);
-
-	if (boon_of_stamina && Arguments[0]->m_Real < 0)
-		Arguments[0]->m_Real = 0;
 
 	return Result;
 }
@@ -1061,9 +1045,11 @@ RValue& GmlScriptEndDayCallback(
 		Arguments
 	);
 
-	previous_boon = GetActiveBoonString();
+	std::string active_boon_str = GetActiveBoonString();
+	if (active_boon_str != NONE)
+		previous_boon = active_boon_str;
+
 	ResetStaticFields(false);
-	WriteModSaveFile(); // TODO: Should this be called here? Save Game might get called automatically after this (CHECKING...)
 	
 	return Result;
 }
@@ -1117,9 +1103,22 @@ RValue& GmlScriptPlayTextCallback(
 				if (essence_is_required)
 					reduce_ari_essence = true;
 
-				//std::uniform_int_distribution<> choose_random_boon(0, static_cast<int>(LIST_OF_BOONS.size() - 1));
-				//std::string random_boon = LIST_OF_BOONS[choose_random_boon(gen)];
-				std::string random_boon = BOON_OF_BUTTERFLY; // DEBUG
+				std::string random_boon = NONE;
+				if (previous_boon == NONE)
+				{
+					// Choose a random boon.
+					std::uniform_int_distribution<> choose_random_boon(0, static_cast<int>(LIST_OF_BOONS.size() - 1));
+					random_boon = LIST_OF_BOONS[choose_random_boon(gen)];
+				}
+				else
+				{
+					// Choose a random boon excluding the previous one.
+					std::vector<std::string> modified_boon_list = LIST_OF_BOONS;
+					modified_boon_list.erase(std::remove(modified_boon_list.begin(), modified_boon_list.end(), previous_boon), modified_boon_list.end());
+
+					std::uniform_int_distribution<> choose_random_boon(0, static_cast<int>(modified_boon_list.size() - 1));
+					random_boon = modified_boon_list[choose_random_boon(gen)];
+				}
 
 				if (random_boon == BOON_OF_SPEED)
 				{
