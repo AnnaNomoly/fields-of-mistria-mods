@@ -49,6 +49,7 @@ static const std::string OBJECT_CATEGORY_ROCK = "rock";
 static const std::string OBJECT_CATEGORY_STUMP = "stump";
 static const std::string OBJECT_CATEGORY_TREE = "tree";
 static const std::string CUSTOM_ITEM_NAME = "dragon_fairy";
+static const std::string UNIDENTIFIED_ARTIFACT_ITEM_NAME = "unidentified_artifact";
 static const std::string CUSTOM_OBJECT_NAME = "statue_of_boons";
 static const std::string BOON_OF_SPEED = "boon_of_speed";
 static const std::string BOON_OF_FORAGE = "boon_of_forage";
@@ -121,6 +122,7 @@ static bool spawning_dragon_fairy = false; // Used to track when the bug is bein
 static std::string dragon_fairy_location = NONE; // Used to track the randomly selected location
 static std::string previous_boon = NONE;
 static int dragon_fairy_item_id = -1;
+static int unidentified_artifact_item_id = -1;
 static std::map<std::string, int> object_category_to_id_map = {};
 static std::vector<int> forage_boon_objects = {};
 static std::map<int, std::string> object_id_to_name_map = {};
@@ -195,6 +197,17 @@ RValue TryStringToItemId(CInstance* Self, CInstance* Other, std::string item_nam
 	);
 
 	return item_id;
+}
+
+bool ItemHasBeenAcquired(int item_id)
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __ari = global_instance->at("__ari");
+	RValue items_acquired = __ari.at("items_acquired");
+	RValue item_acquired = g_ModuleInterface->CallBuiltin("array_get", { items_acquired, item_id });
+	return RValueAsBool(item_acquired);
 }
 
 void LoadObjectCategories()
@@ -814,14 +827,21 @@ RValue& GmlScriptGiveItemCallback(
 		modify_items_added = false;
 		if (ari_current_location != LOCATION_FARM)
 		{
-			const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GIVE_ARI_ITEM));
-			original(
-				Self,
-				Other,
-				Result,
-				ArgumentCount,
-				Arguments
-			);
+			RValue item = Arguments[0]->m_Object;
+			int item_id = RValueAsInt(item.at("item_id"));
+
+			// Prevent giving more than one of an unidentified artifact or unacquired item.
+			if (item_id != unidentified_artifact_item_id && ItemHasBeenAcquired(item_id))
+			{
+				const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GIVE_ARI_ITEM));
+				original(
+					Self,
+					Other,
+					Result,
+					ArgumentCount,
+					Arguments
+				);
+			}
 		}
 	}
 
@@ -943,8 +963,7 @@ RValue& GmlScriptCreateBugCallback(
 	if (spawning_dragon_fairy)
 	{
 		spawning_dragon_fairy = false;
-		int fairy_bee_item_id = RValueAsInt(TryStringToItemId(Self, Other, "dragon_fairy"));
-		Arguments[0]->m_i64 = fairy_bee_item_id;
+		Arguments[0]->m_i64 = dragon_fairy_item_id;
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CREATE_BUG));
@@ -1090,7 +1109,7 @@ RValue& GmlScriptPlayTextCallback(
 				statue_activation_requirements_met = false;
 				custom_dialogue_value = STATUE_OF_BOONS_INSUFFICIENT_MANA_DIALOGUE_KEY;
 			}
-			if (essence_is_required && ari_current_mana < mana_cost)
+			if (essence_is_required && ari_current_essence < essence_cost)
 			{
 				statue_activation_requirements_met = false;
 				custom_dialogue_value = STATUE_OF_BOONS_INSUFFICIENT_ESSENCE_DIALOGUE_KEY;
@@ -1214,6 +1233,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	{
 		load_on_start = false;
 		dragon_fairy_item_id = RValueAsInt(TryStringToItemId(Self, Other, CUSTOM_ITEM_NAME));
+		unidentified_artifact_item_id = RValueAsInt(TryStringToItemId(Self, Other, UNIDENTIFIED_ARTIFACT_ITEM_NAME));
 		LoadObjectCategories();
 		LoadObjectIds(Self, Other);
 		LoadObjectItemData();
