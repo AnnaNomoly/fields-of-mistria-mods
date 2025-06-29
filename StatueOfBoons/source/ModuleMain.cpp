@@ -11,8 +11,6 @@ static const char* const MOD_NAME = "StatueOfBoons";
 static const char* const VERSION = "1.0.0";
 static const char* const MANA_COST_KEY = "mana_cost"; // Used in mod config file
 static const char* const ESSENCE_COST_KEY = "essence_cost"; // Used in mod config file
-static const char* const MANA_IS_REQUIRED_KEY = "mana_is_required"; // Used in mod config file
-static const char* const ESSENCE_IS_REQUIRED_KEY = "essence_is_required"; // Used in mod config file
 static const char* const ACTIVE_BOON_KEY = "active_boon"; // Used in mod save file
 static const char* const PREVIOUS_BOON_KEY = "previous_boon"; // Used in mod save file
 static const char* const DRAGON_FAIRY_LOCATION_KEY = "dragon_fairy_location"; // Used in mod save file
@@ -90,8 +88,6 @@ static const std::map<std::string, std::vector<std::vector<int>>> CUSTOM_BUG_SPA
 };
 static const int DEFAULT_MANA_COST = 1;
 static const int DEFAULT_ESSENCE_COST = 5;
-static const bool DEFAULT_MANA_IS_REQUIRED = true;
-static const bool DEFAULT_ESSENCE_IS_REQUIRED = false;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
@@ -99,8 +95,6 @@ static bool game_is_active = false;
 static bool custom_object_used = false;
 static int mana_cost = DEFAULT_MANA_COST;
 static int essence_cost = DEFAULT_ESSENCE_COST;
-static bool mana_is_required = DEFAULT_MANA_IS_REQUIRED;
-static bool essence_is_required = DEFAULT_ESSENCE_IS_REQUIRED;
 static int ari_current_mana = -1;
 static int ari_current_essence = -1;
 static bool reduce_ari_mana = false;
@@ -528,13 +522,9 @@ void LogDefaultConfigValues()
 {
 	mana_cost = DEFAULT_MANA_COST;
 	essence_cost = DEFAULT_ESSENCE_COST;
-	mana_is_required = DEFAULT_MANA_IS_REQUIRED;
-	essence_is_required = DEFAULT_ESSENCE_IS_REQUIRED;
 
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, MANA_COST_KEY, DEFAULT_MANA_COST);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, ESSENCE_COST_KEY, DEFAULT_ESSENCE_COST);
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, MANA_IS_REQUIRED_KEY, DEFAULT_MANA_IS_REQUIRED ? "true" : "false");
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ESSENCE_IS_REQUIRED_KEY, DEFAULT_ESSENCE_IS_REQUIRED ? "true" : "false");
 }
 
 void CreateOrLoadModConfigFile()
@@ -584,10 +574,10 @@ void CreateOrLoadModConfigFile()
 					if (json_object.contains(MANA_COST_KEY))
 					{
 						mana_cost = json_object[MANA_COST_KEY];
-						if (mana_cost < 0 || mana_cost > 12)
+						if (mana_cost < 0 || mana_cost > 16)
 						{
 							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, MANA_COST_KEY, mana_cost, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - This value MUST be a valid integer between 0 and 12 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - This value MUST be a valid integer between 0 and 16 (inclusive)!", MOD_NAME, VERSION);
 							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, MANA_COST_KEY, DEFAULT_MANA_COST);
 							mana_cost = DEFAULT_MANA_COST;
 						}
@@ -607,10 +597,10 @@ void CreateOrLoadModConfigFile()
 					if (json_object.contains(ESSENCE_COST_KEY))
 					{
 						essence_cost = json_object[ESSENCE_COST_KEY];
-						if (essence_cost < 0 || essence_cost > 100)
+						if (essence_cost < 0 || essence_cost > 1000)
 						{
 							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, ESSENCE_COST_KEY, essence_cost, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - This value MUST be a valid integer between 0 and 100 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - This value MUST be a valid integer between 0 and 1000 (inclusive)!", MOD_NAME, VERSION);
 							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, ESSENCE_COST_KEY, DEFAULT_ESSENCE_COST);
 							essence_cost = DEFAULT_ESSENCE_COST;
 						}
@@ -624,32 +614,6 @@ void CreateOrLoadModConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, ESSENCE_COST_KEY, config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, ESSENCE_COST_KEY, DEFAULT_ESSENCE_COST);
 						essence_cost = DEFAULT_ESSENCE_COST;
-					}
-
-					// Try loading the mana_is_required value.
-					if (json_object.contains(MANA_IS_REQUIRED_KEY))
-					{
-						mana_is_required = json_object[MANA_IS_REQUIRED_KEY];
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, MANA_IS_REQUIRED_KEY, mana_is_required ? "true" : "false");
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, MANA_IS_REQUIRED_KEY, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, MANA_IS_REQUIRED_KEY, DEFAULT_MANA_IS_REQUIRED ? "true" : "false");
-						mana_is_required = DEFAULT_MANA_IS_REQUIRED;
-					}
-
-					// Try loading the essence_is_required value.
-					if (json_object.contains(ESSENCE_IS_REQUIRED_KEY))
-					{
-						essence_is_required = json_object[ESSENCE_IS_REQUIRED_KEY];
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, ESSENCE_IS_REQUIRED_KEY, mana_is_required ? "true" : "false");
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, ESSENCE_IS_REQUIRED_KEY, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ESSENCE_IS_REQUIRED_KEY, DEFAULT_ESSENCE_IS_REQUIRED ? "true" : "false");
-						essence_is_required = DEFAULT_ESSENCE_IS_REQUIRED;
 					}
 				}
 			}
@@ -672,9 +636,7 @@ void CreateOrLoadModConfigFile()
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"StatueOfBoons.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
 			json default_json = {
 				{MANA_COST_KEY, DEFAULT_MANA_COST},
-				{ESSENCE_COST_KEY, DEFAULT_ESSENCE_COST},
-				{MANA_IS_REQUIRED_KEY, DEFAULT_MANA_IS_REQUIRED},
-				{ESSENCE_IS_REQUIRED_KEY, DEFAULT_ESSENCE_IS_REQUIRED}
+				{ESSENCE_COST_KEY, DEFAULT_ESSENCE_COST}
 			};
 
 			std::ofstream out_stream(config_file);
@@ -1104,12 +1066,12 @@ RValue& GmlScriptPlayTextCallback(
 		{
 			// Check if mana or essence is required and that Ari has enough to activate the statue.
 			bool statue_activation_requirements_met = true;
-			if (mana_is_required && ari_current_mana < mana_cost)
+			if (ari_current_mana < mana_cost)
 			{
 				statue_activation_requirements_met = false;
 				custom_dialogue_value = STATUE_OF_BOONS_INSUFFICIENT_MANA_DIALOGUE_KEY;
 			}
-			if (essence_is_required && ari_current_essence < essence_cost)
+			if (ari_current_essence < essence_cost)
 			{
 				statue_activation_requirements_met = false;
 				custom_dialogue_value = STATUE_OF_BOONS_INSUFFICIENT_ESSENCE_DIALOGUE_KEY;
@@ -1117,9 +1079,9 @@ RValue& GmlScriptPlayTextCallback(
 
 			if (statue_activation_requirements_met)
 			{
-				if (mana_is_required)
+				if (mana_cost > 0)
 					reduce_ari_mana = true;
-				if (essence_is_required)
+				if (essence_cost > 0)
 					reduce_ari_essence = true;
 
 				std::string random_boon = NONE;
