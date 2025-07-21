@@ -10,6 +10,14 @@ static const char* const MOD_NAME = "ThePerfectGift";
 static const char* const VERSION = "1.1.3";
 static const char* const UNLOCK_ALL_GIFT_PREFERENCES_KEY = "unlock_all_gift_preferences";
 static const char* const SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS_KEY = "show_gift_preferences_on_item_tooltips";
+static const char* const GML_SCRIPT_TRY_ITEM_ID_TO_STRING = "gml_Script_try_item_id_to_string";
+static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
+static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
+static const char* const GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME = "gml_Script_get_display_name@anon@2420@LiveItem@LiveItem";
+static const char* const GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION = "gml_Script_get_display_description@anon@3505@LiveItem@LiveItem";
+static const char* const GML_SCRIPT_LOCALIZER_GET = "gml_Script_get@Localizer@Localizer";
+static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
+static const char* const GML_SCRIPT_TEXTBOX_SAY = "gml_Script_say@TextboxMenu@TextboxMenu";
 static const std::string GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY = "mods/ThePerfectGift/gift_preference_detected";
 static const std::string GIFT_PREFERENCE_UNLOCKED_LOCALIZATION_KEY = "mods/ThePerfectGift/gift_preference_unlocked";
 static const std::string ITEM_PLACEHOLDER_TEXT = "<ITEM>";
@@ -42,11 +50,11 @@ static const std::string OLRIC = "olric";
 static const std::string REINA = "reina";
 static const std::string RYIS = "ryis";
 //static const std::string STILLWELL = "stillwell";
-//static const std::string TALIFERRO = "taliferro";
+static const std::string TALIFERRO = "taliferro";
 static const std::string TERITHIA = "terithia";
 static const std::string VALEN = "valen";
 static const std::string VERA = "vera";
-//static const std::string WHEEDLE = "wheedle";
+static const std::string WHEEDLE = "wheedle";
 //static const std::string ZOREL = "zorel";
 static const bool DEFAULT_UNLOCK_ALL_GIFT_PREFERENCES = false;
 static const bool DEFAULT_SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS = false;
@@ -55,8 +63,11 @@ static const std::vector<std::string> ACTIVE_NPC_LIST = { // As of 0.13.4
 	HAYDEN, HEMLOCK, HENRIETTA, HOLT, JOSEPHINE, JUNIPER, LANDEN, LOUIS, LUC, MAPLE,
 	MARCH, MERRI, NORA, OLRIC, REINA, RYIS, TERITHIA, VALEN, VERA
 };
-static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MAP = { // As of 0.13.4
+static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MAP = { // As of 0.14.0
 	// Adeline
+	{ "Cutscenes/Heart Events/Adeline/adeline_eight_hearts/adeline_eight_hearts/3", { ADELINE, "lemon_pie" }},
+	{ "Conversations/Bank/Adeline/Relationship Lines/Relationship/post_8h_lines_romantic/adeline_post_8h_romantic_7/init", { ADELINE, "middlemist" }},
+	{ "Conversations/Bank/Adeline/Relationship Lines/Relationship/post_8h_lines_best_friend/adeline_post_8h_best_friend_10/init", { ADELINE, "coffee" }},
 	{ "Conversations/Bank/Adeline/Banked Lines/inn_work/inn_work/init", { ADELINE, "wildberry_scone" }},
 	{ "Conversations/Bank/Adeline/Banked Lines/loves_paperwork/loves_paperwork/init", { ADELINE, "paper" }},
 	{ "Conversations/Bank/Adeline/Banked Lines/wine_cellar/wine_cellar/1", { ADELINE, "red_wine" }},
@@ -71,6 +82,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Cutscenes/Story Events/adeline_quest_board/adeline_quest_board/15", { ADELINE, "tulip" }},
 	{ "Cutscenes/Story Events/adeline_quest_board/adeline_quest_board/17", { ADELINE, "tulip" }},
 	// Balor
+	{ "Conversations/Bank/Balor/Relationship Lines/Relationship/post_8h_lines_romantic/balor_post_8h_romantic_3/init", { BALOR, "ore_diamond", "ore_ruby"}},
 	{ "Conversations/Bank/Balor/Banked Lines/bath_smelled_nice/bath_smelled_nice/1", { BALOR, "jasmine" }},
 	{ "Conversations/Bank/Balor/Gift Lines/gift_lines/perfect_diamond/init", { BALOR, "perfect_diamond" }}, // Gift Line
 	{ "Conversations/Bank/Balor/Museum Lines/alda_gem_bracelet/alda_gem_bracelet/init", { BALOR, "alda_gem_bracelet" }},
@@ -80,8 +92,11 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Balor/Museum Lines/perfect_sapphire/perfect_sapphire/init", { BALOR, "perfect_sapphire" }},
 	{ "Conversations/Bank/Balor/Museum Lines/rusted_treasure_chest/rusted_treasure_chest/init", { BALOR, "rusted_treasure_chest" }},
 	{ "Conversations/Bank/Balor/Museum Lines/sapphire_betta/sapphire_betta/init", { BALOR, "sapphire_betta" }},
-	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_juniper/7", { BALOR, "ruby" }},
+	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_juniper/7", { BALOR, "ore_ruby" }},
 	// Caldarus
+	{ "Conversations/Bank/Caldarus/Relationship Lines/post_8h_lines_romantic/caldarus_post_8h_romantic_4/init", { CALDARUS, "mont_blanc" }},
+	{ "Conversations/Bank/Caldarus/Relationship Lines/post_8h_lines_best_friend/caldarus_post_8h_best_friend_6/1", { CALDARUS, "spirit_mushroom_tea" }},
+	{ "Conversations/Bank/Caldarus/Relationship Lines/post_8h_lines_romantic/caldarus_post_8h_romantic_8/1", { CALDARUS, "breath_of_fire" }},
 	{ "Conversations/Bank/Caldarus/Statue Lines/general_lines/general_lines_29/1", { CALDARUS, "beet_soup" }},
 	{ "Conversations/Bank/Caldarus/Statue Lines/general_lines/general_lines_30/1", { CALDARUS, "mont_blanc" }},
 	{ "Conversations/Bank/Caldarus/Banked Lines/items/spirit_mushroom_0/1", { CALDARUS, "spirit_mushroom_tea" }},
@@ -89,6 +104,11 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Caldarus/Gift Lines/gift_lines/mont_blanc/init", { CALDARUS, "mont_blanc" }}, // Gift Line
 	{ "Conversations/Bank/Caldarus/Gift Lines/gift_lines/sushi_platter/init", { CALDARUS, "sushi_platter" }}, // Gift Line
 	// Celine
+	{ "Conversations/Bank/Celine/Relationship Lines/Relationship/post_8h_lines_best_friend/celine_post_8h_best_friend_7/init", { CELINE, "marigold" }},
+	{ "Conversations/Bank/Celine/Relationship Lines/Relationship/post_8h_lines_best_friend/celine_post_8h_best_friend_6/init", { CELINE, "lilac" }},
+	{ "Conversations/Bank/Celine/Relationship Lines/Relationship/post_8h_lines_best_friend/celine_post_8h_best_friend_9/init", { CELINE, "poinsettia" }},
+	{ "Conversations/Bank/Celine/Date Lines/deep_woods_picnic/deep_woods_picnic_accept_2/3", { CELINE, "temple_flower", "marigold" }},
+	{ "Conversations/Bank/Celine/Relationship Lines/Relationship/post_8h_lines_best_friend/celine_post_8h_best_friend_8/init", { CELINE, "heather" }},
 	{ "Conversations/Bank/Celine/Banked Lines/daisies/daisies/init", { CELINE, "daisy" }},
 	{ "Conversations/Bank/Celine/Gift Lines/gift_lines/chrysanthemum/init", { CELINE, "chrysanthemum" }}, // Gift Line
 	{ "Conversations/Bank/Celine/Gift Lines/gift_lines/plum_blossom/init", { CELINE, "plum_blossom" }}, // Gift Line
@@ -109,8 +129,8 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_turn_in/2", { DELL, "chocolate" }},
 	// Dozy
 	// Eiland
+	{ "Conversations/Bank/Eiland/Relationship Lines/post_8h_lines_romantic/eiland_post_8h_romantic_4/2", { EILAND, "golden_cheesecake" }},
 	{ "Conversations/Bank/Eiland/Banked Lines/pumpkin_pie/pumpkin_pie/init", { EILAND, "pumpkin_pie" }},
-	{ "Conversations/Bank/Eiland/Gift Lines/gift_lines/alda_feather_pendant/init", { EILAND, "alda_feather_pendant" }}, // Gift Line
 	{ "Conversations/Bank/Eiland/Market Lines/market_darcy_1/market_darcy_1/init", { EILAND, "roasted_rice_tea" }},
 	// Elsie
 	{ "Conversations/Bank/Elsie/Market Lines/market_darcy_1/market_darcy_1/init", { ELSIE, "jasmine_tea" }},
@@ -123,12 +143,14 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Errol/Market Lines/market_darcy_3/market_darcy_3/init", { ERROL, "latte" }},
 	{ "Conversations/Bank/Errol/Market Lines/market_darcy_4/market_darcy_4/init", { ERROL, "mocha" }},
 	// Hayden
+	{ "Cutscenes/Heart Events/Hayden/hayden_eight_hearts/hayden_eight_hearts/1", { HAYDEN, "vegetable_quiche" }},
 	{ "Conversations/Bank/Hayden/Banked Lines/hot_toddy/hot_toddy/init", { HAYDEN, "cup_of_tea" }},
 	{ "Conversations/Bank/Hayden/Market Lines/market_darcy_1/market_darcy_1/init", { HAYDEN, "coffee", "cup_of_tea"}},
 	{ "Conversations/Bank/Hayden/Market Lines/market_darcy_2/market_darcy_2/init", { HAYDEN, "coffee" }},
 	{ "Conversations/Bank/Hayden/Museum Lines/store_horse/stone_horse/init", { HAYDEN, "stone_horse" }},
 	{ "Conversations/Festival Lines/Hayden/shooting_star/shooting_star_romantic_follow_up_A/1", { HAYDEN, "apple_pie" }},
 	// Hemlock
+	{ "Conversations/Bank/Hemlock/Market Lines/market_wheedle_1/market_wheedle_1/1", { HEMLOCK, "white_wine" }},
 	{ "Conversations/Bank/Hemlock/Gift Lines/gift_lines/crayfish_etouffee/init", { HEMLOCK, "crayfish_etouffee" }}, // Gift Line
 	{ "Conversations/Bank/Josephine/Gift Lines/gift_lines/crayfish_etouffee/init", { HEMLOCK, "crayfish_etouffee" }}, // Gift Line
 	{ "Conversations/Bank/Hemlock/Market Lines/market_darcy_1/market_darcy_1/init", { HEMLOCK, "coffee", "beer"}},
@@ -141,7 +163,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/fetch_quests_follow_ups/request_for_ultimate_small_animal_feed_follow_up_henrietta/init", { HENRIETTA, "ultimate_small_animal_feed" }},
 	// Holt
 	{ "Conversations/Bank/Holt/Museum Lines/narrows_moss/narrows_moss/init", { HOLT, "narrows_moss" }},
-	{ "Conversations/General Dialogue/birthday_anticipation/holt_birthday_anticipation_kids/1", { HOLT, "hardwood" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/holt_birthday_anticipation_kids/1", { HOLT, "hard_wood" }},
 	// Josephine
 	{ "Conversations/Bank/Hemlock/Gift Lines/gift_lines/crayfish_etouffee/init", { JOSEPHINE, "crayfish_etouffee" }}, // Gift Line
 	{ "Conversations/Bank/Josephine/Gift Lines/gift_lines/crayfish_etouffee/init", { JOSEPHINE, "crayfish_etouffee" }}, // Gift Line
@@ -223,8 +245,11 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Olric/Gift Lines/gift_lines/hard_boiled_egg/init", { OLRIC, "hard_boiled_egg" } }, // Gift Line
 	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/3", { OLRIC, "hard_boiled_egg" } },
 	{ "Conversations/Bank/March/Banked Lines/olric_stone/olric_stone/init", { OLRIC, "ore_stone" } },
+	{ "Conversations/Bank/Olric/Market Lines/market_wheedle_1/market_wheedle_1/init", { OLRIC, "ore_stone" } },
 	// Priestess
 	// Reina
+	{ "Conversations/Bank/Reina/Relationship Lines/post_8h_lines_romantic/reina_post_8h_romantic_2/1", { REINA, "cauliflower_curry" } },
+	{ "Conversations/Bank/Reina/Relationship Lines/post_8h_lines_romantic/reina_post_8h_romantic_8/1", { REINA, "turnip_and_potato_gratin" } },
 	{ "Conversations/Bank/Reina/Banked Lines/garlic/garlic/init", { REINA, "garlic" }},
 	{ "Conversations/Bank/Reina/Banked Lines/garlic/garlic_2/init", { REINA, "garlic" }},
 	{ "Conversations/Bank/Reina/Gift Lines/gift_lines/daffodil/init", { REINA, "daffodil" } }, // Gift Line
@@ -233,6 +258,9 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Cutscenes/Heart Events/Reina/reina_six_hearts/reina_six_hearts/37", { REINA, "grilled_cheese" }},
 	{ "Cutscenes/Heart Events/Reina/reina_two_hearts/reina_two_hearts/1", { REINA, "wildberry_pie" }},
 	// Ryis
+	{ "Conversations/Bank/Ryis/Relationship Lines/post_8h_lines_romantic/ryis_post_8h_romantic_10/init", { RYIS, "iced_coffee" } },
+	{ "Conversations/Bank/Ryis/Relationship Lines/post_8h_lines_best_friend/ryis_post_8h_best_friend_12/4", { RYIS, "golden_horse_hair" } },
+	{ "Conversations/Bank/Ryis/Relationship Lines/post_8h_lines_best_friend/ryis_post_8h_best_friend_2/1", { RYIS, "iced_coffee" } },
 	{ "Conversations/Bank/Ryis/Banked Lines/bath_smells_like_lavender/bath_smells_like_lavender/init", { RYIS, "lilac" }},
 	{ "Conversations/Bank/Ryis/Gift Lines/gift_lines/hard_wood/1", { RYIS, "hard_wood" } }, // Gift Line
 	{ "Conversations/Bank/Ryis/Market Lines/market_darcy_1/market_darcy_1/init", { RYIS, "iced_coffee" }},
@@ -243,6 +271,8 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/2", { RYIS, "bread" } },
 	// Stillwell
 	// Taliferro
+	{ "Conversations/Bank/Taliferro/Banked Lines/challenge_completed_lines/incredibly_hot_pot_terithia/init", { TALIFERRO, "incredibly_hot_pot" } },
+	{ "Conversations/Bank/Taliferro/Banked Lines/challenge_completed_lines/veggie_sub_sandwich_holt/init", { TALIFERRO, "veggie_sub_sandwich" } },
 	// Terithia
 	{ "Conversations/Bank/Terithia/Gift Lines/gift_lines/fish_stew/init", { TERITHIA, "fish_stew" } }, // Gift Line
 	{ "Conversations/Bank/Valen/Banked Lines/terithia_fish_jerky/terithia_fish_jerky/init", { TERITHIA, "canned_sardines" }},
@@ -559,7 +589,7 @@ void LoadItemData(CInstance* Self, CInstance* Other)
 	{
 		CScript* gml_script_try_item_id_to_string = nullptr;
 		g_ModuleInterface->GetNamedRoutinePointer(
-			"gml_Script_try_item_id_to_string",
+			GML_SCRIPT_TRY_ITEM_ID_TO_STRING,
 			(PVOID*)&gml_script_try_item_id_to_string
 		);
 
@@ -585,10 +615,10 @@ void LoadItemData(CInstance* Self, CInstance* Other)
 	}
 	if (item_name_to_id_map.size() > 0 && item_id_to_name_map.size() > 0)
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[ThePerfectGift %s] - Successfully loaded item data!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully loaded item data!", MOD_NAME, VERSION);
 	}
 	else {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to load data for items!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load data for items!", MOD_NAME, VERSION);
 	}
 }
 
@@ -596,7 +626,7 @@ void DisplayNotification(CInstance* Self, CInstance* Other, std::string localiza
 {
 	CScript* gml_script_create_notification = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_create_notification",
+		GML_SCRIPT_CREATE_NOTIFICATION,
 		(PVOID*)&gml_script_create_notification
 	);
 
@@ -623,10 +653,11 @@ void UnlockGifts(CInstance* npc, std::string npc_name, bool silent)
 		if (me_exists.m_Kind == VALUE_BOOL && me_exists.m_Real == 1)
 		{
 			RValue me = g_ModuleInterface->CallBuiltin("struct_get", { npc, "me" });
+
 			RValue known_gift_preferences_exists = g_ModuleInterface->CallBuiltin("struct_exists", { me, "known_gift_preferences" });
 			if (known_gift_preferences_exists.m_Kind == VALUE_BOOL && known_gift_preferences_exists.m_Real == 1)
 			{
-				RValue known_gift_preferences = g_ModuleInterface->CallBuiltin("struct_get", { me, "known_gift_preferences" });
+				RValue known_gift_preferences = g_ModuleInterface->CallBuiltin("struct_get", { me, "known_gift_preferences" });				
 				RValue inner_exists = g_ModuleInterface->CallBuiltin("struct_exists", { known_gift_preferences, "inner" });
 				if (inner_exists.m_Kind == VALUE_BOOL && inner_exists.m_Real == 1)
 				{
@@ -650,7 +681,9 @@ void UnlockGifts(CInstance* npc, std::string npc_name, bool silent)
 							}
 						}
 					}
-					gifts_to_unlock[npc_name].clear();
+
+					if(!unlock_all_gift_preferences)
+						gifts_to_unlock[npc_name].clear();
 				}
 			}
 		}
@@ -680,7 +713,7 @@ void ParseCustomModDialogue(CInstance* Self, CInstance* Other, std::string dialo
 	}
 
 	if (tokens.size() < 7 || tokens[0] != "conversations" || tokens[1] != "mods") {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Invalid custom mod dialogue key detected: %s", VERSION, dialogue_key.c_str());
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid custom mod dialogue key detected: %s", MOD_NAME, VERSION, dialogue_key.c_str());
 		return;
 	}
 
@@ -689,7 +722,7 @@ void ParseCustomModDialogue(CInstance* Self, CInstance* Other, std::string dialo
 	// Gift hint groups are found in the tokens from index 3 up to tokens.size() - 2.
 	size_t gift_hint_token_count = tokens.size() - 4; // Exclude the 3 initial tokens and the last conversation token
 	if (gift_hint_token_count % 3 != 0) {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Invalid custom mod dialogue key detected: %s", VERSION, dialogue_key.c_str());
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid custom mod dialogue key detected: %s", MOD_NAME, VERSION, dialogue_key.c_str());
 		return;
 	}
 
@@ -697,7 +730,7 @@ void ParseCustomModDialogue(CInstance* Self, CInstance* Other, std::string dialo
 	for (size_t i = 3; i < tokens.size() - 1; i += 3) {
 		// Validate that the first token of the group starts with "gift_hint_"
 		if (tokens[i].find("gift_hint_") != 0) {
-			g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Invalid custom mod dialogue key detected: %s", VERSION, dialogue_key.c_str());
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid custom mod dialogue key detected: %s", MOD_NAME, VERSION, dialogue_key.c_str());
 			return;
 		}
 
@@ -720,7 +753,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 {
 	CScript* gml_script_get_localizer = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_get@Localizer@Localizer",
+		GML_SCRIPT_GET_LOCALIZER,
 		(PVOID*)&gml_script_get_localizer
 	);
 
@@ -808,39 +841,19 @@ void ObjectCallback(
 			UnlockGifts(self, RYIS, unlock_all_gift_preferences);
 		//if (gifts_to_unlock.contains(STILLWELL) && strstr(self->m_Object->m_Name, "obj_stillwell"))
 		//	UnlockGifts(self, STILLWELL, unlock_all_gift_preferences);
-		//if (gifts_to_unlock.contains(TALIFERRO) && strstr(self->m_Object->m_Name, "obj_taliferro"))
-		//	UnlockGifts(self, TALIFERRO, unlock_all_gift_preferences);
+		if (gifts_to_unlock.contains(TALIFERRO) && strstr(self->m_Object->m_Name, "obj_taliferro"))
+			UnlockGifts(self, TALIFERRO, unlock_all_gift_preferences);
 		if (gifts_to_unlock.contains(TERITHIA) && strstr(self->m_Object->m_Name, "obj_terithia"))
 			UnlockGifts(self, TERITHIA, unlock_all_gift_preferences);
 		if (gifts_to_unlock.contains(VALEN) && strstr(self->m_Object->m_Name, "obj_valen"))
 			UnlockGifts(self, VALEN, unlock_all_gift_preferences);
 		if (gifts_to_unlock.contains(VERA) && strstr(self->m_Object->m_Name, "obj_vera"))
 			UnlockGifts(self, VERA, unlock_all_gift_preferences);
-		//if (gifts_to_unlock.contains(WHEEDLE) && strstr(self->m_Object->m_Name, "obj_wheedle"))
-		//	UnlockGifts(self, WHEEDLE, unlock_all_gift_preferences);
+		if (gifts_to_unlock.contains(WHEEDLE) && strstr(self->m_Object->m_Name, "obj_wheedle"))
+			UnlockGifts(self, WHEEDLE, unlock_all_gift_preferences);
 		//if (gifts_to_unlock.contains(ZOREL) && strstr(self->m_Object->m_Name, "obj_zorel"))
 		//	UnlockGifts(self, ZOREL, unlock_all_gift_preferences);
 	}
-}
-
-RValue& GmlScriptSetHasMetCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_set_has_met@Npc@Npc"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
 }
 
 RValue& GmlScriptGetDisplayNameCallback(
@@ -851,7 +864,7 @@ RValue& GmlScriptGetDisplayNameCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get_display_name@anon@2028@LiveItem@LiveItem"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME));
 	original(
 		Self,
 		Other,
@@ -872,7 +885,7 @@ RValue& GmlScriptGetDisplayDescriptionCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get_display_description@anon@3113@LiveItem@LiveItem"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION));
 	original(
 		Self,
 		Other,
@@ -978,7 +991,7 @@ RValue& GmlScriptTextboxTranslateCallback(
 		}
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get@Localizer@Localizer"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_LOCALIZER_GET));
 	original(
 		Self,
 		Other,
@@ -1040,7 +1053,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	if (unlock_all_gift_preferences)
 		AutomaticallyUnlockAllGifts();
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SETUP_MAIN_SCREEN));
 	original(
 		Self,
 		Other,
@@ -1060,37 +1073,40 @@ RValue& GmlScriptTranslateCallback(
 	IN RValue** Arguments
 )
 {
-	std::string dialog_string = Arguments[0]->AsString().data();
-	std::string dialog_string_lowercase = Arguments[0]->AsString().data();
-	std::transform(dialog_string_lowercase.begin(), dialog_string_lowercase.end(), dialog_string_lowercase.begin(), [](unsigned char c) { return std::tolower(c); });
-	if (dialog_string_lowercase.find("conversations/mods") != std::string::npos && dialog_string_lowercase.find("gift_hint_") != std::string::npos)
+	if (!unlock_all_gift_preferences)
 	{
-		ParseCustomModDialogue(Self, Other, dialog_string);
-	}
-	else if (GIFT_DIALOG_MAP.count(dialog_string) > 0)
-	{
-		auto range = GIFT_DIALOG_MAP.equal_range(dialog_string);
-		for (auto it = range.first; it != range.second; ++it)
+		std::string dialog_string = Arguments[0]->AsString().data();
+		std::string dialog_string_lowercase = Arguments[0]->AsString().data();
+		std::transform(dialog_string_lowercase.begin(), dialog_string_lowercase.end(), dialog_string_lowercase.begin(), [](unsigned char c) { return std::tolower(c); });
+		if (dialog_string_lowercase.find("conversations/mods") != std::string::npos && dialog_string_lowercase.find("gift_hint_") != std::string::npos)
 		{
-			std::vector<std::string> gifts = it->second; // { REINA, "coffee", "iced_coffee"}}
-			std::string npc_name = gifts[0];
-
-			if (gifts_to_unlock.count(npc_name) <= 0)
-				gifts_to_unlock[npc_name] = {};
-
-			for (int i = 1; i < gifts.size(); i++)
+			ParseCustomModDialogue(Self, Other, dialog_string);
+		}
+		else if (GIFT_DIALOG_MAP.count(dialog_string) > 0)
+		{
+			auto range = GIFT_DIALOG_MAP.equal_range(dialog_string);
+			for (auto it = range.first; it != range.second; ++it)
 			{
-				gifts_to_unlock[npc_name].push_back(gifts[i]);
+				std::vector<std::string> gifts = it->second; // { REINA, "coffee", "iced_coffee"}}
+				std::string npc_name = gifts[0];
 
-				// Display the notification.
-				gift_preference_npc_name = npc_name;
-				gift_preference_internal_item_name = gifts[i];
-				DisplayNotification(Self, Other, GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY);
+				if (gifts_to_unlock.count(npc_name) <= 0)
+					gifts_to_unlock[npc_name] = {};
+
+				for (int i = 1; i < gifts.size(); i++)
+				{
+					gifts_to_unlock[npc_name].push_back(gifts[i]);
+
+					// Display the notification.
+					gift_preference_npc_name = npc_name;
+					gift_preference_internal_item_name = gifts[i];
+					DisplayNotification(Self, Other, GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY);
+				}
 			}
 		}
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_say@TextboxMenu@TextboxMenu"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_TEXTBOX_SAY));
 	original(
 		Self,
 		Other,
@@ -1102,49 +1118,22 @@ RValue& GmlScriptTranslateCallback(
 	return Result;
 }
 
-void CreateHookGmlScriptSetHasMet(AurieStatus& status)
-{
-	CScript* gml_script_get_display_name = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_set_has_met@Npc@Npc",
-		(PVOID*)&gml_script_get_display_name
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_set_has_met@Npc@Npc)!", VERSION);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_set_has_met@Npc@Npc",
-		gml_script_get_display_name->m_Functions->m_ScriptFunction,
-		GmlScriptSetHasMetCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_set_has_met@Npc@Npc)!", VERSION);
-	}
-}
-
 void CreateHookGmlScriptGetDisplayName(AurieStatus& status)
 {
 	CScript* gml_script_get_display_name = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_get_display_name@anon@2028@LiveItem@LiveItem",
+		GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME,
 		(PVOID*)&gml_script_get_display_name
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_get_display_name@anon@2028@LiveItem@LiveItem)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_get_display_name@anon@2028@LiveItem@LiveItem",
+		GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME,
 		gml_script_get_display_name->m_Functions->m_ScriptFunction,
 		GmlScriptGetDisplayNameCallback,
 		nullptr
@@ -1152,7 +1141,7 @@ void CreateHookGmlScriptGetDisplayName(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_get_display_name@anon@2028@LiveItem@LiveItem)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME);
 	}
 }
 
@@ -1160,18 +1149,18 @@ void CreateHookGmlScriptGetDisplayDescription(AurieStatus& status)
 {
 	CScript* gml_script_get_display_description = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_get_display_description@anon@3113@LiveItem@LiveItem",
+		GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION,
 		(PVOID*)&gml_script_get_display_description
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_get_display_description@anon@3113@LiveItem@LiveItem)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_get_display_description@anon@3113@LiveItem@LiveItem",
+		GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION,
 		gml_script_get_display_description->m_Functions->m_ScriptFunction,
 		GmlScriptGetDisplayDescriptionCallback,
 		nullptr
@@ -1179,7 +1168,7 @@ void CreateHookGmlScriptGetDisplayDescription(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_get_display_description@anon@3113@LiveItem@LiveItem)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION);
 	}
 }
 
@@ -1187,18 +1176,18 @@ void CreateHookGmlScriptTextboxTranslate(AurieStatus& status)
 {
 	CScript* gml_script_textbox_translate = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_get@Localizer@Localizer",
+		GML_SCRIPT_GET_LOCALIZER,
 		(PVOID*)&gml_script_textbox_translate
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_get@Localizer@Localizer)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_LOCALIZER);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_get@Localizer@Localizer",
+		GML_SCRIPT_GET_LOCALIZER,
 		gml_script_textbox_translate->m_Functions->m_ScriptFunction,
 		GmlScriptTextboxTranslateCallback,
 		nullptr
@@ -1206,7 +1195,7 @@ void CreateHookGmlScriptTextboxTranslate(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_get@Localizer@Localizer)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_LOCALIZER);
 	}
 }
 
@@ -1214,18 +1203,18 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 {
 	CScript* gml_script_setup_main_screen = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
 		(PVOID*)&gml_script_setup_main_screen
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SETUP_MAIN_SCREEN);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
 		gml_script_setup_main_screen->m_Functions->m_ScriptFunction,
 		GmlScriptSetupMainScreenCallback,
 		nullptr
@@ -1234,7 +1223,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SETUP_MAIN_SCREEN);
 	}
 }
 
@@ -1242,18 +1231,18 @@ void CreateHookGmlScriptTranslate(AurieStatus& status)
 {
 	CScript* gml_script_translate = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_say@TextboxMenu@TextboxMenu",
+		GML_SCRIPT_TEXTBOX_SAY,
 		(PVOID*)&gml_script_translate
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to get script (gml_Script_say@TextboxMenu@TextboxMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TEXTBOX_SAY);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_say@TextboxMenu@TextboxMenu",
+		GML_SCRIPT_TEXTBOX_SAY,
 		gml_script_translate->m_Functions->m_ScriptFunction,
 		GmlScriptTranslateCallback,
 		nullptr
@@ -1262,7 +1251,7 @@ void CreateHookGmlScriptTranslate(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook script (gml_Script_say@TextboxMenu@TextboxMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TEXTBOX_SAY);
 	}
 }
 
@@ -1277,7 +1266,7 @@ void CreateHookEventObject(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Failed to hook EVENT_OBJECT_CALL!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook EVENT_OBJECT_CALL!", MOD_NAME, VERSION);
 	}
 }
 
@@ -1294,57 +1283,50 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTAQUA, "[ThePerfectGift %s] - Plugin starting...", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
 
 	CreateHookEventObject(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptTranslate(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptTextboxTranslate(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptGetDisplayDescription(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptGetDisplayName(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
-	CreateHookGmlScriptSetHasMet(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[ThePerfectGift %s] - Exiting due to failure on start!", VERSION);
-		return status;
-	}
-
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[ThePerfectGift %s] - Plugin started!", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Plugin started!", MOD_NAME, VERSION);
 	return AURIE_SUCCESS;
 }
