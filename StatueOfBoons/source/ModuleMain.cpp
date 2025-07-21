@@ -8,7 +8,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "StatueOfBoons";
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.0.2";
 static const char* const MANA_COST_KEY = "mana_cost"; // Used in mod config file
 static const char* const ESSENCE_COST_KEY = "essence_cost"; // Used in mod config file
 static const char* const ACTIVE_BOON_KEY = "active_boon"; // Used in mod save file
@@ -23,8 +23,8 @@ static const char* const GML_SCRIPT_GET_MANA = "gml_Script_get_mana@Ari@Ari";
 static const char* const GML_SCRIPT_GET_ESSENCE = "gml_Script_get_essence@Ari@Ari";
 static const char* const GML_SCRIPT_MODIFY_MANA = "gml_Script_modify_mana@Ari@Ari";
 static const char* const GML_SCRIPT_MODIFY_ESSENCE = "gml_Script_modify_essence@Ari@Ari";
-static const char* const GML_SCRIPT_GET_FISHING_CELEBRATION_DATA = "gml_Script_get_celebration_data_essence_exp@anon@14736@Fish@Fish";
-static const char* const GML_SCRIPT_GET_DIVING_CELEBRATION_DATA = "gml_Script_get_celebration_data@anon@15509@DiveSpot@Fish";
+static const char* const GML_SCRIPT_GET_FISHING_CELEBRATION_DATA = "gml_Script_get_celebration_data_essence_exp@anon@14800@Fish@Fish";
+static const char* const GML_SCRIPT_GET_DIVING_CELEBRATION_DATA = "gml_Script_get_celebration_data@anon@15573@DiveSpot@Fish";
 static const char* const GML_SCRIPT_GIVE_ARI_ITEM = "gml_Script_give_item@Ari@Ari";
 static const char* const GML_SCRIPT_GET_MOVE_SPEED = "gml_Script_get_move_speed@Ari@Ari";
 static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact";
