@@ -9,7 +9,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Mistbloom";
-static const char* const VERSION = "1.0.1";
+static const char* const VERSION = "1.0.2";
 static const char* const HUNGER_VALUE_KEY = "hunger";
 static const char* const SANITY_VALUE_KEY = "sanity";
 static const char* const FOOD_QUEUE_KEY = "food_queue";
@@ -33,16 +33,16 @@ static const int CTHUVIAN_SANITY_THRESHOLD = 30;
 static const int SPICE_OF_LIFE_QUEUE_SIZE = 10;
 static const int BLOOD_PACT_HEALTH_REDUCTION = 50;
 static const int ADRENALINE_RUSH_SANITY_RECOVERY = 5;
-static const char* SURVIVAL_RATIONS = "survival_rations";
-static const char* MISTBLOOM_POTION = "mistbloom_potion";
-static const char* HUD_FONT_NAME = "spr_ui_saveload_font_2";
-static const char* GUARDIANS_SHIELD = "guardians_shield";
-static const char* MISTBLOOM_INTRODUCTION_LETTER = "mistbloom_introduction";
-static const char* GML_SCRIPT_IS_DUNGEON_ROOM = "gml_Script_is_dungeon_room";
-static const char* GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME = "gml_Script_get_display_name@anon@2028@LiveItem@LiveItem";
-static const char* GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION = "gml_Script_get_display_description@anon@3113@LiveItem@LiveItem";
-static const char* GML_SCRIPT_LOCALIZER_GET = "gml_Script_get@Localizer@Localizer";
-static const char* GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE = "gml_Script_deserialize@StatusEffectManager@StatusEffectManager";
+static const char* const SURVIVAL_RATIONS = "survival_rations";
+static const char* const MISTBLOOM_POTION = "mistbloom_potion";
+static const char* const HUD_FONT_NAME = "spr_ui_saveload_font_2";
+static const char* const GUARDIANS_SHIELD = "guardians_shield";
+static const char* const MISTBLOOM_INTRODUCTION_LETTER = "mistbloom_introduction";
+static const char* const GML_SCRIPT_IS_DUNGEON_ROOM = "gml_Script_is_dungeon_room";
+static const char* const GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME = "gml_Script_get_display_name@anon@2420@LiveItem@LiveItem";
+static const char* const GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION = "gml_Script_get_display_description@anon@3505@LiveItem@LiveItem";
+static const char* const GML_SCRIPT_LOCALIZER_GET = "gml_Script_get@Localizer@Localizer";
+static const char* const GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE = "gml_Script_deserialize@StatusEffectManager@StatusEffectManager";
 static const std::string FOOD_QUEUE_IGNORED_ITEMS[] = {
 	"balors_crate", "confiscated_coffee", "dungeon_fountain_health", "dungeon_fountain_stamina", "horse_potion", "lurid_colored_drink",
 	"ryis_lumber", "soup_of_the_day", "soup_of_the_day_gold", "stinky_stamina_potion", "unusual_seed", "world_fountain",
@@ -1835,6 +1835,22 @@ RValue& GmlScriptOnDrawGuiCallback(
 				140, (125 + y_health_bar_offset + sanity_bar_offset), std::to_string(ari_sanity_value) + "%", 3, 3, 0
 			}
 		);
+
+		// TESTING: Thermometer --------------------------------------------------------------------------
+		/*
+		RValue spr_ui_hud_thermometer_cold = g_ModuleInterface->CallBuiltin(
+			"asset_get_index", {
+				"spr_ui_hud_thermometer_cold"
+			}
+		);
+
+		g_ModuleInterface->CallBuiltin(
+			"draw_sprite", {
+				spr_ui_hud_thermometer_cold, 1, 10, (122 + y_health_bar_offset + (4 * sanity_bar_offset))
+			}
+		);
+		*/
+		//------------------------------------------------------------------------------------------------
 	}
 
 	// Random Noise (Insanity Effect)
