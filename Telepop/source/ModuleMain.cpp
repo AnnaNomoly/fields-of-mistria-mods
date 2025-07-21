@@ -2,7 +2,7 @@
 using namespace Aurie;
 using namespace YYTK;
 
-static const char* const VERSION = "1.0.1";
+static const char* const VERSION = "1.0.2";
 
 static const int INVALID_ID = -1;
 static int BLACKBERRY_JAM_ITEM_ID = INVALID_ID;
