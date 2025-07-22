@@ -1,5 +1,5 @@
 # D.I.Y.
-A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recipe** in the game. This works on __existing__ saves!
+A YYTK plugin for FieldsOfMistria that allows you to **learn any craftable furniture recipe** in the game. This works on __existing__ saves!
 
 ## Instructions
 1. Press `F8` to open the input dialog where you can specify one of the **furniture recipe names** from the table below.
@@ -8,7 +8,13 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 
 2. The mod will output some information to the YYTK console window. If the recipe was **INVALID** you will get a warning message. If the recipe is **ALREADY KNOWN** you will get a different warning message. If the recipe is **NEW** you will get a success message, learn the recipe, and additionally the "new recipe" window will appear in the game!
 
-## Furniture Recipe Table (FoM v0.13.2)
+## Craftable vs Non-Craftable Furniture
+From the perspective of this mod there are two "types" of furniture in the game: **craftable** an **non-craftable**.
+- **Craftable** furniture is all furniture __with a recipe__. You normally use recipe scrolls to "learn" how to craft it. This mod allows you to unlock those recipes without needing to use the scroll.
+- **Non-craftable** furniture __has no recipe__. You normally receive it as a reward for doing something or buy it from a shop. This mod does NOT allow you to obtain those furniture items. Use the **DigUpAnything** mod to obtain them if desired.
+> **REMINDER**: This mod only unlocks **craftable** furniture (those __with recipes__).
+
+## Craftable Furniture Recipe Table (FoM v0.14.0)
 | Internal Recipe Name | Displayed Recipe Name |
 | -------------------- | --------------------- |
 | alda_pot_replica | Alda Pot Replica |
@@ -45,8 +51,6 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | bathtub | Bathtub |
 | beer_mug | Beer Mug |
 | big_bell | Big Bell |
-| blue_pet_bed | Blue Pet Bed |
-| blue_pet_dish | Blue Pet Dish |
 | box_medium | Medium Box |
 | box_small | Small Box |
 | bumblebee_plushie | Bumblebee Plushie |
@@ -83,16 +87,20 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | cavern_silver_node | Ornamental Silver Node |
 | cavern_stone_arch | Stalactite Arch |
 | cavern_wall_brazier | Wall Brazier |
+| champions_kitchen | Champion's Kitchen |
 | chess_bishop | Chess Bishop Piece |
 | chess_king | Chess King Piece |
 | chess_knight | Chess Knight Piece |
 | chess_pawn | Chess Pawn Piece |
 | chess_queen | Chess Queen Piece |
 | chess_rook | Chess Rook Piece |
-| chess_scroll_bundle | Chess Piece Scroll Bundle |
 | chess_table | Chess Table |
 | coffee_mug | Coffee Mug |
 | color_paving_stone | Color Paving Stone |
+| cooking_frying_pan | Frying Pan |
+| cooking_hanging_pans | Hanging Pans |
+| cooking_stockpot | Stockpot |
+| cooking_tea_kettle | Tea Kettle |
 | coral_chair | Coral Chair |
 | coral_lamp | Coral Lamp |
 | coral_stone_archway | Coral-Stone Arch |
@@ -128,8 +136,11 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | counter_cake_strawberry | Cake Counter |
 | counter_cottage_v1 | Lovely Cottage Counter |
 | counter_cottage_v2 | Lovely Cottage Counter |
-| cream_pet_bed | Cream Pet Bed |
-| cream_pet_dish | Cream Pet Dish |
+| counter_kitchen | Champion's Kitchen Counter |
+| craft_fabric_rack | Craft Fabric Rack |
+| craft_rug | Craft Crochet Rug |
+| craft_sewing_tin | Craft Sewing Tin |
+| craft_yarn_basket | Craft Yarn Basket |
 | crop_faux_ash_mushroom | Faux Ash Mushroom |
 | crop_faux_basil | Faux Basil |
 | crop_faux_beet | Faux Beet |
@@ -180,6 +191,7 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | crop_faux_mines_mussels | Faux Mines Mussels |
 | crop_faux_moon_fruit | Faux Moon Fruit |
 | crop_faux_morel_mushroom | Faux Morel Mushroom |
+| crop_faux_mystery_bag | Faux Magic Seed Plant |
 | crop_faux_narrows_moss | Faux Narrows Moss |
 | crop_faux_nettle | Faux Nettle |
 | crop_faux_night_queen | Faux Night Queen |
@@ -257,6 +269,7 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | crop_sign_lilac | Lilac Sign |
 | crop_sign_marigold | Marigold Sign |
 | crop_sign_moon_fruit | Moon Fruit Sign |
+| crop_sign_mystery_bag | Magic Seed Plant Sign |
 | crop_sign_night_queen | Night queen Sign |
 | crop_sign_onion | Onion Sign |
 | crop_sign_orange | Orange Sign |
@@ -311,7 +324,6 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | explorer_rug | Explorer Rug |
 | explorer_trunk_table | Explorer Trunk Table |
 | explorer_wallpaper | Explorer Wallpaper |
-| fall_crop_sign_scroll_bundle | Fall Crop Sign Scroll Bundle |
 | fall_double_bed | Fall Double Bed |
 | fall_single_bed | Fall Single Bed |
 | fall_table | Fall Dining Table |
@@ -364,13 +376,6 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | haunted_attic_wall_window | Haunted Attic Window |
 | haunted_attic_wallpaper | Haunted Attic Wallpaper |
 | herringbone_tile_floor | Herringbone Tile Floor |
-| inn_candle | Inn Candle |
-| inn_counter | Inn Counter |
-| inn_cross_stitch | Inn Cross Stitch |
-| inn_kitchen_shelves | Inn Kitchen Shelves |
-| inn_stool | Inn Stool |
-| inn_tile_flooring | Inn Tile Flooring |
-| inn_wooden_flooring | Inn Wooden Flooring |
 | insect_flooring | Insect Flooring |
 | insect_rug | Insect Rug |
 | insect_wallpaper | Insect Wallpaper |
@@ -379,6 +384,14 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | jar_pair | Pair of Jars |
 | jar_small | Small Jar |
 | journal | Diary |
+| kitchen_garlic_braid | Garlic Braid |
+| kitchen_hanging_onion_basket | Hanging Onion Basket |
+| kitchen_herb_planter | Herb Planter |
+| kitchen_mixing_bowls | Mixing Bowls |
+| kitchen_oil_and_vinegar_basket | Oil & Vinegar Basket |
+| kitchen_salt_and_pepper_shakers | Salt & Pepper Shakers |
+| kitchen_scale | Kitchen Scale |
+| kitchen_utensil_holder | Utensil Holder |
 | ladybug_table | Ladybug Table |
 | large_fluffy_rug | Large Fluffy Rug |
 | large_paving_stone | Large Paving Stone |
@@ -393,7 +406,6 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | lava_caves_stone_arch | Lava Rock Arch |
 | lava_caves_table | Obsidian Table |
 | lava_caves_wallpaper | Lava Rock Wall |
-| lovely_cottage_scroll_bundle | Lovely Cottage Scroll Bundle |
 | low_tide_flooring | Low Tide Flooring |
 | mermaid_bed | Mermaid Double Bed |
 | minecart | Minecart |
@@ -412,8 +424,8 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | mistria_wall_map | Mistria Wall Map |
 | moon_gate | Moon Gate |
 | moth_lamp | Moth Lamp |
-| mournful_clown_painting | Mournful Clown Painting |
 | notepad | Notepad |
+| obelisk | Obelisk |
 | ocarina_sprite_statue | Animal Sprite Statue |
 | octopus_plushie | Octopus Plushie |
 | ornamental_iron_node | Ornamental Iron Node |
@@ -435,23 +447,13 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | picnic_rug | Picnic Blanket |
 | picnic_sandwich_plate | Picnic Display Sandwiches |
 | picnic_sunflower_vase | Picnic Sunflower Vase |
-| pink_pet_bed | Pink Pet Bed |
-| pink_pet_dish | Pink Pet Dish |
 | round_cushioned_stool | Round Cushioned Stool |
-| rustic_cabin_scroll_bundle | Rustic Cabin Scroll Bundle |
 | sand_rug | Sand Rug |
 | small_bathmat | Small Bathmat |
 | small_vase | Small Vase |
 | spooky_haybale | Hay Bale |
 | spring_bed | Spring Bed |
-| spring_crop_sign_scroll_bundle | Spring Crop Sign Scroll Bundle |
 | spring_double_bed | Spring Double Bed |
-| spring_festival_basket | Breath of Spring Basket |
-| spring_festival_breath_of_spring_wreath | Deluxe Breath of Spring Wreath |
-| spring_festival_flower_chest | Breath of Spring Storage Chest |
-| spring_festival_large_planter | Breath of Spring Large Planter |
-| spring_festival_planter | Breath of Spring Planter |
-| spring_festival_wreath | Breath of Spring Wreath |
 | spring_flooring | Spring Flooring |
 | spring_lamp | Spring Lamp |
 | spring_potted_tree | Spring Potted Tree |
@@ -459,6 +461,7 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | spring_sofa | Spring Sofa |
 | spring_wallpaper | Spring Wallpaper |
 | square_tile_floor | Square Tile Floor |
+| stairs | House Stairs |
 | star_cushion | Star Cushion |
 | star_lantern | Star Lantern |
 | star_viewing_blanket | Star Viewing Blanket |
@@ -480,7 +483,6 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | stone_wall | Stone Wall |
 | summer_bed | Summer Bed |
 | summer_chair | Summer Chair |
-| summer_crop_sign_scroll_bundle | Summer Crop Sign Scroll Bundle |
 | summer_double_bed | Summer Double Bed |
 | summer_flooring | Summer Flooring |
 | summer_jar_lamp | Summer Jar Lamp |
@@ -495,11 +497,9 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | toilet | Toilet |
 | training_dummy | Training Dummy |
 | water_sprite | Water Sprite Statue |
-| weather_crystal_ball | Weather Crystal Ball |
 | wine_glass_red | Red Wine Glass |
 | wine_glass_rose | Rose Wine Glass |
 | wine_glass_white | White Wine Glass |
-| winter_crop_sign_scroll_bundle | Winter Crop Sign Scroll Bundle |
 | witch_queen_bed | Witch Queen Bed |
 | witch_queen_cauldron | Witch Queen Cauldron |
 | witch_queen_chair | Witch Queen Chair |
@@ -524,3 +524,56 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any furniture recip
 | worn_wallpaper | Worn Wallpaper |
 | worn_well | Worn Well |
 | worn_window | Worn Window |
+
+## Non-Craftable Furniture Table (FoM v0.14.0)
+| Internal Item Name | Displayed Item Name |
+| ------------------ | ------------------- |
+| animated_snow_globe | Animated Snow Globe |
+| blue_pet_bed | Blue Pet Bed |
+| blue_pet_dish | Blue Pet Dish |
+| chess_scroll_bundle | Chess Piece Scroll Bundle |
+| cream_pet_bed | Cream Pet Bed |
+| cream_pet_dish | Cream Pet Dish |
+| deluxe_icebox_blue | Deluxe Icebox |
+| deluxe_icebox_green | Deluxe Icebox |
+| deluxe_icebox_pink | Deluxe Icebox |
+| deluxe_icebox_white | Deluxe Icebox |
+| deluxe_icebox_yellow | Deluxe Icebox |
+| deluxe_storage_chest_aqua | Deluxe Storage Chest |
+| deluxe_storage_chest_black | Deluxe Storage Chest |
+| deluxe_storage_chest_blue | Deluxe Storage Chest |
+| deluxe_storage_chest_dark_brown | Deluxe Storage Chest |
+| deluxe_storage_chest_gold | Deluxe Storage Chest |
+| deluxe_storage_chest_gray | Deluxe Storage Chest |
+| deluxe_storage_chest_green | Deluxe Storage Chest |
+| deluxe_storage_chest_light_brown | Deluxe Storage Chest |
+| deluxe_storage_chest_orange | Deluxe Storage Chest |
+| deluxe_storage_chest_pink | Deluxe Storage Chest |
+| deluxe_storage_chest_purple | Deluxe Storage Chest |
+| deluxe_storage_chest_red | Deluxe Storage Chest |
+| deluxe_storage_chest_white | Deluxe Storage Chest |
+| fall_crop_sign_scroll_bundle | Fall Crop Sign Scroll Bundle |
+| inn_candle | Inn Candle |
+| inn_counter | Inn Counter |
+| inn_cross_stitch | Inn Cross Stitch |
+| inn_kitchen_shelves | Inn Kitchen Shelves |
+| inn_stool | Inn Stool |
+| inn_tile_flooring | Inn Tile Flooring |
+| inn_wooden_flooring | Inn Wooden Flooring |
+| ladder | House Ladder |
+| lovely_cottage_scroll_bundle | Lovely Cottage Scroll Bundle |
+| mournful_clown_painting | Mournful Clown Painting |
+| pink_pet_bed | Pink Pet Bed |
+| pink_pet_dish | Pink Pet Dish |
+| rustic_cabin_scroll_bundle | Rustic Cabin Scroll Bundle |
+| spring_crop_sign_scroll_bundle | Spring Crop Sign Scroll Bundle |
+| spring_festival_basket | Breath of Spring Basket |
+| spring_festival_breath_of_spring_wreath | Deluxe Breath of Spring Wreath |
+| spring_festival_flower_chest | Breath of Spring Storage Chest |
+| spring_festival_large_planter | Breath of Spring Large Planter |
+| spring_festival_planter | Breath of Spring Planter |
+| spring_festival_wreath | Breath of Spring Wreath |
+| summer_crop_sign_scroll_bundle | Summer Crop Sign Scroll Bundle |
+| teleportation_pad | Teleportation Circle |
+| weather_crystal_ball | Weather Crystal Ball |
+| winter_crop_sign_scroll_bundle | Winter Crop Sign Scroll Bundle |
