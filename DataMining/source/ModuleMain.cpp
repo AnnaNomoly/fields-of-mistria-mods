@@ -18,7 +18,9 @@ static std::vector<std::string> cosmetic_names;
 static std::map<std::string, int> item_name_to_id_map = {};
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
 static std::map<std::string, std::string> cooking_recipe_name_to_localized_name_map = {};
-static std::map<std::string, std::string> furniture_recipe_name_to_localized_name_map = {};
+static std::map<std::string, std::string> furniture_recipe_name_to_localized_name_map = {}; // All furniture
+static std::map<std::string, std::string> craftable_furniture_recipe_name_to_localized_name_map = {}; // Craftable furniture (has a recipe)
+static std::map<std::string, std::string> non_craftable_furniture_recipe_name_to_localized_name_map = {}; // Non-craftable furniture (has no recipe)
 static std::map<std::string, std::string> cosmetic_name_to_localized_name_map = {};
 
 bool GetAllCosmeticNames(
@@ -42,6 +44,25 @@ int RValueAsInt(RValue value)
 		return static_cast<int>(value.m_i64);
 	if (value.m_Kind == VALUE_INT32)
 		return static_cast<int>(value.m_i32);
+}
+
+bool RValueAsBool(RValue value)
+{
+	if (value.m_Kind == VALUE_REAL && value.m_Real == 1)
+		return true;
+	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
+		return true;
+	return false;
+}
+
+bool StructVariableExists(RValue the_struct, const char* variable_name)
+{
+	RValue struct_exists = g_ModuleInterface->CallBuiltin(
+		"struct_exists",
+		{ the_struct, variable_name }
+	);
+
+	return RValueAsBool(struct_exists);
 }
 
 RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localization_key)
@@ -129,8 +150,8 @@ RValue& GmlScriptGetLocalizerCallback(
 		}
 		cooking_outfile.close();
 
-		// Furniture
-		std::string furniture_file_name = data_mining_folder + "\\" + "furniture.md";
+		// All Furniture
+		std::string furniture_file_name = data_mining_folder + "\\" + "all_furniture.md";
 		std::remove(furniture_file_name.c_str());
 		std::ofstream furniture_outfile(furniture_file_name, std::ios::out);
 		if (furniture_outfile.is_open())
@@ -145,6 +166,40 @@ RValue& GmlScriptGetLocalizerCallback(
 			}
 		}
 		furniture_outfile.close();
+
+		// Craftable Furniture
+		std::string craftable_furniture_file_name = data_mining_folder + "\\" + "craftable_furniture.md";
+		std::remove(craftable_furniture_file_name.c_str());
+		std::ofstream craftable_furniture_outfile(craftable_furniture_file_name, std::ios::out);
+		if (craftable_furniture_outfile.is_open())
+		{
+			for (auto& pair : craftable_furniture_recipe_name_to_localized_name_map) {
+				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
+				std::string localized_name_str = localized_name.AsString().data();
+				pair.second = localized_name_str;
+
+				// Internal Recipe Name, Localized Recipe Name
+				craftable_furniture_outfile << "| " + pair.first + " | " + pair.second + " |\n";
+			}
+		}
+		craftable_furniture_outfile.close();
+
+		// Non-Craftable Furniture
+		std::string non_craftable_furniture_file_name = data_mining_folder + "\\" + "non_craftable_furniture.md";
+		std::remove(non_craftable_furniture_file_name.c_str());
+		std::ofstream non_craftable_furniture_outfile(non_craftable_furniture_file_name, std::ios::out);
+		if (non_craftable_furniture_outfile.is_open())
+		{
+			for (auto& pair : non_craftable_furniture_recipe_name_to_localized_name_map) {
+				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
+				std::string localized_name_str = localized_name.AsString().data();
+				pair.second = localized_name_str;
+
+				// Internal Recipe Name, Localized Recipe Name
+				non_craftable_furniture_outfile << "| " + pair.first + " | " + pair.second + " |\n";
+			}
+		}
+		non_craftable_furniture_outfile.close();
 
 		// Cosmetics
 		std::string cosmetics_file_name = data_mining_folder + "\\" + "cosmetics.md";
@@ -243,6 +298,26 @@ RValue& GmlScriptSetupMainScreenCallback(
 				if (strstr(name_key.AsString().data(), "furniture"))
 				{
 					furniture_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+
+					if (StructVariableExists(*array_element, "recipe"))
+					{
+						RValue recipe = array_element->at("recipe");
+						if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
+						{
+							if (StructVariableExists(recipe, "item_id"))
+							{
+								craftable_furniture_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+							}
+						}
+						else
+						{
+							non_craftable_furniture_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+						}
+					}
+					else
+					{
+						non_craftable_furniture_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+					}
 				}
 			}
 		}
