@@ -39,17 +39,39 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 }
 ```
 
-## Cosmetic Table (FoM v0.13.2)
+## Cosmetic Table (FoM v0.14.0)
 | Internal Cosmetic Name | Displayed Cosmetic Name |
 | ---------------------- | ----------------------- |
+| back_gear_ancient_witch_broom | Ancient Witch Broom |
 | back_gear_basic_backpack | Basic Backpack |
 | back_gear_basic_cape | Basic Cape |
+| back_gear_cabbage_backpack | Cabbage Backpack |
+| back_gear_cauliflower_backpack | Cauliflower Backpack |
+| back_gear_daikon_radish_backpack | Daikon Radish Backpack |
+| back_gear_daisy_backpack | Daisy Backpack |
 | back_gear_dragon_cleric_cape | Dragon Cleric Cape |
 | back_gear_exalted_cloak | Exalted Cloak |
 | back_gear_fire_cloak | Fire Sage Cloak |
+| back_gear_frost_lily_backpack | Frost Lily Backpack |
+| back_gear_jasmine_backpack | Jasmine Backpack |
+| back_gear_mini_wings | Mini Wings |
 | back_gear_noble_cape | Noble Cape |
+| back_gear_onion_backpack | Onion Backpack |
+| back_gear_ornate_round_shield | Ornate Round Shield |
+| back_gear_ornate_shield | Ornate Shield |
+| back_gear_pumpkin_backpack | Pumpkin Backpack |
+| back_gear_sheathed_sword | Sheathed Sword |
+| back_gear_snowdrop_anemone_backpack | Snowdrop Anemone Backpack |
+| back_gear_strawberry_backpack | Strawberry Backpack |
+| back_gear_sunflower_backpack | Sunflower Backpack |
+| back_gear_sweet_potato_backpack | Sweet Potato Backpack |
+| back_gear_tomato_backpack | Tomato Backpack |
+| back_gear_turnip_backpack | Turnip Backpack |
+| back_gear_watermelon_backpack | Watermelon Backpack |
+| back_gear_wheat_backpack | Wheat Backpack |
 | beard_basic | Basic Beard |
 | beard_thick | Thick Beard |
+| dress_berry | Berry Dress |
 | dress_maid | Maid Dress |
 | dress_modest | Long Sleeve Dress |
 | dress_sleeveless_basic | Sleeveless Dress |
@@ -128,12 +150,15 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | hair_wavy_medium_twin_buns | Wavy Medium Twin Buns |
 | hair_wavy_rugged | Wavy Rugged |
 | head_adventurer_hood | Adventurer's Hood |
+| head_ancient_witch_tiara | Ancient Witch Tiara |
 | head_aviator_goggles | Aviator Goggles |
 | head_bandana | Bandana |
 | head_barrel_roller_hat | Barrel Roller Hat |
 | head_baseball_cap | Baseball Cap |
 | head_beekeeper_hat | Beekeeper's Hat |
 | head_beret | Beret |
+| head_berry_crown | Berry Crown |
+| head_berry_hat | Berry Hat |
 | head_caldosian_hat | Caldosian Traveler's Hat |
 | head_cap_basic | Cap |
 | head_cat_ears | Cat Ears |
@@ -147,6 +172,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_cloth_helmet | Cloth Helmet |
 | head_copper_helmet | Copper Helmet |
 | head_cowboy_hat_basic | Cowboy Hat |
+| head_crown | Crown |
 | head_crown_tide | Crown of the Tide |
 | head_crystal_helmet | Crystal Helmet |
 | head_devil_horns | Devil Horns |
@@ -159,6 +185,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_fighter_headband | Fighter Headband |
 | head_fire_hood | Fire Sage Hood |
 | head_fishing_hat | Fishing Hat |
+| head_flame_spirit_hat | Flame Spirit Hat |
 | head_flower_crown | Flower Crown |
 | head_flower_hat | Flower Hat |
 | head_flower_top_hat | Flower Top Hat |
@@ -167,6 +194,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_headband_basic | Headband |
 | head_hijab | Hijab |
 | head_iron_helmet | Iron Helmet |
+| head_lava_cat_hat | Lava Cat Hat |
 | head_lily_pad | Lily Pad Hat |
 | head_mimic_hat | Mimic Hat |
 | head_miners_helmet | Miner's Helmet |
@@ -179,6 +207,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_rain_hat | Rain Hat |
 | head_ranger_leaves | Ranger's Leaf Hair Clips |
 | head_ribbons_basic | Ribbons |
+| head_rock_stack_hat | Rock Stack Hat |
 | head_rockclod_hat | Rockclod Hat |
 | head_sapling_hat | Sapling Hat |
 | head_scrap_metal_helmet | Scrap Metal Helmet |
@@ -220,6 +249,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | robe_tide | Robe of the Waves |
 | shoes_boots | Boots |
 | shoes_boots_adventurer | Adventurer's Boots |
+| shoes_boots_ancient_witch | Ancient Witch Boots |
 | shoes_boots_beekeeper | Beekeeper's Boots |
 | shoes_boots_caldosian | Caldosian Traveler's High Boots |
 | shoes_boots_cloth_armor | Cloth Shoes |
@@ -250,15 +280,18 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | shoes_sneakers_basic | Sneakers |
 | shorts_basic | Shorts |
 | shorts_fishing | Fishing Shorts |
+| skirt_ancient_witch | Ancient Witch Skirt |
 | skirt_long_basic | Long Skirt |
 | skirt_long_scalloped | Scalloped Skirt |
 | skirt_maid | Maid Skirt |
 | skirt_pleated_medium | Long Pleated Skirt |
 | skirt_pleated_short | Short Pleated Skirt |
 | skirt_short_basic | Short Skirt |
+| suit_berry | Berry Suit |
 | suit_miner | Miner's Jumpsuit |
 | suit_spring_festival | Spring Festival Suit |
 | top_adventurer | Adventurer's Jerkin |
+| top_ancient_witch | Ancient Witch Top |
 | top_caldosian_overcoat | Caldosian Traveler's Overcoat |
 | top_cami | Cami |
 | top_cloth_armor | Cloth Chestpiece |
