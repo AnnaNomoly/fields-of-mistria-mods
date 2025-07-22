@@ -8,7 +8,13 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 
 2. The mod will output some information to the YYTK console window. If the recipe was **INVALID** you will get a warning message. If the recipe is **ALREADY KNOWN** you will get a different warning message. If the recipe is **NEW** you will get a success message, learn the recipe, and additionally the "new recipe" window will appear in the game!
 
-## Recipe Table (FoM v0.13.2)
+## Craftable vs Non-Craftable Food
+From the perspective of this mod there are two "types" of cooked dishes in the game: **craftable** an **non-craftable**.
+- **Craftable** dishes are food __with a recipe__. You normally use recipe scrolls to "learn" how to craft (cook) it. This mod allows you to unlock those recipes without needing to use the scroll.
+- **Non-craftable** dishes are food that __has no recipe__. You normally receive it as a reward for doing something or buy it from a shop. This mod does NOT allow you to obtain those food items. Use the **DigUpAnything** mod to obtain them if desired.
+> **REMINDER**: This mod only unlocks **craftable** food (those __with recipes__).
+
+## Craftable Food Recipe Table (FoM v0.14.0)
 | Internal Recipe Name | Displayed Recipe Name |
 | -------------------- | --------------------- |
 | apple_honey_curry | Apple Honey Curry |
@@ -16,13 +22,11 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | apple_pie | Apple Pie |
 | baked_potato | Baked Potato |
 | baked_sweetroot | Baked Sweetroot |
-| beer | Beer |
 | beet_salad | Beet Salad |
 | beet_soup | Beet Soup |
 | bell_berry_bakewell_tart | Bell Berry Bakewell Tart |
 | berries_and_cream | Berries and Cream |
 | berry_bowl | Berry Bowl |
-| big_cookie | Big Cookie |
 | blackberry_jam | Blackberry Jam |
 | blueberry_jam | Blueberry Jam |
 | braised_burdock | Braised Burdock |
@@ -30,7 +34,6 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | bread | Bread |
 | breaded_catfish | Breaded Catfish |
 | broccoli_salad | Broccoli Salad |
-| bucket_brew | Bucket Brew |
 | buttered_peas | Buttered Peas |
 | cabbage_slaw | Cabbage Slaw |
 | caldosian_chocolate_cake | Chocolate Cake |
@@ -50,8 +53,6 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | coconut_cream_pie | Coconut Cream Pie |
 | coconut_milk | Coconut Milk |
 | cod_with_thyme | Cod with Thyme |
-| coffee | Coffee |
-| confiscated_coffee | Confiscated Coffee |
 | crab_cakes | Crab Cakes |
 | cranberry_juice | Cranberry Juice |
 | cranberry_orange_scone | Cranberry Orange Scone |
@@ -65,13 +66,10 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | deep_sea_soup | Deep Sea Soup |
 | deluxe_curry | Deluxe Curry |
 | deviled_eggs | Deviled Eggs |
-| dragon_horn_mushroom_with_thyme | Dragon Horn Mushroom with Thyme |
 | dried_squid | Dried Squid |
-| espresso | Espresso |
 | fish_skewer | Fish Skewers |
 | fish_stew | Fish Stew |
 | fish_tacos | Fish Tacos |
-| floral_tea | Floral Tea |
 | fried_rice | Fried Rice |
 | garlic_bread | Garlic Bread |
 | gazpacho | Gazpacho |
@@ -85,21 +83,16 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | grilled_eel_rice_bowl | Grilled Eel Rice Bowl |
 | hard_boiled_egg | Hard Boiled Egg |
 | harvest_plate | Harvest Plate |
-| heavy_mist | Heavy Mist |
 | herb_butter_pasta | Herb Butter Pasta |
 | herb_salad | Herb Salad |
-| honey_curry | Honey Curry |
 | horseradish_salmon | Horseradish Salmon |
 | hot_cocoa | Hot Chocolate |
-| hot_toddy | Hot Toddy |
-| humble_pie | Humble Pie |
 | ice_cream_sundae | Ice Cream Sundae |
 | iced_coffee | Iced Coffee |
 | incredibly_hot_pot | Incredibly Hot Pot |
 | jam_sandwich | Jam Sandwich |
 | jasmine_tea | Jasmine Tea |
 | latte | Latte |
-| lavender_tea | Lavender Tea |
 | lemon_pie | Lemon Pie |
 | lemonade | Lemonade |
 | loaded_baked_potato | Loaded Baked Potato |
@@ -107,14 +100,11 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | mackerel_sashimi | Mackerel Sashimi |
 | marmalade | Marmalade |
 | miners_mushroom_stew | Miner's Mushroom Stew |
-| mint_gimlet | Mint Gimlet |
-| mixed_fruit_juice | Mixed Fruit Juice |
 | mocha | Mocha |
 | monster_cookie | Monster Cookies |
 | monster_mash | Monster Mash |
 | mont_blanc | Mont Blanc |
 | moon_fruit_cake | Moon Fruit Cake |
-| mushroom_brew | Mushroom Brew |
 | mushroom_rice | Mushroom Rice |
 | mushroom_steak_dinner | Mushroom Steak Dinner |
 | noodles | Noodles |
@@ -137,7 +127,6 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | pumpkin_stew | Pumpkin Stew |
 | quiche | Quiche |
 | red_snapper_sushi | Red Snapper Sushi |
-| red_wine | Red Wine |
 | riceball | Rice Ball |
 | roasted_cauliflower | Roasted Cauliflower |
 | roasted_chestnuts | Roasted Chestnuts |
@@ -178,19 +167,40 @@ A YYTK plugin for FieldsOfMistria that allows you to **learn any cooking recipe*
 | toasted_sunflower_seeds | Toasted Sunflower Seeds |
 | tomato_soup | Tomato Soup |
 | trail_mix | Trail Mix |
-| tulip_cake | Tulip Cake |
 | tuna_sashimi | Tuna Sashimi |
 | turnip_and_cabbage_salad | Turnip & Cabbage Salad |
 | turnip_and_potato_gratin | Turnip & Potato Gratin |
-| twice_baked_rations | Twice-Baked Rations |
 | vegetable_pot_pie | Vegetable Pot Pie |
 | vegetable_quiche | Vegetable Quiche |
 | vegetable_soup | Vegetable Soup |
 | veggie_sub_sandwich | Veggie Sub Sandwich |
 | water_chestnut_fritters | Water Chestnut Fritters |
-| white_wine | White Wine |
 | wild_berry_jam | Wild Berry Jam |
 | wildberry_pie | Wild Berry Pie |
 | wildberry_scone | Wild Berry Scone |
 | winter_stew | Winter Stew |
 | wintergreen_ice_cream | Wintergreen Ice Cream |
+
+## Non-Craftable Food Table (FoM v0.14.0)
+| Internal Item Name | Displayed Item Name |
+| ------------------ | ------------------- |
+| beer | Beer |
+| big_cookie | Big Cookie |
+| bucket_brew | Bucket Brew |
+| coffee | Coffee |
+| confiscated_coffee | Confiscated Coffee |
+| dragon_horn_mushroom_with_thyme | Dragon Horn Mushroom with Thyme |
+| espresso | Espresso |
+| floral_tea | Floral Tea |
+| heavy_mist | Heavy Mist |
+| honey_curry | Honey Curry |
+| hot_toddy | Hot Toddy |
+| humble_pie | Humble Pie |
+| lavender_tea | Lavender Tea |
+| mint_gimlet | Mint Gimlet |
+| mixed_fruit_juice | Mixed Fruit Juice |
+| mushroom_brew | Mushroom Brew |
+| red_wine | Red Wine |
+| tulip_cake | Tulip Cake |
+| twice_baked_rations | Twice-Baked Rations |
+| white_wine | White Wine |

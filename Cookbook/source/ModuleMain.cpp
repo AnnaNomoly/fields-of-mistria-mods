@@ -12,7 +12,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Cookbook";
-static const char* const VERSION = "1.1.2";
+static const char* const VERSION = "1.1.3";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const UNLOCK_EVERYTHING_KEY = "unlock_everything";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
@@ -43,6 +43,7 @@ static std::map<std::string, int> item_name_to_id_map = {};
 static std::map<int, std::string> item_id_to_name_map = {};
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
 static std::map<std::string, std::string> lowercase_localized_name_to_item_name_map = {};
+static bool debug_logging = false;
 
 int RValueAsInt(RValue value)
 {
@@ -61,6 +62,16 @@ bool RValueAsBool(RValue value)
 	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
 		return true;
 	return false;
+}
+
+bool StructVariableExists(RValue the_struct, const char* variable_name)
+{
+	RValue struct_exists = g_ModuleInterface->CallBuiltin(
+		"struct_exists",
+		{ the_struct, variable_name }
+	);
+
+	return RValueAsBool(struct_exists);
 }
 
 bool GameWindowHasFocus()
@@ -620,20 +631,36 @@ RValue& GmlScriptSetupMainScreenCallback(
 			RValue* array_element;
 			g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
 
+			RValue item_id = array_element->at("item_id");
 			RValue name_key = array_element->at("name_key");
-			if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
+			RValue recipe_key = array_element->at("recipe_key");
+
+			if (strstr(name_key.AsString().data(), "cooked_dishes"))
 			{
-				if (strstr(name_key.AsString().data(), "cooked_dishes"))
+				if (StructVariableExists(*array_element, "recipe"))
 				{
 					RValue recipe = array_element->at("recipe");
 					if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
 					{
-						RValue item_id = recipe.at("item_id");
-						RValue recipe_key = array_element->at("recipe_key");
-						item_name_to_id_map[recipe_key.AsString().data()] = RValueAsInt(item_id);
-						item_id_to_name_map[RValueAsInt(item_id)] = recipe_key.AsString().data();
-						item_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+						if (StructVariableExists(recipe, "item_id"))
+						{
+							item_name_to_id_map[recipe_key.AsString().data()] = RValueAsInt(item_id);
+							item_id_to_name_map[RValueAsInt(item_id)] = recipe_key.AsString().data();
+							item_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+						}
+						else if (debug_logging)
+						{
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing Recipe Item ID for: %s", recipe_key.AsString().data());
+						}
 					}
+					else if (debug_logging)
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.AsString().data());
+					}
+				}
+				else if (debug_logging)
+				{
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.AsString().data());
 				}
 			}
 		}
