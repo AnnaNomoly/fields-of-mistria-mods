@@ -9,7 +9,7 @@ using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
-static const char* const VERSION = "1.2.1";
+static const char* const VERSION = "1.3.0";
 static const char* const FRIENDSHIP_MULTIPLIER_KEY = "friendship_multiplier";
 static const char* const AUTO_PET_KEY = "auto_pet";
 static const char* const AUTO_FEED_KEY = "auto_feed";
@@ -17,12 +17,19 @@ static const char* const PREVENT_FRIENDSHIP_LOSS_KEY = "prevent_friendship_loss"
 static const char* const AUTO_BELL_IN_KEY = "auto_bell_in";
 static const char* const AUTO_BELL_OUT_KEY = "auto_bell_out";
 static const char* const ANIMAL_BED_TIME_KEY = "animal_bed_time";
+static const char* const MUTE_AUTO_BELL_SOUNDS_KEY = "mute_auto_bell_sounds";
+static const char* const SPAWN_EXTRA_BEADS_DAILY_KEY = "spawn_extra_beads_daily";
+static const char* const EXTRA_BEADS_DAILY_MULTIPLIER_KEY = "extra_beads_daily_multiplier";
+
 static const int DEFAULT_FRIENDSHIP_MULTIPLIER = 5;
 static const bool DEFAULT_PREVENT_FRIENDSHIP_LOSS = true;
 static const bool DEFAULT_AUTO_PET = false;
 static const bool DEFAULT_AUTO_FEED = false;
 static const bool DEFAULT_AUTO_BELL_IN = false;
 static const bool DEFAULT_AUTO_BELL_OUT = false;
+static const bool DEFAULT_MUTE_AUTO_BELL_SOUNDS = false;
+static const bool DEFAULT_SPAWN_EXTRA_BEADS_DAILY = false;
+static const int DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER = 1;
 
 static const int SIX_PM_IN_SECONDS = 64800;
 
@@ -35,19 +42,15 @@ static bool auto_feed = DEFAULT_AUTO_FEED;
 static bool auto_bell_in = DEFAULT_AUTO_BELL_IN;
 static bool auto_bell_out = DEFAULT_AUTO_BELL_OUT;
 static int animal_bed_time = SIX_PM_IN_SECONDS;
+static bool mute_auto_bell_sounds = DEFAULT_MUTE_AUTO_BELL_SOUNDS;
+static bool spawn_extra_beads_daily = DEFAULT_SPAWN_EXTRA_BEADS_DAILY;
+static int extra_beads_daily_multiplier = DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER;
 static std::map<std::string, int> weather_name_to_id_map = {};
 static bool once_per_day = true;
 static int current_time_in_seconds = 0;
+static int num_player_animals = 0;
+static bool extra_beads_daily_received = false;
 static bool is_sunny = false;
-
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
-}
 
 bool IsAnimalBedtime(int clock_time_in_seconds)
 {
@@ -85,6 +88,9 @@ void LogDefaultConfigValues()
 	auto_bell_in = DEFAULT_AUTO_BELL_IN;
 	auto_bell_out = DEFAULT_AUTO_BELL_OUT;
 	animal_bed_time = SIX_PM_IN_SECONDS;
+	mute_auto_bell_sounds = DEFAULT_MUTE_AUTO_BELL_SOUNDS;
+	spawn_extra_beads_daily = DEFAULT_SPAWN_EXTRA_BEADS_DAILY;
+	extra_beads_daily_multiplier = DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER;
 
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, PREVENT_FRIENDSHIP_LOSS_KEY, DEFAULT_PREVENT_FRIENDSHIP_LOSS ? "true" : "false");
@@ -93,6 +99,9 @@ void LogDefaultConfigValues()
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_IN_KEY, DEFAULT_AUTO_BELL_IN ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_OUT_KEY, DEFAULT_AUTO_BELL_OUT ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, MUTE_AUTO_BELL_SOUNDS_KEY, DEFAULT_MUTE_AUTO_BELL_SOUNDS ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SPAWN_EXTRA_BEADS_DAILY_KEY, DEFAULT_SPAWN_EXTRA_BEADS_DAILY ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER);
 }
 
 void LoadWeather()
@@ -113,15 +122,290 @@ void LoadWeather()
 	}
 }
 
+void LoadOrCreateConfigFile()
+{
+	std::exception_ptr eptr;
+	try
+	{
+		// Try to find the mod_data directory.
+		std::string current_dir = std::filesystem::current_path().string();
+		std::string mod_data_folder = current_dir + "\\mod_data";
+		if (!std::filesystem::exists(mod_data_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - The \"mod_data\" directory was not found. Creating directory: %s", VERSION, mod_data_folder.c_str());
+			std::filesystem::create_directory(mod_data_folder);
+		}
+
+		// Try to find the mod_data/AnimalFriends directory.
+		std::string animal_friends_folder = mod_data_folder + "\\AnimalFriends";
+		if (!std::filesystem::exists(animal_friends_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - The \"AnimalFriends\" directory was not found. Creating directory: %s", VERSION, animal_friends_folder.c_str());
+			std::filesystem::create_directory(animal_friends_folder);
+		}
+
+		// Try to find the mod_data/AnimalFriends/AnimalFriends.json config file.
+		std::string config_file = animal_friends_folder + "\\" + "AnimalFriends.json";
+		std::ifstream in_stream(config_file);
+		if (in_stream.good())
+		{
+			try
+			{
+				json json_object = json::parse(in_stream);
+
+				// Check if the json_object is empty.
+				if (json_object.empty())
+				{
+					g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - No values found in mod configuration file: %s!", VERSION, config_file.c_str());
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Add your desired values to the configuration file, otherwise defaults will be used.", VERSION);
+					LogDefaultConfigValues();
+				}
+				else
+				{
+					// Try loading the friendship_multiplier value.
+					if (json_object.contains(FRIENDSHIP_MULTIPLIER_KEY))
+					{
+						friendship_multiplier = json_object[FRIENDSHIP_MULTIPLIER_KEY];
+						if (friendship_multiplier <= 0 || friendship_multiplier > 100)
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, FRIENDSHIP_MULTIPLIER_KEY, friendship_multiplier, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the value is a valid integer between 1 and 100 (inclusive)!", VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER);
+							friendship_multiplier = DEFAULT_FRIENDSHIP_MULTIPLIER;
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %d!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, friendship_multiplier);
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER);
+					}
+
+					// Try loading the prevent_friendship_loss value.
+					if (json_object.contains(PREVENT_FRIENDSHIP_LOSS_KEY))
+					{
+						prevent_friendship_loss = json_object[PREVENT_FRIENDSHIP_LOSS_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, PREVENT_FRIENDSHIP_LOSS_KEY, prevent_friendship_loss ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, PREVENT_FRIENDSHIP_LOSS_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, PREVENT_FRIENDSHIP_LOSS_KEY, DEFAULT_PREVENT_FRIENDSHIP_LOSS ? "true" : "false");
+					}
+
+					// Try loading the auto_pet value.
+					if (json_object.contains(AUTO_PET_KEY))
+					{
+						auto_pet = json_object[AUTO_PET_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, AUTO_PET_KEY, auto_pet ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_PET_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_PET_KEY, DEFAULT_AUTO_PET ? "true" : "false");
+					}
+
+					// Try loading the auto_feed value.
+					if (json_object.contains(AUTO_FEED_KEY))
+					{
+						auto_feed = json_object[AUTO_FEED_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, AUTO_FEED_KEY, auto_feed ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_FEED_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_FEED_KEY, DEFAULT_AUTO_FEED ? "true" : "false");
+					}
+
+					// Try loading the auto_bell_in value.
+					if (json_object.contains(AUTO_BELL_IN_KEY))
+					{
+						auto_bell_in = json_object[AUTO_BELL_IN_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, AUTO_BELL_IN_KEY, auto_bell_in ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_BELL_IN_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_IN_KEY, DEFAULT_AUTO_BELL_IN ? "true" : "false");
+					}
+
+					// Try loading the auto_bell_out value.
+					if (json_object.contains(AUTO_BELL_OUT_KEY))
+					{
+						auto_bell_out = json_object[AUTO_BELL_OUT_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, AUTO_BELL_OUT_KEY, auto_bell_out ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_BELL_OUT_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_OUT_KEY, DEFAULT_AUTO_BELL_OUT ? "true" : "false");
+					}
+
+					// Try loading the animal_bed_time value.
+					if (json_object.contains(ANIMAL_BED_TIME_KEY))
+					{
+						animal_bed_time = json_object[ANIMAL_BED_TIME_KEY];
+						if (animal_bed_time < 21600 || animal_bed_time > 86400)
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, ANIMAL_BED_TIME_KEY, animal_bed_time, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the value is a valid integer between 21600 and 86400 (inclusive)!", VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
+							animal_bed_time = SIX_PM_IN_SECONDS;
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, animal_bed_time);
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, ANIMAL_BED_TIME_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
+					}
+
+					// Try loading the mute_bell_sounds value.
+					if (json_object.contains(MUTE_AUTO_BELL_SOUNDS_KEY))
+					{
+						mute_auto_bell_sounds = json_object[MUTE_AUTO_BELL_SOUNDS_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, MUTE_AUTO_BELL_SOUNDS_KEY, mute_auto_bell_sounds ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, MUTE_AUTO_BELL_SOUNDS_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, MUTE_AUTO_BELL_SOUNDS_KEY, DEFAULT_MUTE_AUTO_BELL_SOUNDS ? "true" : "false");
+					}
+
+					// Try loading the mute_bell_sounds value.
+					if (json_object.contains(SPAWN_EXTRA_BEADS_DAILY_KEY))
+					{
+						spawn_extra_beads_daily = json_object[SPAWN_EXTRA_BEADS_DAILY_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, SPAWN_EXTRA_BEADS_DAILY_KEY, spawn_extra_beads_daily ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SPAWN_EXTRA_BEADS_DAILY_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SPAWN_EXTRA_BEADS_DAILY_KEY, DEFAULT_SPAWN_EXTRA_BEADS_DAILY ? "true" : "false");
+					}
+
+					// Try loading the extra_beads_daily_multiplier value.
+					if (json_object.contains(EXTRA_BEADS_DAILY_MULTIPLIER_KEY))
+					{
+						extra_beads_daily_multiplier = json_object[EXTRA_BEADS_DAILY_MULTIPLIER_KEY];
+						if (extra_beads_daily_multiplier <= 0 || extra_beads_daily_multiplier > 10)
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, extra_beads_daily_multiplier, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the value is a valid integer between 1 and 10 (inclusive)!", VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER);
+							extra_beads_daily_multiplier = DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER;
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %d!", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, extra_beads_daily_multiplier);
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER);
+					}
+				}
+			}
+			catch (...)
+			{
+				eptr = std::current_exception();
+				handle_eptr(eptr);
+
+				g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Failed to parse JSON from configuration file: %s", VERSION, config_file.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the file is valid JSON!", VERSION);
+				LogDefaultConfigValues();
+			}
+
+			in_stream.close();
+		}
+		else
+		{
+			in_stream.close();
+
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - The \"AnimalFriends.json\" file was not found. Creating file: %s", VERSION, config_file.c_str());
+			json default_json = {
+				{FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER},
+				{PREVENT_FRIENDSHIP_LOSS_KEY, DEFAULT_PREVENT_FRIENDSHIP_LOSS},
+				{AUTO_PET_KEY, DEFAULT_AUTO_PET},
+				{AUTO_FEED_KEY, DEFAULT_AUTO_FEED},
+				{AUTO_BELL_IN_KEY, DEFAULT_AUTO_BELL_IN},
+				{AUTO_BELL_OUT_KEY, DEFAULT_AUTO_BELL_OUT},
+				{ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS}
+			};
+
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << default_json << std::endl;
+			out_stream.close();
+
+			LogDefaultConfigValues();
+		}
+	}
+	catch (...)
+	{
+		eptr = std::current_exception();
+		handle_eptr(eptr);
+
+		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - An error occurred loading the mod configuration file.", VERSION);
+		LogDefaultConfigValues();
+	}
+}
+
+void SpawnShinyBeads(CInstance* Self, CInstance* Other, int amount)
+{
+	CScript* gml_script_create_animal_currency_dance = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_create_animal_currency_dance@gml_Object_obj_player_animal_Create_0",
+		(PVOID*)&gml_script_create_animal_currency_dance
+	);
+
+	RValue num_beads = amount;
+	RValue spawn_beads = true;
+
+	RValue result;
+	RValue* num_beads_ptr = &num_beads;
+	RValue* spawn_beads_ptr = &spawn_beads;
+	RValue* arguments[2] = { num_beads_ptr, spawn_beads_ptr };
+
+	gml_script_create_animal_currency_dance->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		2,
+		arguments
+	);
+}
+
+void StopSoundEffect(const char* sound_name)
+{
+	const auto sound_index = g_ModuleInterface->CallBuiltin(
+		"asset_get_index",
+		{ sound_name }
+	);
+
+	g_ModuleInterface->CallBuiltin(
+		"audio_stop_sound",
+		{ sound_index }
+	);
+}
+
 void ResetStaticFields(bool returnedToTitleScreen)
 {
 	if (returnedToTitleScreen)
 	{
 		current_time_in_seconds = 0;
+		num_player_animals = 0;
 		is_sunny = false;
 	}
 
 	once_per_day = true;
+	extra_beads_daily_received = false;
 }
 
 void ObjectCallback(
@@ -164,6 +448,7 @@ void ObjectCallback(
 					{
 						size_t size = 0;
 						g_ModuleInterface->GetArraySize(__buffer, size);
+						num_player_animals = static_cast<int>(size);
 
 						for (size_t i = 0; i < size; i++)
 						{
@@ -213,7 +498,7 @@ void ObjectCallback(
 									else
 									{
 										g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - AUTO FEEDER fed an animal, but it's already at MAX heart points!", VERSION);
-									}
+									}									
 								}
 							}
 
@@ -279,7 +564,7 @@ void ObjectCallback(
 			RValue bell_in_exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "bell_in" });
 			if (bell_in_exists.m_Kind == VALUE_BOOL && bell_in_exists.m_Real == 1)
 			{
-				if (IsAnimalBedtime(current_time_in_seconds))
+				if (IsAnimalBedtime(current_time_in_seconds) || !is_sunny)
 				{
 					RValue bell_in = g_ModuleInterface->CallBuiltin("struct_exists", { self, "__animal_friends__bell_in" });
 					if (bell_in.m_Kind == VALUE_BOOL && bell_in.m_Real == 0)
@@ -298,6 +583,9 @@ void ObjectCallback(
 							0,
 							nullptr
 						);
+
+						if (mute_auto_bell_sounds)
+							StopSoundEffect("snd_Bell_Bring_Inside");
 
 						g_ModuleInterface->CallBuiltin("struct_set", { self, "__animal_friends__bell_in", true });
 					}
@@ -329,6 +617,9 @@ void ObjectCallback(
 							0,
 							nullptr
 						);
+
+						if(mute_auto_bell_sounds)
+							StopSoundEffect("snd_Bell_Bring_Outside");
 
 						g_ModuleInterface->CallBuiltin("struct_set", { self, "__animal_friends__bell_out", true });
 					}
@@ -364,7 +655,7 @@ RValue& GmlScriptAddHeartPointsAnimalCallback(
 	Arguments[0]->m_Real = static_cast<double>(modified_heart_points);
 	if (modified_heart_points > 0)
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Boosted an animal's heart points from %d to %d!", VERSION, original_heart_points, modified_heart_points);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Boosted the heart points gained for animal from %d to %d!", VERSION, original_heart_points, modified_heart_points);
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_add_heart_points@PlayerAnimal@Animal"));
@@ -392,193 +683,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	if (load_on_start)
 	{
 		LoadWeather();
-
-		std::exception_ptr eptr;
-		try
-		{
-			// Try to find the mod_data directory.
-			std::string current_dir = std::filesystem::current_path().string();
-			std::string mod_data_folder = current_dir + "\\mod_data";
-			if (!std::filesystem::exists(mod_data_folder))
-			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - The \"mod_data\" directory was not found. Creating directory: %s", VERSION, mod_data_folder.c_str());
-				std::filesystem::create_directory(mod_data_folder);
-			}
-
-			// Try to find the mod_data/AnimalFriends directory.
-			std::string animal_friends_folder = mod_data_folder + "\\AnimalFriends";
-			if (!std::filesystem::exists(animal_friends_folder))
-			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - The \"AnimalFriends\" directory was not found. Creating directory: %s", VERSION, animal_friends_folder.c_str());
-				std::filesystem::create_directory(animal_friends_folder);
-			}
-
-			// Try to find the mod_data/AnimalFriends/AnimalFriends.json config file.
-			std::string config_file = animal_friends_folder + "\\" + "AnimalFriends.json";
-			std::ifstream in_stream(config_file);
-			if (in_stream.good())
-			{
-				try
-				{
-					json json_object = json::parse(in_stream);
-
-					// Check if the json_object is empty.
-					if (json_object.empty())
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - No values found in mod configuration file: %s!", VERSION, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Add your desired values to the configuration file, otherwise defaults will be used.", VERSION);
-						LogDefaultConfigValues();
-					}
-					else
-					{
-						// Try loading the friendship_multiplier value.
-						if (json_object.contains(FRIENDSHIP_MULTIPLIER_KEY))
-						{
-							friendship_multiplier = json_object[FRIENDSHIP_MULTIPLIER_KEY];
-							if (friendship_multiplier <= 0 || friendship_multiplier > 100)
-							{
-								g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, FRIENDSHIP_MULTIPLIER_KEY, friendship_multiplier, config_file.c_str());
-								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the value is a valid integer between 1 and 100 (inclusive)!", VERSION);
-								g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER);
-								friendship_multiplier = DEFAULT_FRIENDSHIP_MULTIPLIER;
-							}
-							else
-							{
-								g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %d!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, friendship_multiplier);
-							}
-						}
-						else
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER);
-						}
-
-						// Try loading the prevent_friendship_loss value.
-						if (json_object.contains(PREVENT_FRIENDSHIP_LOSS_KEY))
-						{
-							prevent_friendship_loss = json_object[PREVENT_FRIENDSHIP_LOSS_KEY];
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, PREVENT_FRIENDSHIP_LOSS_KEY, prevent_friendship_loss ? "true" : "false");
-						}
-						else
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, PREVENT_FRIENDSHIP_LOSS_KEY, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, PREVENT_FRIENDSHIP_LOSS_KEY, DEFAULT_PREVENT_FRIENDSHIP_LOSS ? "true" : "false");
-						}
-
-						// Try loading the auto_pet value.
-						if (json_object.contains(AUTO_PET_KEY))
-						{
-							auto_pet = json_object[AUTO_PET_KEY];
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, AUTO_PET_KEY, auto_pet ? "true" : "false");
-						}
-						else
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_PET_KEY, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_PET_KEY, DEFAULT_AUTO_PET ? "true" : "false");
-						}
-
-						// Try loading the auto_feed value.
-						if (json_object.contains(AUTO_FEED_KEY))
-						{
-							auto_feed = json_object[AUTO_FEED_KEY];
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, AUTO_FEED_KEY, auto_feed ? "true" : "false");
-						}
-						else
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_FEED_KEY, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_FEED_KEY, DEFAULT_AUTO_FEED ? "true" : "false");
-						}
-
-						// Try loading the auto_bell_in value.
-						if (json_object.contains(AUTO_BELL_IN_KEY))
-						{
-							auto_bell_in = json_object[AUTO_BELL_IN_KEY];
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, AUTO_BELL_IN_KEY, auto_bell_in ? "true" : "false");
-						}
-						else
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_BELL_IN_KEY, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_IN_KEY, DEFAULT_AUTO_BELL_IN ? "true" : "false");
-						}
-
-						// Try loading the auto_bell_out value.
-						if (json_object.contains(AUTO_BELL_OUT_KEY))
-						{
-							auto_bell_out = json_object[AUTO_BELL_OUT_KEY];
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, AUTO_BELL_OUT_KEY, auto_bell_out ? "true" : "false");
-						}
-						else
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, AUTO_BELL_OUT_KEY, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_OUT_KEY, DEFAULT_AUTO_BELL_OUT ? "true" : "false");
-						}
-
-						// Try loading the animal_bed_time value.
-						if (json_object.contains(ANIMAL_BED_TIME_KEY))
-						{
-							animal_bed_time = json_object[ANIMAL_BED_TIME_KEY];
-							if (animal_bed_time < 21600 || animal_bed_time > 86400)
-							{
-								g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, ANIMAL_BED_TIME_KEY, animal_bed_time, config_file.c_str());
-								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the value is a valid integer between 21600 and 86400 (inclusive)!", VERSION);
-								g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
-								animal_bed_time = SIX_PM_IN_SECONDS;
-							}
-							else
-							{
-								g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, animal_bed_time);
-							}
-						}
-						else
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, ANIMAL_BED_TIME_KEY, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
-						}
-					}
-				}
-				catch (...)
-				{
-					eptr = std::current_exception();
-					handle_eptr(eptr);
-
-					g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Failed to parse JSON from configuration file: %s", VERSION, config_file.c_str());
-					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the file is valid JSON!", VERSION);
-					LogDefaultConfigValues();
-				}
-
-				in_stream.close();
-			}
-			else
-			{
-				in_stream.close();
-
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - The \"AnimalFriends.json\" file was not found. Creating file: %s", VERSION, config_file.c_str());
-				json default_json = {
-					{FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER},
-					{PREVENT_FRIENDSHIP_LOSS_KEY, DEFAULT_PREVENT_FRIENDSHIP_LOSS},
-					{AUTO_PET_KEY, DEFAULT_AUTO_PET},
-					{AUTO_FEED_KEY, DEFAULT_AUTO_FEED},
-					{AUTO_BELL_IN_KEY, DEFAULT_AUTO_BELL_IN},
-					{AUTO_BELL_OUT_KEY, DEFAULT_AUTO_BELL_OUT},
-					{ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS}
-				};
-
-				std::ofstream out_stream(config_file);
-				out_stream << std::setw(4) << default_json << std::endl;
-				out_stream.close();
-
-				LogDefaultConfigValues();
-			}
-		}
-		catch (...)
-		{
-			eptr = std::current_exception();
-			handle_eptr(eptr);
-
-			g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - An error occurred loading the mod configuration file.", VERSION);
-			LogDefaultConfigValues();
-		}
-
+		LoadOrCreateConfigFile();
 		load_on_start = false;
 	}
 
@@ -605,46 +710,6 @@ RValue& GmlScriptOnNewDayCallback(
 	ResetStaticFields(false);
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_on_new_day@Ari@Ari"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
-}
-
-RValue& GmlScriptBellInCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_bell_in@gml_Object_obj_farm_bell_Create_0"));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
-}
-
-RValue& GmlScriptBellOutCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_bell_out@gml_Object_obj_farm_bell_Create_0"));
 	original(
 		Self,
 		Other,
@@ -720,6 +785,58 @@ RValue& GmlScriptGetWeatherCallback(
 	}
 
 	return Result;
+}
+
+RValue& GmlScriptCreatePutDownPlayerAnimalCallback( // gml_Script_create_animal_currency_dance@gml_Object_obj_player_animal_Create_0
+	IN CInstance* Self, // obj_player_animal
+	IN CInstance* Other, // obj_ari
+	OUT RValue& Result,
+	IN int ArgumentCount, // 2
+	IN RValue** Arguments // 6.0 (REAL, # BEADS), true (BOOL, ???)
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_put_down@gml_Object_obj_player_animal_Create_0"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (spawn_extra_beads_daily && !extra_beads_daily_received)
+	{
+		extra_beads_daily_received = true;
+		SpawnShinyBeads(Self, Other, num_player_animals * extra_beads_daily_multiplier);
+	}
+	
+	return Result; // Undefined
+}
+
+RValue& GmlScriptCreateOnPetPlayerAnimalCallback( // gml_Script_create_animal_currency_dance@gml_Object_obj_player_animal_Create_0
+	IN CInstance* Self, // obj_player_animal
+	IN CInstance* Other, // obj_ari
+	OUT RValue& Result,
+	IN int ArgumentCount, // 2
+	IN RValue** Arguments // 6.0 (REAL, # BEADS), true (BOOL, ???)
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_on_pet@gml_Object_obj_player_animal_Create_0"));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (spawn_extra_beads_daily && !extra_beads_daily_received)
+	{
+		extra_beads_daily_received = true;
+		SpawnShinyBeads(Self, Other, num_player_animals * extra_beads_daily_multiplier);
+	}
+
+	return Result; // Undefined
 }
 
 void CreateHookEventObject(AurieStatus& status)
@@ -818,60 +935,6 @@ void CreateHookGmlScriptOnNewDay(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptBellIn(AurieStatus& status)
-{
-	CScript* gml_script_bell_in = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_bell_in@gml_Object_obj_farm_bell_Create_0",
-		(PVOID*)&gml_script_bell_in
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Failed to get script (gml_Script_bell_in@gml_Object_obj_farm_bell_Create_0)!", VERSION);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_bell_in@gml_Object_obj_farm_bell_Create_0",
-		gml_script_bell_in->m_Functions->m_ScriptFunction,
-		GmlScriptBellInCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Failed to hook script (gml_Script_bell_in@gml_Object_obj_farm_bell_Create_0)!", VERSION);
-	}
-}
-
-void CreateHookGmlScriptBellOut(AurieStatus& status)
-{
-	CScript* gml_script_bell_out = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_bell_out@gml_Object_obj_farm_bell_Create_0",
-		(PVOID*)&gml_script_bell_out
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Failed to get script (gml_Script_bell_out@gml_Object_obj_farm_bell_Create_0)!", VERSION);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_bell_out@gml_Object_obj_farm_bell_Create_0",
-		gml_script_bell_out->m_Functions->m_ScriptFunction,
-		GmlScriptBellOutCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Failed to hook script (gml_Script_bell_out@gml_Object_obj_farm_bell_Create_0)!", VERSION);
-	}
-}
-
 void CreateHookGmlScriptGetMinutes(AurieStatus& status)
 {
 	CScript* gml_script_get_minutes = nullptr;
@@ -920,10 +983,63 @@ void CreateHookGmlScriptGetWeather(AurieStatus& status)
 		nullptr
 	);
 
-
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Failed to hook script (gml_Script_get_weather@WeatherManager@Weather)!", VERSION);
+	}
+}
+
+void CreateHookGmlScriptPutDownPlayerAnimal(AurieStatus& status)
+{
+	CScript* gml_script_put_down_player_animal = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_put_down@gml_Object_obj_player_animal_Create_0",
+		(PVOID*)&gml_script_put_down_player_animal
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Failed to get script (gml_Script_put_down@gml_Object_obj_player_animal_Create_0)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_put_down@gml_Object_obj_player_animal_Create_0",
+		gml_script_put_down_player_animal->m_Functions->m_ScriptFunction,
+		GmlScriptCreatePutDownPlayerAnimalCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Failed to hook script (gml_Script_put_down@gml_Object_obj_player_animal_Create_0)!", VERSION);
+	}
+}
+
+void CreateHookGmlScriptOnPetPlayerAnimal(AurieStatus& status)
+{
+	CScript* gml_script_on_pet_player_animal = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_on_pet@gml_Object_obj_player_animal_Create_0",
+		(PVOID*)&gml_script_on_pet_player_animal
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Failed to get script (gml_Script_on_pet@gml_Object_obj_player_animal_Create_0)!", VERSION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		"gml_Script_on_pet@gml_Object_obj_player_animal_Create_0",
+		gml_script_on_pet_player_animal->m_Functions->m_ScriptFunction,
+		GmlScriptCreateOnPetPlayerAnimalCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Failed to hook script (gml_Script_on_pet@gml_Object_obj_player_animal_Create_0)!", VERSION);
 	}
 }
 
@@ -970,20 +1086,6 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		return status;
 	}
 
-	CreateHookGmlScriptBellIn(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Exiting due to failure on start!", VERSION);
-		return status;
-	}
-
-	CreateHookGmlScriptBellOut(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Exiting due to failure on start!", VERSION);
-		return status;
-	}
-
 	CreateHookGmlScriptGetMinutes(status);
 	if (!AurieSuccess(status))
 	{
@@ -992,6 +1094,20 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptGetWeather(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptPutDownPlayerAnimal(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Exiting due to failure on start!", VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptOnPetPlayerAnimal(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Exiting due to failure on start!", VERSION);
