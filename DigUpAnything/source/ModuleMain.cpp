@@ -12,7 +12,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "DigUpAnything";
-static const char* const VERSION = "1.2.0";
+static const char* const VERSION = "1.2.1";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const std::string VALID_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/valid_item";
 static const std::string DISABLED_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/disabled_item";
@@ -721,6 +721,8 @@ RValue& GmlScriptGetLocalizerCallback(
 			std::transform(lowercase_localized_name_str.begin(), lowercase_localized_name_str.end(), lowercase_localized_name_str.begin(), [](unsigned char c) { return std::tolower(c); });
 			lowercase_localized_name_to_item_name_map[lowercase_localized_name_str] = pair.first;
 		}
+
+		lowercase_localized_name_to_item_name_map.erase("missing");
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_LOCALIZER));
