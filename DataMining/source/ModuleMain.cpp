@@ -17,7 +17,9 @@ std::string data_mining_folder = "";
 static std::vector<std::string> cosmetic_names;
 static std::map<std::string, int> item_name_to_id_map = {};
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
-static std::map<std::string, std::string> cooking_recipe_name_to_localized_name_map = {};
+static std::map<std::string, std::string> cooking_recipe_name_to_localized_name_map = {}; // All cooked dishes
+static std::map<std::string, std::string> craftable_cooking_recipe_name_to_localized_name_map = {}; // Cooked dishes with recipes
+static std::map<std::string, std::string> non_craftable_cooking_recipe_name_to_localized_name_map = {}; // Cooked dishes without recipes
 static std::map<std::string, std::string> furniture_recipe_name_to_localized_name_map = {}; // All furniture
 static std::map<std::string, std::string> craftable_furniture_recipe_name_to_localized_name_map = {}; // Craftable furniture (has a recipe)
 static std::map<std::string, std::string> non_craftable_furniture_recipe_name_to_localized_name_map = {}; // Non-craftable furniture (has no recipe)
@@ -133,8 +135,8 @@ RValue& GmlScriptGetLocalizerCallback(
 		}
 		items_outfile.close();
 
-		// Cooking recipes.
-		std::string cooking_file_name = data_mining_folder + "\\" + "cooking_recipes.md";
+		// All cooked dishes.
+		std::string cooking_file_name = data_mining_folder + "\\" + "all_cooked_dishes.md";
 		std::remove(cooking_file_name.c_str());
 		std::ofstream cooking_outfile(cooking_file_name, std::ios::out);
 		if (cooking_outfile.is_open())
@@ -149,6 +151,40 @@ RValue& GmlScriptGetLocalizerCallback(
 			}
 		}
 		cooking_outfile.close();
+
+		// Cooked dishes with recipes.
+		std::string craftable_cooking_file_name = data_mining_folder + "\\" + "craftable_cooked_dishes.md";
+		std::remove(craftable_cooking_file_name.c_str());
+		std::ofstream craftable_cooking_outfile(craftable_cooking_file_name, std::ios::out);
+		if (craftable_cooking_outfile.is_open())
+		{
+			for (auto& pair : craftable_cooking_recipe_name_to_localized_name_map) {
+				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
+				std::string localized_name_str = localized_name.AsString().data();
+				pair.second = localized_name_str;
+
+				// Internal Recipe Name, Localized Recipe Name
+				craftable_cooking_outfile << "| " + pair.first + " | " + pair.second + " |\n";
+			}
+		}
+		craftable_cooking_outfile.close();
+
+		// Cooked dishes without recipes.
+		std::string non_craftable_cooking_file_name = data_mining_folder + "\\" + "non_craftable_cooked_dishes.md";
+		std::remove(non_craftable_cooking_file_name.c_str());
+		std::ofstream non_craftable_cooking_outfile(non_craftable_cooking_file_name, std::ios::out);
+		if (non_craftable_cooking_outfile.is_open())
+		{
+			for (auto& pair : non_craftable_cooking_recipe_name_to_localized_name_map) {
+				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
+				std::string localized_name_str = localized_name.AsString().data();
+				pair.second = localized_name_str;
+
+				// Internal Recipe Name, Localized Recipe Name
+				non_craftable_cooking_outfile << "| " + pair.first + " | " + pair.second + " |\n";
+			}
+		}
+		non_craftable_cooking_outfile.close();
 
 		// All Furniture
 		std::string furniture_file_name = data_mining_folder + "\\" + "all_furniture.md";
@@ -292,6 +328,26 @@ RValue& GmlScriptSetupMainScreenCallback(
 				if (strstr(name_key.AsString().data(), "cooked_dishes"))
 				{
 					cooking_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+
+					if (StructVariableExists(*array_element, "recipe"))
+					{
+						RValue recipe = array_element->at("recipe");
+						if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
+						{
+							if (StructVariableExists(recipe, "item_id"))
+							{
+								craftable_cooking_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+							}
+						}
+						else
+						{
+							non_craftable_cooking_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+						}
+					}
+					else
+					{
+						non_craftable_cooking_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+					}
 				}
 
 				// Furniture recipes.
