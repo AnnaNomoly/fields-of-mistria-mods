@@ -9,7 +9,7 @@ using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
-static const char* const VERSION = "1.3.0";
+static const char* const VERSION = "1.3.1";
 static const char* const FRIENDSHIP_MULTIPLIER_KEY = "friendship_multiplier";
 static const char* const AUTO_PET_KEY = "auto_pet";
 static const char* const AUTO_FEED_KEY = "auto_feed";
@@ -79,6 +79,23 @@ std::string wstr_to_string(std::wstring wstr)
 	return std::string(buf.data(), buf.size());
 }
 
+json CreateConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ FRIENDSHIP_MULTIPLIER_KEY, use_defaults ? DEFAULT_FRIENDSHIP_MULTIPLIER : friendship_multiplier },
+		{ PREVENT_FRIENDSHIP_LOSS_KEY, use_defaults ? DEFAULT_PREVENT_FRIENDSHIP_LOSS : prevent_friendship_loss },
+		{ AUTO_PET_KEY, use_defaults ? DEFAULT_AUTO_PET : auto_pet},
+		{ AUTO_FEED_KEY, use_defaults ? DEFAULT_AUTO_FEED : auto_feed },
+		{ AUTO_BELL_IN_KEY, use_defaults ? DEFAULT_AUTO_BELL_IN : auto_bell_in },
+		{ AUTO_BELL_OUT_KEY, use_defaults ? DEFAULT_AUTO_BELL_OUT : auto_bell_out },
+		{ ANIMAL_BED_TIME_KEY, use_defaults ? SIX_PM_IN_SECONDS : animal_bed_time },
+		{ MUTE_AUTO_BELL_SOUNDS_KEY, use_defaults ? DEFAULT_MUTE_AUTO_BELL_SOUNDS : mute_auto_bell_sounds },
+		{ SPAWN_EXTRA_BEADS_DAILY_KEY, use_defaults ? DEFAULT_SPAWN_EXTRA_BEADS_DAILY : spawn_extra_beads_daily },
+		{ EXTRA_BEADS_DAILY_MULTIPLIER_KEY, use_defaults ? DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER : extra_beads_daily_multiplier }
+	};
+	return config_json;
+}
+
 void LogDefaultConfigValues()
 {
 	friendship_multiplier = DEFAULT_FRIENDSHIP_MULTIPLIER;
@@ -145,6 +162,7 @@ void LoadOrCreateConfigFile()
 		}
 
 		// Try to find the mod_data/AnimalFriends/AnimalFriends.json config file.
+		bool update_config_file = false;
 		std::string config_file = animal_friends_folder + "\\" + "AnimalFriends.json";
 		std::ifstream in_stream(config_file);
 		if (in_stream.good())
@@ -312,6 +330,8 @@ void LoadOrCreateConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER);
 					}
 				}
+
+				update_config_file = true;
 			}
 			catch (...)
 			{
@@ -330,21 +350,21 @@ void LoadOrCreateConfigFile()
 			in_stream.close();
 
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - The \"AnimalFriends.json\" file was not found. Creating file: %s", VERSION, config_file.c_str());
-			json default_json = {
-				{FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER},
-				{PREVENT_FRIENDSHIP_LOSS_KEY, DEFAULT_PREVENT_FRIENDSHIP_LOSS},
-				{AUTO_PET_KEY, DEFAULT_AUTO_PET},
-				{AUTO_FEED_KEY, DEFAULT_AUTO_FEED},
-				{AUTO_BELL_IN_KEY, DEFAULT_AUTO_BELL_IN},
-				{AUTO_BELL_OUT_KEY, DEFAULT_AUTO_BELL_OUT},
-				{ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS}
-			};
-
+			
+			json default_config_json = CreateConfigJson(true);
 			std::ofstream out_stream(config_file);
-			out_stream << std::setw(4) << default_json << std::endl;
+			out_stream << std::setw(4) << default_config_json << std::endl;
 			out_stream.close();
 
 			LogDefaultConfigValues();
+		}
+		
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
 		}
 	}
 	catch (...)
