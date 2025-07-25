@@ -7,7 +7,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "ThePerfectGift";
-static const char* const VERSION = "1.1.3";
+static const char* const VERSION = "1.1.4";
 static const char* const UNLOCK_ALL_GIFT_PREFERENCES_KEY = "unlock_all_gift_preferences";
 static const char* const SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS_KEY = "show_gift_preferences_on_item_tooltips";
 static const char* const GML_SCRIPT_TRY_ITEM_ID_TO_STRING = "gml_Script_try_item_id_to_string";
@@ -18,6 +18,8 @@ static const char* const GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION = "gml_Scr
 static const char* const GML_SCRIPT_LOCALIZER_GET = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_TEXTBOX_SAY = "gml_Script_say@TextboxMenu@TextboxMenu";
+static const char* const GML_SCRIPT_CRAFTING_MENU_CLOSE = "gml_Script_on_close@CraftingMenu@CraftingMenu";
+static const char* const GML_SCRIPT_CRAFTING_MENU_INITIALIZE = "gml_Script_initialize@CraftingMenu@CraftingMenu";
 static const std::string GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY = "mods/ThePerfectGift/gift_preference_detected";
 static const std::string GIFT_PREFERENCE_UNLOCKED_LOCALIZATION_KEY = "mods/ThePerfectGift/gift_preference_unlocked";
 static const std::string ITEM_PLACEHOLDER_TEXT = "<ITEM>";
@@ -340,6 +342,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
 static bool localize_items = true;
+static bool crafting_menu_open = false;
 static bool unlock_all_gift_preferences = DEFAULT_UNLOCK_ALL_GIFT_PREFERENCES;
 static bool show_gift_preferences_on_item_tooltips = DEFAULT_SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS;
 static std::map<std::string, std::vector<std::string>> gifts_to_unlock = {};
@@ -419,6 +422,15 @@ void PrintError(std::exception_ptr eptr)
 	}
 }
 
+json CreateConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ UNLOCK_ALL_GIFT_PREFERENCES_KEY, use_defaults ? DEFAULT_UNLOCK_ALL_GIFT_PREFERENCES : unlock_all_gift_preferences },
+		{ SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS_KEY, use_defaults ? DEFAULT_SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS : show_gift_preferences_on_item_tooltips }
+	};
+	return config_json;
+}
+
 void LogDefaultConfigValues()
 {
 	unlock_all_gift_preferences = DEFAULT_UNLOCK_ALL_GIFT_PREFERENCES;
@@ -451,6 +463,7 @@ void CreateOrLoadConfigFile()
 		}
 
 		// Try to find the mod_data/ThePerfectGift/ThePerfectGift.json config file.
+		bool update_config_file = false;
 		std::string config_file = the_perfect_gift_folder + "\\" + "ThePerfectGift.json";
 		std::ifstream in_stream(config_file);
 		if (in_stream.good())
@@ -492,6 +505,8 @@ void CreateOrLoadConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS_KEY, DEFAULT_SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS ? "true" : "false");
 					}
 				}
+
+				update_config_file = true;
 			}
 			catch (...)
 			{
@@ -520,6 +535,14 @@ void CreateOrLoadConfigFile()
 			out_stream.close();
 
 			LogDefaultConfigValues();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
 		}
 	}
 	catch (...)
@@ -856,6 +879,48 @@ void ObjectCallback(
 	}
 }
 
+RValue& GmlScriptCraftingMenuInitializeCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CRAFTING_MENU_INITIALIZE));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	crafting_menu_open = true;
+	return Result;
+}
+
+RValue& GmlScriptCraftingMenuCloseCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CRAFTING_MENU_CLOSE));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	crafting_menu_open = false;
+	return Result;
+}
+
 RValue& GmlScriptGetDisplayNameCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -894,59 +959,61 @@ RValue& GmlScriptGetDisplayDescriptionCallback(
 		Arguments
 	);
 
-
-	if (localized_item_name.size() > 0)
+	if (show_gift_preferences_on_item_tooltips && !crafting_menu_open)
 	{
-		if (localized_item_name_to_internal_item_name_map.count(localized_item_name) > 0)
+		if (localized_item_name.size() > 0)
 		{
-			int item_id = item_name_to_id_map[localized_item_name_to_internal_item_name_map[localized_item_name]];
-
-			std::vector<std::string> npcs_who_like_the_gift = {};
-			for (const auto& map_entry : npc_name_to_liked_gifts_map)
+			if (localized_item_name_to_internal_item_name_map.count(localized_item_name) > 0)
 			{
-				const auto it = std::find(map_entry.second.begin(), map_entry.second.end(), item_id);
-				if (it != map_entry.second.end())
-					npcs_who_like_the_gift.push_back(map_entry.first);
-			}
+				int item_id = item_name_to_id_map[localized_item_name_to_internal_item_name_map[localized_item_name]];
 
-			std::string liked_by_string = "";
-			if (npcs_who_like_the_gift.size() > 0)
-			{
-				liked_by_string += "Liked By: ";
-				for (int i = 0; i < npcs_who_like_the_gift.size(); i++)
+				std::vector<std::string> npcs_who_like_the_gift = {};
+				for (const auto& map_entry : npc_name_to_liked_gifts_map)
 				{
-					liked_by_string += npcs_who_like_the_gift[i];
-					if (i < npcs_who_like_the_gift.size() - 1)
-						liked_by_string += ", ";
+					const auto it = std::find(map_entry.second.begin(), map_entry.second.end(), item_id);
+					if (it != map_entry.second.end())
+						npcs_who_like_the_gift.push_back(map_entry.first);
 				}
-				liked_by_string += "\n\n";
-			}
 
-			std::vector<std::string> npcs_who_love_the_gift = {};
-			for (const auto& map_entry : npc_name_to_loved_gifts_map)
-			{
-				const auto it = std::find(map_entry.second.begin(), map_entry.second.end(), item_id);
-				if (it != map_entry.second.end())
-					npcs_who_love_the_gift.push_back(map_entry.first);
-			}
-
-			std::string loved_by_string = "";
-			if (npcs_who_love_the_gift.size() > 0)
-			{
-				loved_by_string += "Loved By: ";
-				for (int i = 0; i < npcs_who_love_the_gift.size(); i++)
+				std::string liked_by_string = "";
+				if (npcs_who_like_the_gift.size() > 0)
 				{
-					loved_by_string += npcs_who_love_the_gift[i];
-					if (i < npcs_who_love_the_gift.size() - 1)
-						loved_by_string += ", ";
+					liked_by_string += "Liked By: ";
+					for (int i = 0; i < npcs_who_like_the_gift.size(); i++)
+					{
+						liked_by_string += npcs_who_like_the_gift[i];
+						if (i < npcs_who_like_the_gift.size() - 1)
+							liked_by_string += ", ";
+					}
+					liked_by_string += "\n\n";
 				}
-				loved_by_string += "\n\n";
-			}
 
-			if (liked_by_string.size() > 0)
-				Result = liked_by_string + Result.AsString().data();
-			if (loved_by_string.size() > 0)
-				Result = loved_by_string + Result.AsString().data();
+				std::vector<std::string> npcs_who_love_the_gift = {};
+				for (const auto& map_entry : npc_name_to_loved_gifts_map)
+				{
+					const auto it = std::find(map_entry.second.begin(), map_entry.second.end(), item_id);
+					if (it != map_entry.second.end())
+						npcs_who_love_the_gift.push_back(map_entry.first);
+				}
+
+				std::string loved_by_string = "";
+				if (npcs_who_love_the_gift.size() > 0)
+				{
+					loved_by_string += "Loved By: ";
+					for (int i = 0; i < npcs_who_love_the_gift.size(); i++)
+					{
+						loved_by_string += npcs_who_love_the_gift[i];
+						if (i < npcs_who_love_the_gift.size() - 1)
+							loved_by_string += ", ";
+					}
+					loved_by_string += "\n\n";
+				}
+
+				if (liked_by_string.size() > 0)
+					Result = liked_by_string + Result.AsString().data();
+				if (loved_by_string.size() > 0)
+					Result = loved_by_string + Result.AsString().data();
+			}
 		}
 	}
 
@@ -1040,6 +1107,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	localized_item_name = "";
 	gift_preference_npc_name = "";
 	gift_preference_internal_item_name = "";
+	crafting_menu_open = false;
 
 	if (load_on_start)
 	{
@@ -1116,6 +1184,60 @@ RValue& GmlScriptTranslateCallback(
 	);
 
 	return Result;
+}
+
+void CreateHookGmlScriptCraftingMenuInitialize(AurieStatus& status)
+{
+	CScript* gml_script_get_display_name = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CRAFTING_MENU_INITIALIZE,
+		(PVOID*)&gml_script_get_display_name
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CRAFTING_MENU_INITIALIZE);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CRAFTING_MENU_INITIALIZE,
+		gml_script_get_display_name->m_Functions->m_ScriptFunction,
+		GmlScriptCraftingMenuInitializeCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CRAFTING_MENU_INITIALIZE);
+	}
+}
+
+void CreateHookGmlScriptCraftingMenuClose(AurieStatus& status)
+{
+	CScript* gml_script_get_display_name = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CRAFTING_MENU_CLOSE,
+		(PVOID*)&gml_script_get_display_name
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CRAFTING_MENU_CLOSE);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CRAFTING_MENU_CLOSE,
+		gml_script_get_display_name->m_Functions->m_ScriptFunction,
+		GmlScriptCraftingMenuCloseCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CRAFTING_MENU_CLOSE);
+	}
 }
 
 void CreateHookGmlScriptGetDisplayName(AurieStatus& status)
@@ -1321,6 +1443,20 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptGetDisplayName(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCraftingMenuClose(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCraftingMenuInitialize(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
