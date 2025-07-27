@@ -11,7 +11,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "ChutesAndLadders";
-static const char* const VERSION = "1.1.0";
+static const char* const VERSION = "1.2.0";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const UNLOCK_EVERYTHING_KEY = "unlock_everything";
 static const std::string LADDER_SPAWNED_LOCALIZATION_KEY = "mods/ChutesAndLadders/ladder_spawned";
@@ -19,11 +19,13 @@ static const std::string LADDER_NOT_SPAWNED_LOCALIZATION_KEY = "mods/ChutesAndLa
 static const std::string INVALID_LOCATION_LOCALIZATION_KEY = "mods/ChutesAndLadders/invalid_location";
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
+static const char* const GML_SCRIPT_SHOW_ROOM_TITLE = "gml_Script_on_room_start@WeatherManager@Weather"; // "gml_Script_show_room_title";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const char* const GML_SCRIPT_ERROR = "gml_Script_error";
+static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
 static const std::string DEFAULT_ACTIVATION_BUTTON = "PAGE_DOWN";
 static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
@@ -32,6 +34,117 @@ static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
 	"INSERT", "DELETE", "HOME", "PAGE_UP", "PAGE_DOWN", "NUM_LOCK", "SCROLL_LOCK", "CAPS_LOCK", "PAUSE_BREAK",
 	"GAMEPAD_A", "GAMEPAD_B", "GAMEPAD_X", "GAMEPAD_Y", "GAMEPAD_LEFT_SHOULDER", "GAMEPAD_RIGHT_SHOULDER", "GAMEPAD_LEFT_TRIGGER", "GAMEPAD_RIGHT_TRIGGER", "GAMEPAD_DPAD_UP", "GAMEPAD_DPAD_DOWN", "GAMEPAD_DPAD_LEFT", "GAMEPAD_DPAD_RIGHT", "GAMEPAD_LEFT_STICK", "GAMEPAD_RIGHT_STICK", "GAMEPAD_BACK", "GAMEPAD_START"
+};
+static const std::map<std::string, std::vector<int>> LADDER_SPAWN_POINTS = { // As of 0.14.0
+	{ "rm_mines_tide_fork", { 68, 80 }},
+	{ "rm_mines_tide_whirly", { 110, 60 }},
+	{ "rm_mines_deep_runner", { 18, 18 }},
+	{ "rm_mines_tide_islands", { 18, 66 }},
+	{ "rm_mines_lava_bullseye", { 32, 46 }},
+	{ "rm_mines_tide_paths", { 52, 72 }}, // Testing change. 
+	{ "rm_mines_upper_slimetime", { 40, 34 }},
+	{ "rm_mines_lava_generic", { 66, 84 }},
+	{ "rm_mines_deep_winding", { 68, 42 }},
+	{ "rm_mines_lava_world", { 36, 36 }},
+	{ "rm_mines_deep_leap", { 66, 18 }},
+	{ "rm_mines_ruins_secretfire", { 18, 78 }},
+	{ "rm_mines_lava_treasure", { 20, 32 }},
+	{ "rm_mines_tide_milestone", { 20, 34 }},
+	{ "rm_mines_lava_elements", { 36, 70 }},
+	{ "rm_mines_tide_oasis", { 20, 18 }},
+	{ "rm_mines_tide_chamber", { 28, 60 }},
+	{ "rm_mines_lava_arena", { 40, 16 }},
+	{ "rm_mines_upper_treasure", { 18, 40 }},
+	{ "rm_mines_upper_sock", { 32, 22 }},
+	{ "rm_mines_upper_boomerang", { 46, 38 }},
+	{ "rm_mines_upper_worm", { 22, 18 }},
+	{ "rm_mines_upper_ponds", { 40, 42 }},
+	{ "rm_mines_upper_pond", { 30, 52 }},
+	{ "rm_mines_upper_snake", { 54, 16 }},
+	{ "rm_mines_upper_four", { 22, 16 }},
+	{ "rm_mines_upper_amoeba", { 22, 48 }},
+	{ "rm_mines_upper_wishbone", { 42, 74 }},
+	{ "rm_mines_upper_canada", { 24, 44 }},
+	{ "rm_mines_upper_staple", { 60, 48 }},
+	{ "rm_mines_upper_pillars", { 34, 16 }},
+	{ "rm_mines_upper_elevator5", { 12, 28 }},
+	{ "rm_mines_upper_elevator10", { 48, 42 }}, // Testing change.
+	{ "rm_mines_upper_elevator15", { 18, 8 }},
+	{ "rm_mines_upper_floor1", { 12, 36 }},
+	{ "rm_mines_upper_path", { 40, 44 }},
+	{ "rm_mines_upper_stream", { 50, 16 }},
+	{ "rm_mines_upper_muscle", { 28, 60 }},
+	{ "rm_mines_upper_crossroad", { 40, 42 }},
+	{ "rm_mines_upper_pits", { 30, 22 }},
+	{ "rm_mines_basement_no_elevator", { 46, 38 }},
+	{ "rm_mines_basement_elevator", { 12, 28 }},
+	{ "rm_mines_tide_elevator25", { 54, 56 }},
+	{ "rm_mines_tide_elevator30", { 44, 52 }},
+	{ "rm_mines_tide_elevator35", { 56, 40 }},
+	{ "rm_mines_tide_floor21", { 50, 20 }},
+	{ "rm_mines_tide_basic1", { 66, 86 }},
+	{ "rm_mines_tide_shrine1", { 26, 72 }}, // Testing change.
+	{ "rm_mines_tide_whirlpool1", { 108, 84 }},
+	{ "rm_mines_tide_basic2", { 38, 20 }},
+	{ "rm_mines_tide_switch2", { 18, 14 }},
+	{ "rm_mines_tide_whirlpool2", { 18, 80 }},
+	{ "rm_mines_tide_switch1", { 34, 38 }},
+	{ "rm_mines_tide_shrine3", { 84, 78 }},
+	{ "rm_mines_tide_shrine2", { 36, 58 }},
+	{ "rm_mines_basement_treasure", { 18, 40 }}, // Testing change.
+	{ "rm_mines_tide_whirlpool3", { 20, 84 }}, // Testing change.
+	{ "rm_mines_tide_basic3", { 34, 36 }},
+	{ "rm_mines_tide_basic4", { 56, 60 }},
+	{ "rm_mines_tide_whirlpool4", { 16, 78 }},
+	{ "rm_mines_tide_switch3", { 20, 16 }},
+	{ "rm_mines_tide_switch4", { 58, 50 }},
+	{ "rm_mines_deep_chambers", { 24, 70 }}, // Testing change.
+	{ "rm_mines_deep_spiral", { 30, 98 }},
+	{ "rm_mines_deep_wishbone", { 82, 80 }}, // Testing change.
+	{ "rm_mines_deep_key", { 40, 20 }},
+	{ "rm_mines_deep_scorpio", { 28, 24 }},
+	{ "rm_mines_deep_butterfly", { 50, 36 }},
+	{ "rm_mines_upper_formerelevator", { 40, 44 }},
+	{ "rm_mines_deep_41", { 38, 32 }},
+	{ "rm_mines_deep_45", { 48, 62 }},
+	{ "rm_mines_deep_50", { 76, 60 }},
+	{ "rm_mines_deep_55", { 68, 64 }},
+	{ "rm_mines_deep_switch1", { 18, 18 }},
+	{ "rm_mines_deep_switch2", { 14, 56 }},
+	{ "rm_mines_deep_treasure1", { 18, 30 }},
+	{ "rm_mines_deep_switch3", { 64, 40 }},
+	{ "rm_mines_deep_switch4", { 86, 78 }},
+	{ "rm_mines_deep_whirlpool1", { 66, 18 }},
+	{ "rm_mines_deep_whirlpool2", { 26, 24 }},
+	{ "rm_mines_deep_shrine2", { 42, 78 }}, // Testing change.
+	{ "rm_mines_deep_shrine1", { 102, 54 }},
+	{ "rm_mines_deep_shrine3", { 60, 48 }},
+	{ "rm_mines_deep_shrine4", { 56, 68 }},
+	{ "rm_mines_tide_ritual_chamber", { 24, 16 }},
+	{ "rm_mines_deep_ritual_chamber", { 24, 16 }},
+	{ "rm_mines_lava_ritual_chamber", { 24, 16 }},
+	{ "rm_mines_ruins_ritual_chamber", { 24, 16 }},
+	{ "rm_mines_lava_61", { 36, 34 }},
+	{ "rm_mines_lava_65", { 64, 18 }},
+	{ "rm_mines_lava_70", { 50, 22 }},
+	{ "rm_mines_lava_75", { 86, 22 }},
+	{ "rm_mines_lava_switch1", { 98, 32 }},
+	{ "rm_mines_lava_switch2", { 62, 30 }},
+	{ "rm_mines_lava_switch3", { 56, 24 }},
+	{ "rm_mines_lava_switch4", { 58, 30 }},
+	{ "rm_mines_lava_switch5", { 56, 48 }},
+	{ "rm_mines_lava_basic1", { 104, 36 }},
+	{ "rm_mines_lava_basic2", { 42, 56 }},
+	{ "rm_mines_lava_basic3", { 40, 26 }},
+	{ "rm_mines_lava_basic4", { 68, 54 }},
+	{ "rm_mines_lava_basic5", { 66, 84 }},
+	{ "rm_mines_lava_shrine1", { 28, 60 }},
+	{ "rm_mines_lava_shrine2", { 94, 78 }},
+	{ "rm_mines_lava_shrine3", { 46, 66 }},
+	{ "rm_mines_lava_shrine4", { 94, 76 }},
+	{ "rm_mines_ruins_basic1", { 60, 68 }},
+	{ "rm_mines_ruins_85", { 48, 40 }},
+	{ "rm_mines_ruins_90", { 74, 66 }}
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
@@ -42,6 +155,39 @@ static int activation_button_int_value = -1;
 static bool processing_user_input = false;
 static std::string activation_button = DEFAULT_ACTIVATION_BUTTON;
 static std::string ari_current_location = "";
+static std::string ari_current_gm_room = "";
+static bool teleport_ari = false;
+static bool ari_is_teleporting = false;
+static bool create_ritual_altar = false;
+
+// DEBUG VARS
+static std::vector<std::string> struct_field_names = {};
+
+// DEBUG FUNCTIONS
+bool EnumFunction(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
+	return false;
+}
+bool GetStructFieldNames(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	struct_field_names.push_back(MemberName);
+	return false;
+}
+RValue StructVariableGet(RValue the_struct, const char* variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"struct_get",
+		{ the_struct, variable_name }
+	);
+}
+//-------------------------------------------------------------------------
 
 int RValueAsInt(RValue value)
 {
@@ -456,6 +602,40 @@ void CreateNotification(std::string notification_localization_str, CInstance* Se
 
 void SpawnLadder(CInstance* Self, CInstance* Other)
 {
+	//RValue _x = g_ModuleInterface->CallBuiltin("get_integer", { "Input X coord.", 0 });
+	//RValue _y = g_ModuleInterface->CallBuiltin("get_integer", { "Input Y coord.", 0 });
+
+	if (LADDER_SPAWN_POINTS.count(ari_current_gm_room) > 0)
+	{
+		CScript* gml_Script_spawn_ladder = nullptr;
+		g_ModuleInterface->GetNamedRoutinePointer(
+			GML_SCRIPT_SPAWN_LADDER,
+			(PVOID*)&gml_Script_spawn_ladder
+		);
+
+		RValue x = RValueAsInt(LADDER_SPAWN_POINTS.at(ari_current_gm_room)[0]);
+		RValue y = RValueAsInt(LADDER_SPAWN_POINTS.at(ari_current_gm_room)[1]);
+		RValue* x_ptr = &x;
+		RValue* y_ptr = &y;
+		RValue* rvalue_array[2] = { x_ptr, y_ptr };
+		RValue retval;
+		gml_Script_spawn_ladder->m_Functions->m_ScriptFunction(
+			Self,
+			Other,
+			retval,
+			2,
+			rvalue_array
+		);
+
+		CreateNotification(LADDER_SPAWNED_LOCALIZATION_KEY, Self, Other);
+	}
+	else
+	{
+		CreateNotification(LADDER_NOT_SPAWNED_LOCALIZATION_KEY, Self, Other);
+		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The current GM room (%s) has no set ladder coordinates!", MOD_NAME, VERSION, ari_current_gm_room.c_str());
+	}
+
+	/*
 	for (int i = 0; i < 100; i += 20)
 	{
 		for (int j = 0; j < 100; j += 10)
@@ -492,6 +672,118 @@ void SpawnLadder(CInstance* Self, CInstance* Other)
 
 	g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Found no suitable position for a ladder!", MOD_NAME, VERSION);
 	CreateNotification(LADDER_NOT_SPAWNED_LOCALIZATION_KEY, Self, Other);
+	*/
+}
+
+void ObjectCallback(
+	IN FWCodeEvent& CodeEvent
+)
+{
+	auto& [self, other, code, argc, argv] = CodeEvent.Arguments();
+
+	if (!self)
+		return;
+
+	if (!self->m_Object)
+		return;
+
+	if (!strstr(self->m_Object->m_Name, "obj_ari"))
+		return;
+
+	if (game_is_active)
+	{
+		if (teleport_ari)
+		{
+			//CInstance* global_instance = nullptr;
+			//g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+			//CScript* gml_script_goto_room = nullptr;
+			//g_ModuleInterface->GetNamedRoutinePointer(
+			//	GML_SCRIPT_GO_TO_ROOM,
+			//	(PVOID*)&gml_script_goto_room
+			//);
+
+			//RValue result;
+			//RValue room_asset = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_tide_ritual_chamber" }); // "rm_mines_ruins_85";
+			//RValue arg2 = false;
+			//RValue* room_asset_ptr = &room_asset;
+			//RValue* arg2_pt = &arg2;
+			//RValue* argument_array[2] = { room_asset_ptr, arg2_pt };
+			//gml_script_goto_room->m_Functions->m_ScriptFunction(
+			//	global_instance->at("__ari").m_Object,
+			//	self,
+			//	result,
+			//	2,
+			//	{ argument_array }
+			//);
+
+			//teleport_ari = false;
+		}
+	}
+}
+
+RValue& GmlScriptShowRoomTitleCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SHOW_ROOM_TITLE));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (teleport_ari)
+	{
+		teleport_ari = false;
+
+		CScript* gml_script_register_status_effect = nullptr;
+		g_ModuleInterface->GetNamedRoutinePointer(
+			"gml_Script_ari_teleport_to_room",
+			(PVOID*)&gml_script_register_status_effect
+		);
+
+		RValue result;
+		RValue arg0 = 30;
+		RValue arg1 = 192.0; //1176.0;
+		RValue arg2 = 352.0; //200.0;
+		RValue* arg0_ptr = &arg0;
+		RValue* arg1_ptr = &arg1;
+		RValue* arg2_ptr = &arg2;
+		RValue* argument_array[3] = { arg0_ptr, arg1_ptr, arg2_ptr };
+
+		ari_is_teleporting = true;
+		gml_script_register_status_effect->m_Functions->m_ScriptFunction(
+			Self,
+			Other,
+			result,
+			3,
+			argument_array
+		);
+	}
+
+	if (create_ritual_altar)
+	{		
+		RValue layer_exists = g_ModuleInterface->CallBuiltin("layer_exists", { "Impl_Ritual" });
+		if (RValueAsBool(layer_exists))
+		{
+			RValue obj_dungeon_ritual_altar_index = g_ModuleInterface->CallBuiltin("asset_get_index", { "obj_dungeon_ritual_altar" });
+			double x = 192.0;
+			double y = 224.0;
+			std::string layer_name = "Impl_Ritual";
+			g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, layer_name, obj_dungeon_ritual_altar_index });
+			// g_ModuleInterface->CallBuiltin("instance_create_depth", { 192, 224, 200, obj_dungeon_ritual_altar_index });
+			create_ritual_altar = false;
+		}
+	}
+
+	return Result;
 }
 
 RValue& GmlScriptTryLocationIdToStringCallback(
@@ -550,6 +842,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 {
 	game_is_active = false;
 	ari_current_location = "";
+	ari_current_gm_room = "";
 
 	if (load_on_start)
 	{
@@ -639,6 +932,112 @@ RValue& GmlScriptErrorCallback(
 		);
 
 		return Result;
+	}
+}
+
+RValue& GmlScriptGoToRoomCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (ari_is_teleporting)
+	{
+		RValue room_index = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_tide_ritual_chamber" }); // "rm_mines_ruins_85";
+		RValue* room_index_ptr = &room_index;
+		Arguments[0] = room_index_ptr;
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GO_TO_ROOM));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	RValue gm_room = StructVariableGet(Result, "gm_room");
+	RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
+	ari_current_gm_room = room_name.AsString().data();
+	
+	if (ari_is_teleporting)
+	{
+		ari_is_teleporting = false;
+		create_ritual_altar = true;
+	}
+	else if (!create_ritual_altar && ari_current_location == "dungeon" && ari_current_gm_room != "rm_mines_entry" && ari_current_gm_room.find("seal") == std::string::npos && ari_current_gm_room.find("ritual") == std::string::npos)
+	{
+		teleport_ari = true;
+
+		//RValue room_index = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_tide_ritual_chamber" }); // "rm_mines_ruins_85";
+		//RValue* room_index_ptr = &room_index;
+		//Arguments[0] = room_index_ptr;
+
+		//const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GO_TO_ROOM));
+		//original(
+		//	Self,
+		//	Other,
+		//	Result,
+		//	ArgumentCount,
+		//	Arguments
+		//);
+
+		//gm_room = StructVariableGet(Result, "gm_room");
+		//room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
+		//ari_current_gm_room = room_name.AsString().data();
+
+		//create_ritual_altar = true;
+	}
+	
+
+	// DEBUG
+	//g_ModuleInterface->Print(CM_LIGHTPURPLE, "[%s %s] - Room Name: %s", MOD_NAME, VERSION, room_name.AsString().data());
+
+	return Result;
+}
+
+void CreateObjectCallback(AurieStatus& status)
+{
+	status = g_ModuleInterface->CreateCallback(
+		g_ArSelfModule,
+		EVENT_OBJECT_CALL,
+		ObjectCallback,
+		0
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook (EVENT_OBJECT_CALL)!", MOD_NAME, VERSION);
+	}
+}
+
+void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
+{
+	CScript* gml_script_show_room_title = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SHOW_ROOM_TITLE,
+		(PVOID*)&gml_script_show_room_title
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SHOW_ROOM_TITLE);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_SHOW_ROOM_TITLE,
+		gml_script_show_room_title->m_Functions->m_ScriptFunction,
+		GmlScriptShowRoomTitleCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SHOW_ROOM_TITLE);
 	}
 }
 
@@ -778,6 +1177,33 @@ void CreateHookGmlScriptError(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptGoToRoom(AurieStatus& status)
+{
+	CScript* gml_script_go_to_room = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GO_TO_ROOM,
+		(PVOID*)&gml_script_go_to_room
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GO_TO_ROOM);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GO_TO_ROOM,
+		gml_script_go_to_room->m_Functions->m_ScriptFunction,
+		GmlScriptGoToRoomCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GO_TO_ROOM);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path& ModulePath) {
 	UNREFERENCED_PARAMETER(ModulePath);
 
@@ -793,6 +1219,20 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 
 	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
 	
+	CreateObjectCallback(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptShowRoomTitle(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
 	CreateHookGmlScriptTryLocationIdToString(status);
 	if (!AurieSuccess(status))
 	{
@@ -822,6 +1262,13 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptError(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptGoToRoom(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
