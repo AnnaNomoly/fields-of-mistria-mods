@@ -1,11 +1,15 @@
 #include <map>
+#include <fstream>
 #include <unordered_set>
+#include <nlohmann/json.hpp>
 #include <YYToolkit/Shared.hpp>
 using namespace Aurie;
 using namespace YYTK;
+using json = nlohmann::json;
 
 static const char* const MOD_NAME = "ShipIt";
 static const char* const VERSION = "1.1.0";
+static const char* const SELL_TRASHED_ITEMS_KEY = "sell_trashed_items";
 static const char* const GML_SCRIPT_TRY_OBJECT_ID_TO_STRING = "gml_Script_try_object_id_to_string";
 static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
@@ -26,6 +30,7 @@ static const std::string TRASH_ITEM_SOUND_EFFECT_NAME = "snd_UITrashItem";
 static const std::string BACK_IN_VOGUE_PERK_NAME = "back_in_vogue";
 static const std::string BACK_IN_VOGUE_TWO_PERK_NAME = "back_in_vogue_two";
 static const std::string ARCHAEOLOGY = "archaeology";
+static const bool DEFAULT_SELL_TRASHED_ITEMS = false;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool mod_healthy = false;
@@ -44,7 +49,19 @@ static RValue custom_conversation_value;
 static RValue* custom_conversation_value_ptr = nullptr;
 static RValue gold_earned;
 static RValue trash_item_sound_index; // The asset index for "snd_UITrashItem"
+static bool sell_trashed_items = DEFAULT_SELL_TRASHED_ITEMS;
 
+void handle_eptr(std::exception_ptr eptr)
+{
+	try {
+		if (eptr) {
+			std::rethrow_exception(eptr);
+		}
+	}
+	catch (const std::exception& e) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
+	}
+}
 
 int RValueAsInt(RValue value)
 {
@@ -338,6 +355,121 @@ bool PerkActive(CInstance* Self, CInstance* Other, std::string perk_name)
 	return false;
 }
 
+json CreateConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ SELL_TRASHED_ITEMS_KEY, use_defaults ? DEFAULT_SELL_TRASHED_ITEMS : sell_trashed_items }
+	};
+	return config_json;
+}
+
+void LogDefaultConfigValues()
+{
+	sell_trashed_items = DEFAULT_SELL_TRASHED_ITEMS;
+
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, SELL_TRASHED_ITEMS_KEY, DEFAULT_SELL_TRASHED_ITEMS ? "true" : "false");
+}
+
+void LoadOrCreateConfigFile()
+{
+	std::exception_ptr eptr;
+	try
+	{
+		// Try to find the mod_data directory.
+		std::string current_dir = std::filesystem::current_path().string();
+		std::string mod_data_folder = current_dir + "\\mod_data";
+		if (!std::filesystem::exists(mod_data_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
+			std::filesystem::create_directory(mod_data_folder);
+		}
+
+		// Try to find the mod_data/ShipIt directory.
+		std::string ship_it_folder = mod_data_folder + "\\ShipIt";
+		if (!std::filesystem::exists(ship_it_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"ShipIt\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, ship_it_folder.c_str());
+			std::filesystem::create_directory(ship_it_folder);
+		}
+
+		// Try to find the mod_data/ShipIt/ShipIt.json config file.
+		bool update_config_file = false;
+		std::string config_file = ship_it_folder + "\\" + "ShipIt.json";
+		std::ifstream in_stream(config_file);
+		if (in_stream.good())
+		{
+			try
+			{
+				json json_object = json::parse(in_stream);
+
+				// Check if the json_object is empty.
+				if (json_object.empty())
+				{
+					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in mod configuration file: %s!", MOD_NAME, VERSION, config_file.c_str());
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Add your desired values to the configuration file, otherwise defaults will be used.", MOD_NAME, VERSION);
+					LogDefaultConfigValues();
+				}
+				else
+				{
+					// Try loading the sell_trashed_items value.
+					if (json_object.contains(SELL_TRASHED_ITEMS_KEY))
+					{
+						sell_trashed_items = json_object[SELL_TRASHED_ITEMS_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, SELL_TRASHED_ITEMS_KEY, sell_trashed_items ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, SELL_TRASHED_ITEMS_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, SELL_TRASHED_ITEMS_KEY, DEFAULT_SELL_TRASHED_ITEMS ? "true" : "false");
+					}
+				}
+
+				update_config_file = true;
+			}
+			catch (...)
+			{
+				eptr = std::current_exception();
+				handle_eptr(eptr);
+
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from configuration file: %s", MOD_NAME, VERSION, config_file.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the file is valid JSON!", MOD_NAME, VERSION);
+				LogDefaultConfigValues();
+			}
+
+			in_stream.close();
+		}
+		else
+		{
+			in_stream.close();
+
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"ShipIt.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
+
+			json default_config_json = CreateConfigJson(true);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << default_config_json << std::endl;
+			out_stream.close();
+
+			LogDefaultConfigValues();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
+		}
+	}
+	catch (...)
+	{
+		eptr = std::current_exception();
+		handle_eptr(eptr);
+
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred loading the mod configuration file.", MOD_NAME, VERSION);
+		LogDefaultConfigValues();
+	}
+}
+
 void ObjectCallback(
 	IN FWCodeEvent& CodeEvent
 )
@@ -450,7 +582,7 @@ RValue& GmlScriptInventorySlotPopCallback(
 		Arguments
 	);
 
-	if (mod_healthy)
+	if (mod_healthy && sell_trashed_items)
 	{
 		if (AudioIsPlaying(trash_item_sound_index))
 		{
@@ -505,7 +637,7 @@ RValue& GmlScriptInventorySlotDrainCallback(
 		Arguments
 	);
 
-	if (mod_healthy)
+	if (mod_healthy && sell_trashed_items)
 	{
 		if (AudioIsPlaying(trash_item_sound_index))
 		{
@@ -692,9 +824,12 @@ RValue& GmlScriptSetupMainScreenCallback(
 		LoadItemData();
 		LoadPerks();
 		LoadObjectIds(Self, Other);
+		LoadOrCreateConfigFile();
 
-		if (!object_id_to_name_map.empty())
+		if (!object_id_to_name_map.empty() && !item_id_to_gold_value_map.empty() && !item_id_to_renown_value_map.empty() && !items_with_archaeology_tag.empty())
 			mod_healthy = true;
+		else
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - The mod failed to load game data properly and is unhealthy. It will NOT function!", MOD_NAME, VERSION);
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SETUP_MAIN_SCREEN));
