@@ -8,7 +8,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "StatueOfBoons";
-static const char* const VERSION = "1.0.2";
+static const char* const VERSION = "1.0.3";
 static const char* const MANA_COST_KEY = "mana_cost"; // Used in mod config file
 static const char* const ESSENCE_COST_KEY = "essence_cost"; // Used in mod config file
 static const char* const ACTIVE_BOON_KEY = "active_boon"; // Used in mod save file
