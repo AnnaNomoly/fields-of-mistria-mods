@@ -9,7 +9,7 @@ using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
-static const char* const VERSION = "1.3.1";
+static const char* const VERSION = "1.4.0";
 static const char* const FRIENDSHIP_MULTIPLIER_KEY = "friendship_multiplier";
 static const char* const AUTO_PET_KEY = "auto_pet";
 static const char* const AUTO_FEED_KEY = "auto_feed";
@@ -20,6 +20,7 @@ static const char* const ANIMAL_BED_TIME_KEY = "animal_bed_time";
 static const char* const MUTE_AUTO_BELL_SOUNDS_KEY = "mute_auto_bell_sounds";
 static const char* const SPAWN_EXTRA_BEADS_DAILY_KEY = "spawn_extra_beads_daily";
 static const char* const EXTRA_BEADS_DAILY_MULTIPLIER_KEY = "extra_beads_daily_multiplier";
+static const char* const GAIN_RANCHING_XP_KEY = "gain_ranching_xp";
 
 static const int DEFAULT_FRIENDSHIP_MULTIPLIER = 5;
 static const bool DEFAULT_PREVENT_FRIENDSHIP_LOSS = true;
@@ -30,6 +31,7 @@ static const bool DEFAULT_AUTO_BELL_OUT = false;
 static const bool DEFAULT_MUTE_AUTO_BELL_SOUNDS = false;
 static const bool DEFAULT_SPAWN_EXTRA_BEADS_DAILY = false;
 static const int DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER = 1;
+static const bool DEFAULT_GAIN_RANCHING_XP = true;
 
 static const int SIX_PM_IN_SECONDS = 64800;
 
@@ -45,12 +47,52 @@ static int animal_bed_time = SIX_PM_IN_SECONDS;
 static bool mute_auto_bell_sounds = DEFAULT_MUTE_AUTO_BELL_SOUNDS;
 static bool spawn_extra_beads_daily = DEFAULT_SPAWN_EXTRA_BEADS_DAILY;
 static int extra_beads_daily_multiplier = DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER;
+static bool gain_ranching_xp = DEFAULT_GAIN_RANCHING_XP;
 static std::map<std::string, int> weather_name_to_id_map = {};
+static std::map<std::string, int> skill_name_to_id_map = {};
+static std::map<std::string, int> animal_xp_map = {}; // Loaded from global __animal_xp
 static bool once_per_day = true;
 static int current_time_in_seconds = 0;
 static int num_player_animals = 0;
 static bool extra_beads_daily_received = false;
 static bool is_sunny = false;
+
+int RValueAsInt(RValue value)
+{
+	if (value.m_Kind == VALUE_REAL)
+		return static_cast<int>(value.m_Real);
+	if (value.m_Kind == VALUE_INT64)
+		return static_cast<int>(value.m_i64);
+	if (value.m_Kind == VALUE_INT32)
+		return static_cast<int>(value.m_i32);
+}
+
+bool RValueAsBool(RValue value)
+{
+	if (value.m_Kind == VALUE_REAL && value.m_Real == 1)
+		return true;
+	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
+		return true;
+	return false;
+}
+
+bool StructVariableExists(RValue the_struct, std::string variable_name)
+{
+	RValue struct_exists = g_ModuleInterface->CallBuiltin(
+		"struct_exists",
+		{ the_struct, variable_name }
+	);
+
+	return RValueAsBool(struct_exists);
+}
+
+RValue StructVariableGet(RValue the_struct, std::string variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"struct_get",
+		{ the_struct, variable_name }
+	);
+}
 
 bool IsAnimalBedtime(int clock_time_in_seconds)
 {
@@ -91,7 +133,8 @@ json CreateConfigJson(bool use_defaults)
 		{ ANIMAL_BED_TIME_KEY, use_defaults ? SIX_PM_IN_SECONDS : animal_bed_time },
 		{ MUTE_AUTO_BELL_SOUNDS_KEY, use_defaults ? DEFAULT_MUTE_AUTO_BELL_SOUNDS : mute_auto_bell_sounds },
 		{ SPAWN_EXTRA_BEADS_DAILY_KEY, use_defaults ? DEFAULT_SPAWN_EXTRA_BEADS_DAILY : spawn_extra_beads_daily },
-		{ EXTRA_BEADS_DAILY_MULTIPLIER_KEY, use_defaults ? DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER : extra_beads_daily_multiplier }
+		{ EXTRA_BEADS_DAILY_MULTIPLIER_KEY, use_defaults ? DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER : extra_beads_daily_multiplier },
+		{ GAIN_RANCHING_XP_KEY, use_defaults ? DEFAULT_GAIN_RANCHING_XP : gain_ranching_xp }
 	};
 	return config_json;
 }
@@ -108,6 +151,7 @@ void LogDefaultConfigValues()
 	mute_auto_bell_sounds = DEFAULT_MUTE_AUTO_BELL_SOUNDS;
 	spawn_extra_beads_daily = DEFAULT_SPAWN_EXTRA_BEADS_DAILY;
 	extra_beads_daily_multiplier = DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER;
+	gain_ranching_xp = DEFAULT_GAIN_RANCHING_XP;
 
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, FRIENDSHIP_MULTIPLIER_KEY, DEFAULT_FRIENDSHIP_MULTIPLIER);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, PREVENT_FRIENDSHIP_LOSS_KEY, DEFAULT_PREVENT_FRIENDSHIP_LOSS ? "true" : "false");
@@ -119,6 +163,7 @@ void LogDefaultConfigValues()
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, MUTE_AUTO_BELL_SOUNDS_KEY, DEFAULT_MUTE_AUTO_BELL_SOUNDS ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SPAWN_EXTRA_BEADS_DAILY_KEY, DEFAULT_SPAWN_EXTRA_BEADS_DAILY ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, GAIN_RANCHING_XP_KEY, DEFAULT_GAIN_RANCHING_XP ? "true" : "false");
 }
 
 void LoadWeather()
@@ -134,8 +179,50 @@ void LoadWeather()
 	{
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(weather, i, array_element);
-
 		weather_name_to_id_map[array_element->AsString().data()] = i;
+	}
+}
+
+void LoadSkills()
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	size_t array_length;
+	RValue skills = global_instance->at("__skill__");
+	g_ModuleInterface->GetArraySize(skills, array_length);
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(skills, i, array_element);
+		skill_name_to_id_map[array_element->AsString().data()] = i;
+	}
+}
+
+bool GetAnimalXPFieldNames(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	animal_xp_map[MemberName] = 0;
+	return false;
+}
+
+void LoadAnimalXP()
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	if (StructVariableExists(global_instance, "__animal_xp"))
+	{
+		RValue animal_xp = global_instance->at("__animal_xp");
+		g_ModuleInterface->EnumInstanceMembers(animal_xp, GetAnimalXPFieldNames);
+
+		for (auto& pair : animal_xp_map)
+		{
+			RValue xp = StructVariableGet(animal_xp, pair.first);
+			pair.second = RValueAsInt(xp);
+		}
 	}
 }
 
@@ -329,6 +416,18 @@ void LoadOrCreateConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, EXTRA_BEADS_DAILY_MULTIPLIER_KEY, DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER);
 					}
+
+					// Try loading the gain_ranching_xp value.
+					if (json_object.contains(GAIN_RANCHING_XP_KEY))
+					{
+						gain_ranching_xp = json_object[GAIN_RANCHING_XP_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, GAIN_RANCHING_XP_KEY, gain_ranching_xp ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, GAIN_RANCHING_XP_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, GAIN_RANCHING_XP_KEY, DEFAULT_GAIN_RANCHING_XP ? "true" : "false");
+					}
 				}
 
 				update_config_file = true;
@@ -394,6 +493,31 @@ void SpawnShinyBeads(CInstance* Self, CInstance* Other, int amount)
 	RValue* arguments[2] = { num_beads_ptr, spawn_beads_ptr };
 
 	gml_script_create_animal_currency_dance->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		2,
+		arguments
+	);
+}
+
+void AriGainXP(CInstance* Self, CInstance* Other, int skill_id, double xp_gained)
+{
+	CScript* gml_script_ari_gain_xp = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_gain_xp@Ari@Ari",
+		(PVOID*)&gml_script_ari_gain_xp
+	);
+
+	RValue skill = skill_id;
+	RValue xp = xp_gained;
+
+	RValue result;
+	RValue* skill_ptr = &skill;
+	RValue* xp_ptr = &xp;
+	RValue* arguments[2] = { skill_ptr, xp_ptr };
+
+	gml_script_ari_gain_xp->m_Functions->m_ScriptFunction(
 		Self,
 		Other,
 		result,
@@ -469,6 +593,7 @@ void ObjectCallback(
 						size_t size = 0;
 						g_ModuleInterface->GetArraySize(__buffer, size);
 						num_player_animals = static_cast<int>(size);
+						int ranching_xp_gained = 0;
 
 						for (size_t i = 0; i < size; i++)
 						{
@@ -486,6 +611,15 @@ void ObjectCallback(
 
 								if (has_eaten.m_Kind == VALUE_BOOL && has_eaten.m_Real == 0.0)
 								{
+									// Gain XP.
+									if (gain_ranching_xp)
+									{
+										if (animal_xp_map.count("feed") > 0)
+											ranching_xp_gained += animal_xp_map["feed"];
+										else
+											ranching_xp_gained += 2; // game default
+									}
+
 									// Set the animal's pet flag to true.
 									g_ModuleInterface->CallBuiltin(
 										"struct_set", {
@@ -524,6 +658,15 @@ void ObjectCallback(
 
 							if (auto_pet)
 							{
+								// Gain XP.
+								if (gain_ranching_xp)
+								{
+									if (animal_xp_map.count("pet") > 0)
+										ranching_xp_gained += animal_xp_map["pet"];
+									else
+										ranching_xp_gained += 2; // game default
+								}
+
 								// Get the animal's current pet flag.
 								RValue has_been_pat = g_ModuleInterface->CallBuiltin(
 									"struct_get", {
@@ -568,6 +711,15 @@ void ObjectCallback(
 									}
 								}
 							}
+						}
+
+						if (ranching_xp_gained > 0)
+						{
+							CInstance* global_instance = nullptr;
+							g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+							AriGainXP(global_instance->at("__ari").m_Object, self, skill_name_to_id_map["ranching"], ranching_xp_gained);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Ari gained %d ranching experience from the AUTO PETTER and AUTO FEEDER!", VERSION, ranching_xp_gained);
 						}
 					}
 				}
@@ -703,6 +855,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 	if (load_on_start)
 	{
 		LoadWeather();
+		LoadSkills();
+		LoadAnimalXP();
 		LoadOrCreateConfigFile();
 		load_on_start = false;
 	}
