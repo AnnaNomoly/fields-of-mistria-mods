@@ -149,6 +149,7 @@
     <ClInclude Include="include\Aurie\shared.hpp" />
     <ClInclude Include="include\FunctionWrapper\FunctionWrapper.hpp" />
     <ClInclude Include="include\YYToolkit\Shared.hpp" />
+    <ClInclude Include="include\nlohmann\json.hpp" />
     <ClInclude Include="resource.h" />
   </ItemGroup>
   <ItemGroup>
