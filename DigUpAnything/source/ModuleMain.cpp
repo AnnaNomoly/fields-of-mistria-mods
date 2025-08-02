@@ -12,13 +12,14 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "DigUpAnything";
-static const char* const VERSION = "1.2.1";
+static const char* const VERSION = "1.2.2";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const std::string VALID_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/valid_item";
 static const std::string DISABLED_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/disabled_item";
 static const std::string UNRECOGNIZED_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/unrecognized_item";
 static const std::string ITEM_NOT_ACQUIRED_LOCALIZATION_KEY = "mods/DigUpAnything/item_not_acquired";
 static const std::string UNACQUIRED_ITEM_ALREADY_SPAWNED_LOCALIZATION_KEY = "mods/DigUpAnything/unacquired_item_already_spawned";
+static const std::string ITEM_MAX_STACK_IS_ONE_LOCALIZATION_KEY = "mods/DigUpAnything/item_max_stack_is_one";
 static const char* const GML_SCRIPT_GIVE_ARI_ITEM = "gml_Script_give_item@Ari@Ari";
 static const char* const GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT = "gml_Script_choose_random_artifact@Archaeology@Archaeology";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
@@ -49,6 +50,7 @@ static bool processing_user_input = false;
 static std::string activation_button = DEFAULT_ACTIVATION_BUTTON;
 static std::map<std::string, int> item_name_to_id_map = {};
 static std::map<int, std::string> item_id_to_name_map = {};
+static std::map<int, int> item_id_to_max_stack = {}; // Uses the max_stack assigned to each item in __item_data
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
 static std::map<std::string, std::string> lowercase_localized_name_to_item_name_map = {};
 static std::vector<std::string> unacquired_items_spawned = {};
@@ -628,28 +630,36 @@ RValue& GmlScriptGiveItemCallback(
 		duplicate_item = false;
 		if (ItemHasBeenAcquired(item_id))
 		{
-			std::string modal_text =
-				"DigUpAnything v" + std::string(VERSION) + "\r\n" +
-				"------------------------------\r\n" +
-				"How many of the item would you like?\r\n"
-				"Input a number between 1 and 999.\r\n";
+			if (item_id_to_max_stack.count(item_id) > 0 && item_id_to_max_stack[item_id] == 1)
+			{
+				DisplayNotification(Self, Other, ITEM_MAX_STACK_IS_ONE_LOCALIZATION_KEY);
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The requested item has a max stack limit of one. Only 1 will be spawned.", MOD_NAME, VERSION);
+			}
+			else
+			{
+				std::string modal_text =
+					"DigUpAnything v" + std::string(VERSION) + "\r\n" +
+					"------------------------------\r\n" +
+					"How many of the item would you like?\r\n"
+					"Input a number between 1 and 999.\r\n";
 
-			RValue user_input = g_ModuleInterface->CallBuiltin(
-				"get_integer",
-				{
-					modal_text,
-					1
-				}
-			);
-			
-			double value = user_input.m_Real;
-			if (value < 1)
-				value = 1;
-			if (value > 999)
-				value = 999;
+				RValue user_input = g_ModuleInterface->CallBuiltin(
+					"get_integer",
+					{
+						modal_text,
+						1
+					}
+				);
 
-			Arguments[1]->m_Real = value;
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Spawning %d of the requested item.", MOD_NAME, VERSION, static_cast<int>(value));
+				double value = user_input.m_Real;
+				if (value < 1)
+					value = 1;
+				if (value > 999)
+					value = 999;
+
+				Arguments[1]->m_Real = value;
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Spawning %d of the requested item.", MOD_NAME, VERSION, static_cast<int>(value));
+			}
 		}
 		else
 		{
@@ -770,8 +780,10 @@ RValue& GmlScriptSetupMainScreenCallback(
 			{
 				RValue item_id = array_element->at("item_id");
 				RValue recipe_key = array_element->at("recipe_key"); // The internal item name
+				RValue max_stack = array_element->at("max_stack"); // The max_stack amount
 				item_name_to_id_map[recipe_key.AsString().data()] = RValueAsInt(item_id);
 				item_id_to_name_map[RValueAsInt(item_id)] = recipe_key.AsString().data();
+				item_id_to_max_stack[RValueAsInt(item_id)] = RValueAsInt(max_stack);
 				item_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
 			}
 		}
