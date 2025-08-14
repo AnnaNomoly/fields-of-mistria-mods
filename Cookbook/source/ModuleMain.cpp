@@ -12,7 +12,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Cookbook";
-static const char* const VERSION = "1.1.3";
+static const char* const VERSION = "1.1.4";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const UNLOCK_EVERYTHING_KEY = "unlock_everything";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
@@ -634,8 +634,9 @@ RValue& GmlScriptSetupMainScreenCallback(
 			RValue item_id = array_element->at("item_id");
 			RValue name_key = array_element->at("name_key");
 			RValue recipe_key = array_element->at("recipe_key");
+			RValue kitchen_tier_requirement = array_element->at("kitchen_tier_requirement");
 
-			if (strstr(name_key.AsString().data(), "cooked_dishes"))
+			if (strstr(name_key.AsString().data(), "cooked_dishes") || (kitchen_tier_requirement.m_Kind != VALUE_NULL && kitchen_tier_requirement.m_Kind != VALUE_UNDEFINED && kitchen_tier_requirement.m_Kind != VALUE_UNSET))
 			{
 				if (StructVariableExists(*array_element, "recipe"))
 				{
