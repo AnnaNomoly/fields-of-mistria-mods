@@ -8,8 +8,11 @@ static const char* const MOD_NAME = "SummoningCircle";
 static const char* const VERSION = "1.0.0";
 static const char* const GML_SCRIPT_TRY_OBJECT_ID_TO_STRING = "gml_Script_try_object_id_to_string";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
+static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
 static const char* const GML_SCRIPT_TELEPORT_ARI_TO_ROOM = "gml_Script_ari_teleport_to_room"; // Used to teleport Ari.
 static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact"; // Used to track when the furniture is used.
+static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
+static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu"; // Used to track conversation/dialogue choices.
 static const char* const GML_SCRIPT_WRITE_FURNITURE_TO_LOCATION = "gml_Script_write_furniture_to_location"; // Used to track when the furniture is placed.
 static const char* const GML_SCRIPT_PICK_NODE = "gml_Script_pick_node"; // Used to track when the furniture is removed.
 static const char* const GML_SCRIPT_ON_ROOM_START = "gml_Script_on_room_start@WeatherManager@Weather";
@@ -18,7 +21,12 @@ static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_
 static const char* const GML_SCRIPT_LOAD_GAME = "gml_Script_load_game";
 static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
-static std::string SUMMONING_CIRCLE_TWO_REQUIRED = "Notifications/Mods/Summoning Circle/two_required";
+static std::string SUMMONING_CIRCLE_TELEPORT_INTERACT_KEY = "misc_local/Mods/Summoning Circle/teleport_interact";
+static std::string SUMMONING_CIRCLE_TWO_REQUIRED_NOTIFICATION_KEY = "Notifications/Mods/Summoning Circle/two_required";
+static std::string SUMMONING_CIRCLE_TWO_ALREADY_PRESENT_NOTIFICATION_KEY = "Notifications/Mods/Summoning Circle/two_already_present";
+static std::string SUMMONING_CIRCLE_ACTIVATION_REQUIRED_CONVERSATION_KEY = "Conversations/Mods/Summoning Circle/activation_confirmation";
+static std::string SUMMONING_CIRCLE_ACTIVATION_ACCEPTED_CONVERSATION_KEY = "Conversations/Mods/Summoning Circle/activation_confirmation/1";
+static std::string SUMMONING_CIRCLE_ACTIVATION_REJECTED_CONVERSATION_KEY = "Conversations/Mods/Summoning Circle/activation_confirmation/2";
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
@@ -26,12 +34,36 @@ static bool mod_is_healthy = true;
 static bool game_is_active = false;
 static bool once_per_save_load = true;
 static bool teleport_ari = false;
+static bool play_conversation = false;
+static bool confirmation_required = true; // TODO: Make configurable
+static double ari_x = 0;
+static double ari_y = 0;
 static std::pair<int, int> teleport_ari_to = {};
 static std::string ari_current_location = "";
 static std::map<int, std::string> object_id_to_name_map = {};
 static std::map<std::string, int> object_name_to_id_map = {};
 static std::map<std::string, int> location_name_to_id_map = {};
 static std::vector<std::pair<int, int>> summoning_circle_positions = {};
+static RValue custom_interact_key;
+static RValue* custom_interact_key_ptr = nullptr;
+
+void ResetStaticFields(bool return_to_title_screen)
+{
+	if (return_to_title_screen)
+	{
+		game_is_active = false;
+		once_per_save_load = true;
+		teleport_ari = false;
+		play_conversation = false;
+		ari_x = 0;
+		ari_y = 0;
+		teleport_ari_to = {};
+		ari_current_location = "";
+		summoning_circle_positions = {};
+		custom_interact_key = "";
+		custom_interact_key_ptr = nullptr;
+	}
+}
 
 bool LoadObjectIds(CInstance* Self, CInstance* Other)
 {
@@ -104,16 +136,64 @@ double CalculateDistance(int x1, int y1, int x2, int y2) {
 	return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2));
 }
 
-void ResetStaticFields(bool return_to_title_screen)
+void PruneMissingSummoningCircles()
 {
-	if (return_to_title_screen)
+	CRoom* current_room = nullptr;
+	if (!AurieSuccess(g_ModuleInterface->GetCurrentRoomData(current_room)))
 	{
-		game_is_active = false;
-		once_per_save_load = true;
-		teleport_ari = false;
-		teleport_ari_to = {};
-		ari_current_location = "";
-		summoning_circle_positions = {};
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to obtain the current room!", MOD_NAME, VERSION);
+	}
+	else
+	{
+		std::vector<bool> summoning_circle_exists = {};
+		for (int i = 0; i < summoning_circle_positions.size(); i++)
+			summoning_circle_exists.push_back(false); // Assume it doesn't exist to start
+
+		for (CInstance* inst = current_room->GetMembers().m_ActiveInstances.m_First; inst != nullptr; inst = inst->GetMembers().m_Flink)
+		{
+			auto map = inst->ToRValue().ToRefMap();
+			if (!map.contains("node"))
+				continue;
+
+			RValue* nodeValue = map["node"];
+			if (!nodeValue || nodeValue->GetKindName() != "struct")
+				continue;
+
+			auto nodeRefMap = nodeValue->ToRefMap();
+			if (!nodeRefMap.contains("prototype"))
+				continue;
+
+			RValue* protoVal = nodeRefMap["prototype"];
+			if (!protoVal || protoVal->GetKindName() != "struct")
+				continue;
+
+			auto protoMap = protoVal->ToRefMap();
+			if (!protoMap.contains("object_id"))
+				continue;
+
+			// This works to "scan" for the furniture.
+			// To be used when loading in to check if the mod items got unloaded or something caused the furniture to vanish.
+			// Each match is a separate furniture node for the matching ID
+			int object_id = protoMap["object_id"]->ToInt64();
+			if (object_id == object_name_to_id_map["summoning_circle"])
+			{
+				int x = nodeRefMap["top_left_x"]->ToInt64();
+				int y = nodeRefMap["top_left_y"]->ToInt64();
+
+				for (int i = 0; i < summoning_circle_positions.size(); i++)
+				{
+					if (summoning_circle_positions[i].first == x && summoning_circle_positions[i].second == y)
+						summoning_circle_exists[i] = true;
+				}
+			}
+		}
+
+		// Prune missing summoning circles.
+		for (int i = 0; i < summoning_circle_exists.size(); i++)
+		{
+			if (!summoning_circle_exists[i])
+				summoning_circle_positions.erase(summoning_circle_positions.begin() + i);
+		}
 	}
 }
 
@@ -134,6 +214,34 @@ void CreateNotification(std::string notification_localization_str, CInstance* Se
 		result,
 		1,
 		{ &notification_ptr }
+	);
+}
+
+void PlayConversation(std::string conversation_localization_str, CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_play_conversation = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_PLAY_CONVERSATION,
+		(PVOID*)&gml_script_play_conversation
+	);
+
+	RValue zero = 2;
+	RValue notification = RValue(conversation_localization_str);
+	RValue undefined;
+
+	RValue* zero_ptr = &zero;
+	RValue* notification_ptr = &notification;
+	RValue* undefined_ptr = &undefined;
+
+	RValue result;
+	RValue* arguments[4] = { zero_ptr, notification_ptr, undefined_ptr, undefined_ptr };
+
+	gml_script_play_conversation->m_Functions->m_ScriptFunction(
+		Self,
+		Self,
+		result,
+		4,
+		arguments
 	);
 }
 
@@ -179,14 +287,28 @@ void ObjectCallback(
 
 	if (mod_is_healthy && game_is_active)
 	{
+		RValue x;
+		g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
+		ari_x = x.m_Real;
+
+		RValue y;
+		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
+		ari_y = y.m_Real;
+
 		if (teleport_ari)
 		{
+			teleport_ari = false;
 			int x = (teleport_ari_to.first * 8) + 12; // See notes. The 12 is from: (write_size_x * 8 / 2)
 			int y = (teleport_ari_to.second * 8) + 12;
 
-			teleport_ari = false;
 			teleport_ari_to = {};
 			TeleportAriToRoom(self, other, location_name_to_id_map["farm"], x, y);
+		}
+
+		if (play_conversation)
+		{
+			play_conversation = false;
+			PlayConversation(SUMMONING_CIRCLE_ACTIVATION_REQUIRED_CONVERSATION_KEY, self, other);
 		}
 	}
 }
@@ -209,7 +331,7 @@ RValue& GmlScriptInteractCallback(
 		{
 			if (summoning_circle_positions.size() < 2)
 			{
-				CreateNotification(SUMMONING_CIRCLE_TWO_REQUIRED, Self, Other);
+				CreateNotification(SUMMONING_CIRCLE_TWO_REQUIRED_NOTIFICATION_KEY, Self, Other);
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] Two summoning circles are required to use it!", MOD_NAME, VERSION);
 			}
 			else
@@ -219,16 +341,22 @@ RValue& GmlScriptInteractCallback(
 
 				for (auto it : summoning_circle_positions)
 				{
-					if (it.first != x && it.second != y)
+					if (it.first != x || it.second != y)
 					{
 						teleport_ari_to = it;
 						break;
 					}
 				}
 
-				teleport_ari = true;
-				g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] Teleporting Ari.", MOD_NAME, VERSION);
-				// TODO: Try opening conversation
+				if (confirmation_required)
+				{
+					play_conversation = true;
+				}
+				else
+				{
+					teleport_ari = true;
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] Teleporting Ari.", MOD_NAME, VERSION);
+				}
 			}
 
 			return Result;
@@ -236,6 +364,94 @@ RValue& GmlScriptInteractCallback(
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_INTERACT));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptGetLocalizerCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (mod_is_healthy && game_is_active)
+	{
+		if (ari_current_location == "farm" && Arguments[0]->ToString() == "misc_local/input_interact")
+		{
+			for (auto it : summoning_circle_positions)
+			{
+				if (CalculateDistance(ari_x, ari_y, it.first * 8 + 12, it.second * 8 + 12) <= 44)
+				{
+					custom_interact_key = RValue(SUMMONING_CIRCLE_TELEPORT_INTERACT_KEY);
+					custom_interact_key_ptr = &custom_interact_key;
+					Arguments[0] = custom_interact_key_ptr;
+				}
+			}
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_LOCALIZER));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptPlayTextCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (mod_is_healthy && game_is_active)
+	{
+		std::string conversation_name = Arguments[0]->ToString();
+		if (conversation_name.find(SUMMONING_CIRCLE_ACTIVATION_ACCEPTED_CONVERSATION_KEY) != std::string::npos)
+		{
+			teleport_ari = true;
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] Teleporting Ari.", MOD_NAME, VERSION);
+
+			//--------------------------------------------------------
+			// gml_Script_begin_close@TextboxMenu@TextboxMenu
+			CScript* gml_script_close_textbox = nullptr;
+			g_ModuleInterface->GetNamedRoutinePointer(
+				"gml_Script_begin_close@TextboxMenu@TextboxMenu",
+				(PVOID*)&gml_script_close_textbox
+			);
+
+			RValue result;
+			gml_script_close_textbox->m_Functions->m_ScriptFunction(
+				Self,
+				Other,
+				result,
+				0,
+				nullptr
+			);
+			//--------------------------------------------------------
+
+			return Result;
+		}
+		if (conversation_name == SUMMONING_CIRCLE_ACTIVATION_REJECTED_CONVERSATION_KEY)
+			return Result;
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_TEXT));
 	original(
 		Self,
 		Other,
@@ -257,7 +473,8 @@ RValue& GmlScriptWriteFurnitureToLocationCallback(
 {
 	if (summoning_circle_positions.size() == 2)
 	{
-		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] You already have two Summoning Circles on your farm!");
+		CreateNotification(SUMMONING_CIRCLE_TWO_ALREADY_PRESENT_NOTIFICATION_KEY, Self, Other);
+		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] You already have two summoning circles on your farm!");
 		return Result;
 	}
 
@@ -299,65 +516,6 @@ RValue& GmlScriptPickNodeCallback(
 	IN RValue** Arguments
 )
 {
-	if (mod_is_healthy && ari_current_location == "farm")
-	{
-		int x = Arguments[1]->ToInt64(); // Node's X coord
-		int y = Arguments[2]->ToInt64(); // Node's Y coord
-
-		int closest_index = 0;
-		double min_distance = DBL_MAX;
-		for (int i = 0; i < summoning_circle_positions.size(); i++)
-		{
-			auto position = summoning_circle_positions[i];
-			double distance = CalculateDistance(x, y, position.first, position.second); // Testing comparing to top-left coords
-			if (distance < min_distance) {
-				min_distance = distance;
-				closest_index = i;
-			}
-		}
-
-		summoning_circle_positions.erase(summoning_circle_positions.begin() + closest_index);
-
-
-		//for (auto pair = summoning_circle_positions.begin(); pair != summoning_circle_positions.end(); ++pair)
-		//{
-		//	// TODO: Instead, find the summoning circle whose center is the shortest distance to x,y
-		//	if (pair->first == x && pair->second == y)
-		//	{
-		//		summoning_circle_positions.erase(pair);
-		//		break;
-		//	}
-		//}
-
-		
-
-
-		//RValue node_object_id = Arguments[0]->GetMember("node_object_id");
-		//if (node_object_id.m_Kind == VALUE_ARRAY)
-		//{
-		//	RValue node_object_id_length = g_ModuleInterface->CallBuiltin("array_length", { node_object_id });
-		//	for (int i = 0; i < node_object_id_length.m_Real; i++)
-		//	{
-		//		RValue array_element = g_ModuleInterface->CallBuiltin("array_get", { node_object_id, i });
-		//		if (array_element.m_Kind != VALUE_UNDEFINED && array_element.m_Kind != VALUE_UNSET && array_element.m_Kind != VALUE_NULL)
-		//		{
-		//			if (array_element.ToInt64() == object_name_to_id_map["summoning_circle"])
-		//			{
-		//				RValue node_top_left_x = Arguments[0]->GetMember("node_top_left_x");
-		//				RValue x = g_ModuleInterface->CallBuiltin("array_get", { node_top_left_x, i });
-
-		//				RValue node_top_left_y = Arguments[0]->GetMember("node_top_left_y");
-		//				RValue y = g_ModuleInterface->CallBuiltin("array_get", { node_top_left_y, i });
-
-		//				int temp = 1;
-		//				std::pair<int, int> position = summoning_circle_positions.back();
-		//				summoning_circle_positions.pop_back();
-		//			}
-		//		}
-		//	}
-		//}
-	}
-
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PICK_NODE));
 	original(
 		Self,
@@ -366,6 +524,9 @@ RValue& GmlScriptPickNodeCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	if (mod_is_healthy && ari_current_location == "farm")
+		PruneMissingSummoningCircles();
 
 	return Result;
 }
@@ -381,63 +542,7 @@ RValue& GmlScriptOnRoomStartCallback(
 	if (mod_is_healthy && once_per_save_load && ari_current_location == "farm")
 	{
 		once_per_save_load = false;
-
-		CRoom* current_room = nullptr;
-		if (!AurieSuccess(g_ModuleInterface->GetCurrentRoomData(current_room)))
-		{
-			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to obtain the current room!", MOD_NAME, VERSION);
-			return Result;
-		}
-
-		std::vector<bool> summoning_circle_exists = {};
-		for (int i = 0; i < summoning_circle_positions.size(); i++)
-			summoning_circle_exists.push_back(false); // Assume it doesn't exist to start
-
-		for (CInstance* inst = current_room->GetMembers().m_ActiveInstances.m_First; inst != nullptr; inst = inst->GetMembers().m_Flink)
-		{
-			auto map = inst->ToRValue().ToRefMap();
-			if (!map.contains("node"))
-				continue;
-
-			RValue* nodeValue = map["node"];
-			if (!nodeValue || nodeValue->GetKindName() != "struct")
-				continue;
-
-			auto nodeRefMap = nodeValue->ToRefMap();
-			if (!nodeRefMap.contains("prototype") /*|| !nodeRefMap.contains("hitpoints")*/)
-				continue;
-
-			RValue* protoVal = nodeRefMap["prototype"];
-			if (!protoVal || protoVal->GetKindName() != "struct")
-				continue;
-
-			auto protoMap = protoVal->ToRefMap();
-			if (!protoMap.contains("object_id"))
-				continue;
-
-			// This works to "scan" for the furniture.
-			// To be used when loading in to check if the mod items got unloaded or something caused the furniture to vanish.
-			// Each match is a separate furniture node for the matching ID
-			int object_id = protoMap["object_id"]->ToInt64();
-			if (object_id == object_name_to_id_map["summoning_circle"])
-			{
-				int x = nodeRefMap["top_left_x"]->ToInt64();
-				int y = nodeRefMap["top_left_y"]->ToInt64();
-
-				for (int i = 0; i < summoning_circle_positions.size(); i++)
-				{
-					if (summoning_circle_positions[i].first == x && summoning_circle_positions[i].second == y)
-						summoning_circle_exists[i] = true;
-				}
-			}
-		}
-
-		// Prune missing summoning circles.
-		for (int i = 0; i < summoning_circle_exists.size(); i++)
-		{
-			if (!summoning_circle_exists[i])
-				summoning_circle_positions.erase(summoning_circle_positions.begin() + i);
-		}
+		PruneMissingSummoningCircles();
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_ROOM_START));
@@ -558,7 +663,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 
 		mod_is_healthy = true;
 	}
-	// TODO: Reset static fields
+	else
+		ResetStaticFields(true);
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SETUP_MAIN_SCREEN));
 	original(
@@ -611,6 +717,60 @@ void CreateHookGmlScriptInteract(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_INTERACT);
+	}
+}
+
+void CreateHookGmlScriptGetLocalizer(AurieStatus& status)
+{
+	CScript* gml_script_get_localizer = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_LOCALIZER,
+		(PVOID*)&gml_script_get_localizer
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_LOCALIZER);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GET_LOCALIZER,
+		gml_script_get_localizer->m_Functions->m_ScriptFunction,
+		GmlScriptGetLocalizerCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_LOCALIZER);
+	}
+}
+
+void CreateHookGmlScriptPlayText(AurieStatus& status)
+{
+	CScript* gml_script_play_text = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_PLAY_TEXT,
+		(PVOID*)&gml_script_play_text
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_TEXT);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_PLAY_TEXT,
+		gml_script_play_text->m_Functions->m_ScriptFunction,
+		GmlScriptPlayTextCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_TEXT);
 	}
 }
 
@@ -857,6 +1017,20 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptInteract(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptGetLocalizer(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptPlayText(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
