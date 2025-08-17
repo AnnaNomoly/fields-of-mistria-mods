@@ -12,23 +12,130 @@ static const char* const BUG_LIST_KEY = "bug_list";
 static const std::string BUG_NAME_PLACEHOLDER_TEXT = "<BUG>";
 static const char* const BUG_DETECTED_NOTIFICATION_KEY = "Notifications/Mods/Bug Radar/bug_detected";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
+static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
+static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
+static const char* const GML_SCRIPT_SPAWN_BUG = "gml_Script_spawn_bug";
+static const char* const GML_SCRIPT_CREATE_BUG = "gml_Script_setup@gml_Object_obj_bug_Create_0";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
+static const char* const GML_SCRIPT_INVENTORY_SLOT_POP = "gml_Script_drain@InventorySlot@Inventory";
 static const std::vector<std::string> DEFAULT_BUG_LIST = {"Fairy Bee", "Flower Crown Beetle", "Snowball Beetle", "Speedy Snail", "Strobe Firefly"};
+
+static const std::map<std::string, std::vector<std::vector<std::pair<int, int>>>> ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP = {
+	{ "western_ruins", {
+		{   // BBox 1
+			{1360 / 8, 648 / 8},
+			{1472 / 8, 648 / 8},
+			{1472 / 8, 832 / 8},
+			{1360 / 8, 832 / 8}
+		},
+		{	// BBox 2
+			{1240 / 8, 792 / 8},
+			{1592 / 8, 792 / 8},
+			{1592 / 8, 848 / 8},
+			{1240 / 8, 848 / 8}
+		},
+		{	// BBox 3
+			{1128 / 8, 912 / 8},
+			{1312 / 8, 912 / 8},
+			{1312 / 8, 1112 / 8},
+			{1128 / 8, 1112 / 8}
+		},
+		{	// BBox 4
+			{1368 / 8, 936 / 8},
+			{1464 / 8, 936 / 8},
+			{1464 / 8, 1112 / 8},
+			{1368 / 8, 1112 / 8}
+		},
+		{	// BBox 5
+			{1520 / 8, 912 / 8},
+			{1688 / 8, 912 / 8},
+			{1688 / 8, 1096 / 8},
+			{1520 / 8, 1096 / 8}
+		},
+		{	// BBox 6
+			{1288 / 8, 1192 / 8},
+			{1512 / 8, 1192 / 8},
+			{1512 / 8, 1248 / 8},
+			{1288 / 8, 1248 / 8}
+		},
+		{	// BBox 7
+			{1160 / 8, 1224 / 8},
+			{1304 / 8, 1224 / 8},
+			{1304 / 8, 1256 / 8},
+			{1160 / 8, 1256 / 8}
+		},
+		{	// BBox 8
+			{1160 / 8, 1336 / 8},
+			{1224 / 8, 1336 / 8},
+			{1224 / 8, 1384 / 8},
+			{1160 / 8, 1384 / 8}
+		},
+		{	// BBox 9
+			{1240 / 8, 1224 / 8},
+			{1304 / 8, 1224 / 8},
+			{1304 / 8, 1312 / 8},
+			{1240 / 8, 1312 / 8}
+		},
+		{	// BBox 10
+			{1232 / 8, 1352 / 8},
+			{1304 / 8, 1352 / 8},
+			{1304 / 8, 1384 / 8},
+			{1232 / 8, 1384 / 8}
+		},
+		{	// BBox 11
+			{1544 / 8, 1184 / 8},
+			{1632 / 8, 1184 / 8},
+			{1632 / 8, 1384 / 8},
+			{1544 / 8, 1384 / 8}
+		},
+	}},
+	//{ "western_ruins", {
+	//	{ {0, 0}, {0, 0}, {0, 0}, {0, 0} },
+	//	{ {0, 0}, {0, 0}, {0, 0}, {0, 0} },
+	//	{ {0, 0}, {0, 0}, {0, 0}, {0, 0} },
+	//	{ {0, 0}, {0, 0}, {0, 0}, {0, 0} }
+	//}},
+
+};
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
+static bool game_is_active = false;
 static bool localize_items = false;
 static bool processing_bug = false;
 static std::string bug_name = "";
+static std::string ari_current_location = "";
 static std::vector<std::string> bug_list = DEFAULT_BUG_LIST;
 static std::map<std::string, int> item_name_to_id_map = {};
 static std::map<int, std::string> item_id_to_name_map = {};
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
 static std::map<std::string, std::string> lowercase_localized_name_to_item_name_map = {};
+static std::map<std::string, std::vector<std::pair<int, int>>> ROOM_BUG_SPAWN_BOUNDING_BOX_CENTER_MAP = {};
 
-// DEBUG
-std::vector<std::string> bugs_detected = {};
+// DEBUG --------------------------------------------------------------------
+static std::vector<std::string> bugs_detected = {};
+static std::vector<std::string> struct_field_names = {};
+
+bool GetStructFieldNames(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	struct_field_names.push_back(MemberName);
+	return false;
+}
+
+bool EnumFunction(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
+	return false;
+}
+//---------------------------------------------------------------------------
+
 
 int RValueAsInt(RValue value)
 {
@@ -185,6 +292,64 @@ void CreateOrLoadConfigFile()
 	}
 }
 
+void CalculateBoundingBoxCenters()
+{
+	for (const auto& room : ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP) {
+		for (const auto& bounding_box : room.second) {
+			int total_x = 0;
+			int total_y = 0;
+
+			for (const auto& point : bounding_box) {
+				total_x += point.first;
+				total_y += point.second;
+			}
+
+			int center_x = total_x / bounding_box.size();
+			int center_y = total_y / bounding_box.size();
+			std::pair<int, int> center = { center_x, center_y };
+			ROOM_BUG_SPAWN_BOUNDING_BOX_CENTER_MAP[room.first].push_back(center);
+		}
+	}
+}
+
+double CalculateDistance(int x1, int y1, int x2, int y2) {
+	return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2));
+}
+
+std::pair<int, int> GenerateRandomPointInClosestBoundingBox(int X, int Y, const std::string& room_name) {
+	double min_distance = DBL_MAX;
+	size_t closest_index = 0;
+
+	for (size_t i = 0; i < ROOM_BUG_SPAWN_BOUNDING_BOX_CENTER_MAP[room_name].size(); ++i) {
+		const auto& center = ROOM_BUG_SPAWN_BOUNDING_BOX_CENTER_MAP[room_name][i];
+		double distance = CalculateDistance(X, Y, center.first, center.second);
+
+		if (distance < min_distance) {
+			min_distance = distance;
+			closest_index = i;
+		}
+	}
+
+	const auto& bounding_box = ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP.at(room_name)[closest_index];
+	int min_x = bounding_box[0].first;
+	int max_x = bounding_box[0].first;
+	int min_y = bounding_box[0].second;
+	int max_y = bounding_box[0].second;
+
+	for (const auto& point : bounding_box) {
+		min_x = min(min_x, point.first);
+		max_x = max(max_x, point.first);
+		min_y = min(min_y, point.second);
+		max_y = max(max_y, point.second);
+	}
+
+	srand(static_cast<unsigned int>(time(0)));
+	int random_x = min_x + rand() % (max_x - min_x + 1);
+	int random_y = min_y + rand() % (max_y - min_y + 1);
+
+	return { random_x, random_y };
+}
+
 void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
 {
 	CScript* gml_script_create_notification = nullptr;
@@ -268,10 +433,10 @@ void ObjectCallback(
 	if (!strstr(self->m_Object->m_Name, "obj_bug"))
 		return;
 
-	if (!processing_bug && !StructVariableExists(self, "__bug_radar__processed_bug"))
+	if (/*!processing_bug && */!StructVariableExists(self, "__bug_radar__processed_bug"))
 	{
 		bug_name = "";
-		processing_bug = true;
+		//processing_bug = true;
 
 		if (StructVariableExists(self, "item_id"))
 		{
@@ -298,6 +463,114 @@ void ObjectCallback(
 		else
 			processing_bug = false;
 	}
+}
+
+RValue& GmlScriptGetWeatherCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	game_is_active = true;
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_WEATHER));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptTryLocationIdToStringCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_TRY_LOCATION_ID_TO_STRING));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (game_is_active)
+		if (Result.m_Kind == VALUE_STRING)
+			ari_current_location = Result.AsString().data();
+
+	return Result;
+}
+
+RValue& GmlScriptSpawnBugCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	int x_coord = RValueAsInt(*Arguments[0]);
+	int y_coord = RValueAsInt(*Arguments[1]);
+	g_ModuleInterface->Print(CM_WHITE, "[%s %s] - A bug is being spawned at (%d, %d)...", MOD_NAME, VERSION, x_coord, y_coord);
+
+	if (ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP.contains(ari_current_location))
+	{
+		std::pair<int, int> point = GenerateRandomPointInClosestBoundingBox(x_coord, y_coord, ari_current_location);
+		*Arguments[0] = point.first;
+		*Arguments[1] = point.second;
+		g_ModuleInterface->Print(CM_WHITE, "[%s %s] - Modified bug spawn to (%d, %d)...", MOD_NAME, VERSION, point.first, point.second);
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SPAWN_BUG));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptCreateBugCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	int item_id = RValueAsInt(*Arguments[0]);
+	std::string item_name = item_id_to_name_map[RValueAsInt(item_id)];
+	auto it = std::find(bug_list.begin(), bug_list.end(), item_name);
+	if (it != bug_list.end())
+	{
+		bug_name = item_name_to_localized_name_map[item_name];
+		g_ModuleInterface->Print(CM_WHITE, "[%s %s] - A (%s) bug is being spawned...", MOD_NAME, VERSION, bug_name.c_str());
+		CreateNotification(BUG_DETECTED_NOTIFICATION_KEY, Self, Other);
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CREATE_BUG));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
 }
 
 RValue& GmlScriptGetLocalizerCallback(
@@ -380,13 +653,16 @@ RValue& GmlScriptSetupMainScreenCallback(
 	{
 		CreateOrLoadConfigFile();
 		LoadAllItemData();
+		CalculateBoundingBoxCenters();
 
 		load_on_start = false;
 		localize_items = true;
 	}
 	else
 	{
+		game_is_active = false;
 		processing_bug = false;
+		ari_current_location = "";
 		bug_name = "";
 	}
 
@@ -398,6 +674,267 @@ RValue& GmlScriptSetupMainScreenCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	return Result;
+}
+
+// TODO: Remove this.
+RValue& GmlScriptMenuPlaySoundCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	g_ModuleInterface->Print(CM_WHITE, "ENTER: %s. ArgCount: %d", GML_SCRIPT_INVENTORY_SLOT_POP, ArgumentCount);
+	for (int i = 0; i < ArgumentCount; i++)
+	{
+		if (Arguments[i]->m_Kind == VALUE_INT32)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: INT32 ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: %d", Arguments[i]->m_i32);
+		}
+		else if (Arguments[i]->m_Kind == VALUE_INT64)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: INT64 ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: %d", Arguments[i]->m_i64);
+		}
+		else if (Arguments[i]->m_Kind == VALUE_REAL)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: REAL ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: %f", Arguments[i]->m_Real);
+		}
+		else if (Arguments[i]->m_Kind == VALUE_BOOL)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: BOOL ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: %s", Arguments[i]->m_Real == 1 ? "true" : "false");
+		}
+		else if (Arguments[i]->m_Kind == VALUE_ARRAY)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: ARRAY ==========", i);
+			size_t size;
+			g_ModuleInterface->GetArraySize(*Arguments[i], size);
+			g_ModuleInterface->Print(CM_WHITE, "Size: %d", static_cast<int>(size));
+		}
+		else if (Arguments[i]->m_Kind == VALUE_REF)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: REFEFERENCE ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: ???");
+		}
+		else if (Arguments[i]->m_Kind == VALUE_PTR)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: POUNTER ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: ???");
+		}
+		else if (Arguments[i]->m_Kind == VALUE_STRING)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: STRING ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: %s", Arguments[i]->AsString().data());
+		}
+		else if (Arguments[i]->m_Kind == VALUE_OBJECT)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: OBJECT ==========", i);
+
+			struct_field_names = {};
+			g_ModuleInterface->EnumInstanceMembers(Arguments[i]->m_Object, GetStructFieldNames);
+			for (int j = 0; j < struct_field_names.size(); j++)
+			{
+				std::string field_name = struct_field_names[j];
+				RValue field = Arguments[i]->m_Object->at(field_name);
+				if (field.m_Kind == VALUE_OBJECT)
+				{
+					g_ModuleInterface->Print(CM_AQUA, "%s: OBJECT", field_name.c_str());
+					g_ModuleInterface->EnumInstanceMembers(field, EnumFunction);
+					g_ModuleInterface->Print(CM_WHITE, "------------------------------");
+				}
+				else if (field.m_Kind == VALUE_ARRAY)
+				{
+					RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { field });
+					g_ModuleInterface->Print(CM_AQUA, "%s: ARRAY (length == %d)", field_name.c_str(), static_cast<int>(array_length.m_Real));
+					for (int k = 0; k < array_length.m_Real; k++)
+					{
+						RValue array_element = g_ModuleInterface->CallBuiltin("array_get", { field, k });
+						int temp = 5;
+					}
+				}
+				else if (field.m_Kind == VALUE_INT32)
+					g_ModuleInterface->Print(CM_AQUA, "%s: INT32 == %d", field_name.c_str(), field.m_i32);
+				else if (field.m_Kind == VALUE_INT64)
+					g_ModuleInterface->Print(CM_AQUA, "%s: INT64 == %d", field_name.c_str(), field.m_i64);
+				else if (field.m_Kind == VALUE_REAL)
+					g_ModuleInterface->Print(CM_AQUA, "%s: REAL == %f", field_name.c_str(), field.m_Real);
+				else if (field.m_Kind == VALUE_BOOL)
+					g_ModuleInterface->Print(CM_AQUA, "%s: BOOL == %s", field_name.c_str(), field.m_Real == 0 ? "false" : "true");
+				else if (field.m_Kind == VALUE_STRING)
+					g_ModuleInterface->Print(CM_AQUA, "%s: STRING == %s", field_name.c_str(), field.AsString().data());
+				else
+					g_ModuleInterface->Print(CM_AQUA, "%s: OTHER", field_name.c_str());
+			}
+		}
+		else if (Arguments[i]->m_Kind == VALUE_UNDEFINED)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: UNDEFINED ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: UNDEFINED");
+		}
+		else if (Arguments[i]->m_Kind == VALUE_UNSET)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: UNSET ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: UNSET");
+		}
+		else if (Arguments[i]->m_Kind == VALUE_NULL)
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: NULL ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: NULL");
+		}
+		else
+		{
+			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: OTHER ==========", i);
+			g_ModuleInterface->Print(CM_WHITE, "Value: ???");
+		}
+	}
+
+	RValue trash_item_sound = g_ModuleInterface->CallBuiltin(
+		"asset_get_index",
+		{ "snd_UITrashItem" }
+	);
+
+	RValue sound_is_playing = g_ModuleInterface->CallBuiltin(
+		"audio_is_playing",
+		{ trash_item_sound }
+	);
+
+	if (RValueAsBool(sound_is_playing))
+	{
+		g_ModuleInterface->Print(CM_WHITE, "!");
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_INVENTORY_SLOT_POP));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (Result.m_Kind == VALUE_INT32)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: INT32 ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: %d", Result.m_i32);
+	}
+	else if (Result.m_Kind == VALUE_INT64)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: INT64 ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: %d", Result.m_i64);
+	}
+	else if (Result.m_Kind == VALUE_REAL)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: REAL ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: %f", Result.m_Real);
+	}
+	else if (Result.m_Kind == VALUE_BOOL)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: BOOL ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: %s", Result.m_Real == 1 ? "true" : "false");
+	}
+	else if (Result.m_Kind == VALUE_ARRAY)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: ARRAY ==========");
+		size_t size;
+		g_ModuleInterface->GetArraySize(Result, size);
+		g_ModuleInterface->Print(CM_WHITE, "Size: %d", static_cast<int>(size));
+	}
+	else if (Result.m_Kind == VALUE_REF)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: REFEFERENCE ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: ???");
+	}
+	else if (Result.m_Kind == VALUE_PTR)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: POUNTER ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: ???");
+	}
+	else if (Result.m_Kind == VALUE_STRING)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: STRING ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: %s", Result.AsString().data());
+	}
+	else if (Result.m_Kind == VALUE_OBJECT)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: OBJECT ==========");
+
+		struct_field_names = {};
+		g_ModuleInterface->EnumInstanceMembers(Result.m_Object, GetStructFieldNames);
+		for (int j = 0; j < struct_field_names.size(); j++)
+		{
+			std::string field_name = struct_field_names[j];
+			RValue field = Result.m_Object->at(field_name);
+			if (field.m_Kind == VALUE_OBJECT)
+			{
+				g_ModuleInterface->Print(CM_AQUA, "%s: OBJECT", field_name.c_str());
+				g_ModuleInterface->EnumInstanceMembers(field, EnumFunction);
+				g_ModuleInterface->Print(CM_WHITE, "------------------------------");
+			}
+			else if (field.m_Kind == VALUE_ARRAY)
+			{
+				RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { field });
+				g_ModuleInterface->Print(CM_AQUA, "%s: ARRAY (length == %d)", field_name.c_str(), static_cast<int>(array_length.m_Real));
+				for (int k = 0; k < array_length.m_Real; k++)
+				{
+					RValue array_element = g_ModuleInterface->CallBuiltin("array_get", { field, k });
+					int temp = 5;
+				}
+			}
+			else if (field.m_Kind == VALUE_INT32)
+				g_ModuleInterface->Print(CM_AQUA, "%s: INT32 == %d", field_name.c_str(), field.m_i32);
+			else if (field.m_Kind == VALUE_INT64)
+				g_ModuleInterface->Print(CM_AQUA, "%s: INT64 == %d", field_name.c_str(), field.m_i64);
+			else if (field.m_Kind == VALUE_REAL)
+				g_ModuleInterface->Print(CM_AQUA, "%s: REAL == %f", field_name.c_str(), field.m_Real);
+			else if (field.m_Kind == VALUE_BOOL)
+				g_ModuleInterface->Print(CM_AQUA, "%s: BOOL == %s", field_name.c_str(), field.m_Real == 0 ? "false" : "true");
+			else if (field.m_Kind == VALUE_STRING)
+				g_ModuleInterface->Print(CM_AQUA, "%s: STRING == %s", field_name.c_str(), field.AsString().data());
+			else
+				g_ModuleInterface->Print(CM_AQUA, "%s: OTHER", field_name.c_str());
+		}
+	}
+	else if (Result.m_Kind == VALUE_UNDEFINED)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: UNDEFINED ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: UNDEFINED");
+	}
+	else if (Result.m_Kind == VALUE_UNSET)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: UNSET ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: UNSET");
+	}
+	else if (Result.m_Kind == VALUE_NULL)
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: NULL ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: NULL");
+	}
+	else
+	{
+		g_ModuleInterface->Print(CM_WHITE, "========== Result: OTHER ==========");
+		g_ModuleInterface->Print(CM_WHITE, "Value: ???");
+	}
+
+	trash_item_sound = g_ModuleInterface->CallBuiltin(
+		"asset_get_index", 
+		{ "snd_UITrashItem" }
+	);
+
+	sound_is_playing = g_ModuleInterface->CallBuiltin(
+		"audio_is_playing",
+		{ trash_item_sound }
+	);
+
+	if (RValueAsBool(sound_is_playing))
+	{
+		g_ModuleInterface->Print(CM_WHITE, "!");
+	}
 
 	return Result;
 }
@@ -414,6 +951,114 @@ void CreateObjectCallback(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook (EVENT_OBJECT_CALL)!", MOD_NAME, VERSION);
+	}
+}
+
+void CreateHookGmlScriptGetWeather(AurieStatus& status)
+{
+	CScript* gml_script_get_weather = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_WEATHER,
+		(PVOID*)&gml_script_get_weather
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_WEATHER);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GET_WEATHER,
+		gml_script_get_weather->m_Functions->m_ScriptFunction,
+		GmlScriptGetWeatherCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_WEATHER);
+	}
+}
+
+void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
+{
+	CScript* gml_script_try_location_id_to_string = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_TRY_LOCATION_ID_TO_STRING,
+		(PVOID*)&gml_script_try_location_id_to_string
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TRY_LOCATION_ID_TO_STRING);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_TRY_LOCATION_ID_TO_STRING,
+		gml_script_try_location_id_to_string->m_Functions->m_ScriptFunction,
+		GmlScriptTryLocationIdToStringCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TRY_LOCATION_ID_TO_STRING);
+	}
+}
+
+void CreateHookGmlScriptSpawnBug(AurieStatus& status)
+{
+	CScript* gml_script_create_bug = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SPAWN_BUG,
+		(PVOID*)&gml_script_create_bug
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SPAWN_BUG);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_SPAWN_BUG,
+		gml_script_create_bug->m_Functions->m_ScriptFunction,
+		GmlScriptSpawnBugCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SPAWN_BUG);
+	}
+}
+
+void CreateHookGmlScriptCreateBug(AurieStatus& status)
+{
+	CScript* gml_script_create_bug = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CREATE_BUG,
+		(PVOID*)&gml_script_create_bug
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CREATE_BUG);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CREATE_BUG,
+		gml_script_create_bug->m_Functions->m_ScriptFunction,
+		GmlScriptCreateBugCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CREATE_BUG);
 	}
 }
 
@@ -473,6 +1118,34 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptMenuPlaySound(AurieStatus& status)
+{
+	CScript* gml_script_setup_main_screen = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_INVENTORY_SLOT_POP,
+		(PVOID*)&gml_script_setup_main_screen
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_INVENTORY_SLOT_POP);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_INVENTORY_SLOT_POP,
+		gml_script_setup_main_screen->m_Functions->m_ScriptFunction,
+		GmlScriptMenuPlaySoundCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_INVENTORY_SLOT_POP);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path& ModulePath) {
 	UNREFERENCED_PARAMETER(ModulePath);
 
@@ -488,7 +1161,35 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 
 	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
 
-	CreateObjectCallback(status);
+	//CreateObjectCallback(status);
+	//if (!AurieSuccess(status))
+	//{
+	//	g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+	//	return status;
+	//}
+
+	CreateHookGmlScriptGetWeather(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptTryLocationIdToString(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptSpawnBug(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCreateBug(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
@@ -503,6 +1204,13 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptMenuPlaySound(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
