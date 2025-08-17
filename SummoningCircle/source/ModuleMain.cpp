@@ -14,7 +14,7 @@ static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact"; // Used to
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu"; // Used to track conversation/dialogue choices.
 static const char* const GML_SCRIPT_WRITE_FURNITURE_TO_LOCATION = "gml_Script_write_furniture_to_location"; // Used to track when the furniture is placed.
-static const char* const GML_SCRIPT_PICK_NODE = "gml_Script_pick_node"; // Used to track when the furniture is removed.
+static const char* const GML_SCRIPT_PICK_NODE = "gml_Script_erase_object_renderer"; // Used to track when the furniture is removed.
 static const char* const GML_SCRIPT_ON_ROOM_START = "gml_Script_on_room_start@WeatherManager@Weather";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
@@ -46,6 +46,26 @@ static std::map<std::string, int> location_name_to_id_map = {};
 static std::vector<std::pair<int, int>> summoning_circle_positions = {};
 static RValue custom_interact_key;
 static RValue* custom_interact_key_ptr = nullptr;
+
+//DEBUG------------------------------------------
+static std::vector<std::string> struct_field_names = {};
+bool GetStructFieldNames(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	struct_field_names.push_back(MemberName);
+	return false;
+}
+bool EnumFunction(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
+	return false;
+}
+//------------------------------------------------
 
 void ResetStaticFields(bool return_to_title_screen)
 {
@@ -245,6 +265,24 @@ void PlayConversation(std::string conversation_localization_str, CInstance* Self
 	);
 }
 
+void CloseTextbox(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_close_textbox = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_begin_close@TextboxMenu@TextboxMenu",
+		(PVOID*)&gml_script_close_textbox
+	);
+
+	RValue result;
+	gml_script_close_textbox->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		0,
+		nullptr
+	);
+}
+
 void TeleportAriToRoom(CInstance* Self, CInstance* Other, int location_id, int x_coordinate, int y_coordinate)
 {
 	CScript* gml_script_ari_teleport_to_room = nullptr;
@@ -422,33 +460,19 @@ RValue& GmlScriptPlayTextCallback(
 	if (mod_is_healthy && game_is_active)
 	{
 		std::string conversation_name = Arguments[0]->ToString();
-		if (conversation_name.find(SUMMONING_CIRCLE_ACTIVATION_ACCEPTED_CONVERSATION_KEY) != std::string::npos)
+		if (conversation_name == SUMMONING_CIRCLE_ACTIVATION_ACCEPTED_CONVERSATION_KEY)
 		{
 			teleport_ari = true;
 			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] Teleporting Ari.", MOD_NAME, VERSION);
 
-			//--------------------------------------------------------
-			// gml_Script_begin_close@TextboxMenu@TextboxMenu
-			CScript* gml_script_close_textbox = nullptr;
-			g_ModuleInterface->GetNamedRoutinePointer(
-				"gml_Script_begin_close@TextboxMenu@TextboxMenu",
-				(PVOID*)&gml_script_close_textbox
-			);
-
-			RValue result;
-			gml_script_close_textbox->m_Functions->m_ScriptFunction(
-				Self,
-				Other,
-				result,
-				0,
-				nullptr
-			);
-			//--------------------------------------------------------
-
+			CloseTextbox(Self, Other);
 			return Result;
 		}
 		if (conversation_name == SUMMONING_CIRCLE_ACTIVATION_REJECTED_CONVERSATION_KEY)
+		{
+			CloseTextbox(Self, Other);
 			return Result;
+		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_TEXT));
@@ -516,6 +540,92 @@ RValue& GmlScriptPickNodeCallback(
 	IN RValue** Arguments
 )
 {
+	//if (mod_is_healthy && game_is_active && ari_current_location == "farm")
+	//{
+	//	// Arguments
+	//	if (game_is_active)
+	//	{
+	//		g_ModuleInterface->Print(CM_WHITE, "ENTER: gml_Script_poof_furniture_to_items");
+	//		for (int i = 0; i < ArgumentCount; i++)
+	//		{
+	//			g_ModuleInterface->Print(CM_WHITE, "=============== Argument[%d] ===============", i);
+	//			g_ModuleInterface->Print(CM_AQUA, "OBJECT:", Arguments[i]->m_Real);
+	//			if (Arguments[i]->m_Kind == VALUE_OBJECT)
+	//			{
+	//				struct_field_names = {};
+	//				g_ModuleInterface->EnumInstanceMembers(Arguments[i]->m_Object, GetStructFieldNames);
+	//				for (int j = 0; j < struct_field_names.size(); j++)
+	//				{
+	//					std::string field_name = struct_field_names[j];
+	//					RValue field = *Arguments[i]->GetRefMember(field_name);
+	//					if (field.m_Kind == VALUE_OBJECT)
+	//					{
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: OBJECT", field_name.c_str());
+	//						g_ModuleInterface->EnumInstanceMembers(field, EnumFunction);
+	//						g_ModuleInterface->Print(CM_WHITE, "------------------------------");
+	//					}
+	//					else if (field.m_Kind == VALUE_ARRAY)
+	//					{
+	//						RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { field });
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: ARRAY (length == %d)", field_name.c_str(), static_cast<int>(array_length.m_Real));
+	//						for (int k = 0; k < array_length.m_Real; k++)
+	//						{
+	//							//INT64 == 956
+	//							RValue array_element = g_ModuleInterface->CallBuiltin("array_get", { field, k });
+	//							int temp = 5;
+	//						}
+	//					}
+	//					else if (field.m_Kind == VALUE_INT32)
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: INT32 == %d", field_name.c_str(), field.m_i32);
+	//					else if (field.m_Kind == VALUE_INT64)
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: INT64 == %d", field_name.c_str(), field.m_i64);
+	//					else if (field.m_Kind == VALUE_REAL)
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: REAL == %f", field_name.c_str(), field.m_Real);
+	//					else if (field.m_Kind == VALUE_BOOL)
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: BOOL == %s", field_name.c_str(), field.m_Real == 0 ? "false" : "true");
+	//					else if (field.m_Kind == VALUE_STRING)
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: STRING == %s", field_name.c_str(), field.ToString());
+	//					else if (field.m_Kind == VALUE_REF)
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: REFERENCE", field_name.c_str());
+	//					else if (field.m_Kind == VALUE_NULL)
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: NULL", field_name.c_str());
+	//					else if (field.m_Kind == VALUE_UNDEFINED)
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: UNDEFINED", field_name.c_str());
+	//					else if (field.m_Kind == VALUE_UNSET)
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: UNSET", field_name.c_str());
+	//					else
+	//						g_ModuleInterface->Print(CM_AQUA, "%s: OTHER", field_name.c_str());
+	//				}
+	//			}
+	//			else if (Arguments[i]->m_Kind == VALUE_ARRAY)
+	//			{
+	//				RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { *Arguments[i] });
+	//				g_ModuleInterface->Print(CM_AQUA, "ARRAY (length == %d)", static_cast<int>(array_length.m_Real));
+	//			}
+	//			else if (Arguments[i]->m_Kind == VALUE_REAL)
+	//				g_ModuleInterface->Print(CM_AQUA, "REAL: %f", Arguments[i]->m_Real);
+	//			else if (Arguments[i]->m_Kind == VALUE_INT64)
+	//				g_ModuleInterface->Print(CM_AQUA, "INT64: %d", Arguments[i]->m_i64);
+	//			else if (Arguments[i]->m_Kind == VALUE_INT32)
+	//				g_ModuleInterface->Print(CM_AQUA, "INT32: %d", Arguments[i]->m_i32);
+	//			else if (Arguments[i]->m_Kind == VALUE_BOOL)
+	//				g_ModuleInterface->Print(CM_AQUA, "BOOL: %s", Arguments[i]->m_Real == 0 ? "false" : "true");
+	//			else if (Arguments[i]->m_Kind == VALUE_STRING)
+	//				g_ModuleInterface->Print(CM_AQUA, "STRING: %s", Arguments[i]->ToString());
+	//			else if (Arguments[i]->m_Kind == VALUE_REF)
+	//				g_ModuleInterface->Print(CM_AQUA, "REFERENCE");
+	//			else if (Arguments[i]->m_Kind == VALUE_NULL)
+	//				g_ModuleInterface->Print(CM_AQUA, "NULL");
+	//			else if (Arguments[i]->m_Kind == VALUE_UNDEFINED)
+	//				g_ModuleInterface->Print(CM_AQUA, "UNDEFINED");
+	//			else if (Arguments[i]->m_Kind == VALUE_UNSET)
+	//				g_ModuleInterface->Print(CM_AQUA, "UNSET");
+	//			else
+	//				g_ModuleInterface->Print(CM_AQUA, "OTHER");
+	//		}
+	//	}
+	//}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PICK_NODE));
 	original(
 		Self,
@@ -525,8 +635,54 @@ RValue& GmlScriptPickNodeCallback(
 		Arguments
 	);
 
-	if (mod_is_healthy && ari_current_location == "farm")
-		PruneMissingSummoningCircles();
+	if (mod_is_healthy && game_is_active && ari_current_location == "farm")
+	{
+		int object_id = Arguments[0]->GetMember("object_id").ToInt64();
+		if (object_id == object_name_to_id_map["summoning_circle"])
+		{
+			int x = Arguments[0]->GetMember("top_left_x").ToInt64();
+			int y = Arguments[0]->GetMember("top_left_y").ToInt64();
+
+			auto it = std::find_if(summoning_circle_positions.begin(), summoning_circle_positions.end(),
+				[x, y](const std::pair<int, int>& p) {
+					return p.first == x && p.second == y;
+				});
+
+			if (it != summoning_circle_positions.end()) {
+				summoning_circle_positions.erase(it);
+			}
+		}
+
+		//if (game_is_active)
+		//{
+		//	g_ModuleInterface->Print(CM_WHITE, "=============== Result ===============");
+		//	if (Result.m_Kind == VALUE_OBJECT)
+		//	{
+		//		g_ModuleInterface->Print(CM_AQUA, "OBJECT");
+		//		g_ModuleInterface->EnumInstanceMembers(Result, EnumFunction);
+		//		g_ModuleInterface->Print(CM_WHITE, "------------------------------");
+		//	}
+		//	else if (Result.m_Kind == VALUE_ARRAY)
+		//	{
+		//		RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { Result });
+		//		g_ModuleInterface->Print(CM_AQUA, "ARRAY (length == %d)", static_cast<int>(array_length.m_Real));
+		//	}
+		//	else if (Result.m_Kind == VALUE_INT32)
+		//		g_ModuleInterface->Print(CM_AQUA, "%s: INT32 == %d", Result.m_i32);
+		//	else if (Result.m_Kind == VALUE_INT64)
+		//		g_ModuleInterface->Print(CM_AQUA, "%s: INT64 == %d", Result.m_i64);
+		//	else if (Result.m_Kind == VALUE_REAL)
+		//		g_ModuleInterface->Print(CM_AQUA, "%s: REAL == %f", Result.m_Real);
+		//	else if (Result.m_Kind == VALUE_BOOL)
+		//		g_ModuleInterface->Print(CM_AQUA, "%s: BOOL == %s", Result.m_Real == 0 ? "false" : "true");
+		//	else if (Result.m_Kind == VALUE_STRING)
+		//		g_ModuleInterface->Print(CM_AQUA, "%s: STRING == %s", Result.ToString());
+		//	else
+		//		g_ModuleInterface->Print(CM_AQUA, "%s: OTHER");
+		//}
+
+		//PruneMissingSummoningCircles();
+	}
 
 	return Result;
 }
