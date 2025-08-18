@@ -1,3 +1,5 @@
+#include <map>
+#include <fstream>
 #include <nlohmann/json.hpp>
 #include <YYToolkit/YYTK_Shared.hpp>
 using namespace Aurie;
@@ -14,19 +16,28 @@ static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact"; // Used to
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu"; // Used to track conversation/dialogue choices.
 static const char* const GML_SCRIPT_WRITE_FURNITURE_TO_LOCATION = "gml_Script_write_furniture_to_location"; // Used to track when the furniture is placed.
-static const char* const GML_SCRIPT_PICK_NODE = "gml_Script_erase_object_renderer"; // Used to track when the furniture is removed.
+static const char* const GML_SCRIPT_ERASE_OBJECT_RENDERER = "gml_Script_erase_object_renderer"; // Used to track when the furniture is removed.
 static const char* const GML_SCRIPT_ON_ROOM_START = "gml_Script_on_room_start@WeatherManager@Weather";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
 static const char* const GML_SCRIPT_LOAD_GAME = "gml_Script_load_game";
 static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
-static std::string SUMMONING_CIRCLE_TELEPORT_INTERACT_KEY = "misc_local/Mods/Summoning Circle/teleport_interact";
-static std::string SUMMONING_CIRCLE_TWO_REQUIRED_NOTIFICATION_KEY = "Notifications/Mods/Summoning Circle/two_required";
-static std::string SUMMONING_CIRCLE_TWO_ALREADY_PRESENT_NOTIFICATION_KEY = "Notifications/Mods/Summoning Circle/two_already_present";
-static std::string SUMMONING_CIRCLE_ACTIVATION_REQUIRED_CONVERSATION_KEY = "Conversations/Mods/Summoning Circle/activation_confirmation";
-static std::string SUMMONING_CIRCLE_ACTIVATION_ACCEPTED_CONVERSATION_KEY = "Conversations/Mods/Summoning Circle/activation_confirmation/1";
-static std::string SUMMONING_CIRCLE_ACTIVATION_REJECTED_CONVERSATION_KEY = "Conversations/Mods/Summoning Circle/activation_confirmation/2";
+static const char* const SUMMONING_CIRCLE_POSITIONS_KEY = "summoning_circle_positions";
+static const char* const SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY = "summoning_circle_confirmation_required";
+static const char* const SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY = "summoning_circle_shipping_bin_price";
+static const char* const SUMMONING_CIRCLE_STORE_PRICE_KEY = "summoning_circle_store_price";
+static const std::string SUMMONING_CIRCLE_TELEPORT_INTERACT_KEY = "misc_local/Mods/Summoning Circle/teleport_interact";
+static const std::string SUMMONING_CIRCLE_TWO_REQUIRED_NOTIFICATION_KEY = "Notifications/Mods/Summoning Circle/two_required";
+static const std::string SUMMONING_CIRCLE_TWO_ALREADY_PRESENT_NOTIFICATION_KEY = "Notifications/Mods/Summoning Circle/two_already_present";
+static const std::string SUMMONING_CIRCLE_ACTIVATION_REQUIRED_CONVERSATION_KEY = "Conversations/Mods/Summoning Circle/activation_confirmation";
+static const std::string SUMMONING_CIRCLE_ACTIVATION_ACCEPTED_CONVERSATION_KEY = "Conversations/Mods/Summoning Circle/activation_confirmation/1";
+static const std::string SUMMONING_CIRCLE_ACTIVATION_REJECTED_CONVERSATION_KEY = "Conversations/Mods/Summoning Circle/activation_confirmation/2";
+static const std::string FARM_LOCATION_NAME = "farm";
+static const std::string SUMMONING_CIRCLE_ITEM_NAME = "summoning_circle";
+static const int DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE = 5000;
+static const int DEFAULT_SUMMONING_CIRCLE_STORE_PRICE = 5000;
+static const bool DEFAULT_SUMMONING_CIRCLE_CONFIRMATION_REQUIRED = true;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
@@ -35,37 +46,22 @@ static bool game_is_active = false;
 static bool once_per_save_load = true;
 static bool teleport_ari = false;
 static bool play_conversation = false;
-static bool confirmation_required = true; // TODO: Make configurable
 static double ari_x = 0;
 static double ari_y = 0;
 static std::pair<int, int> teleport_ari_to = {};
 static std::string ari_current_location = "";
+static std::string save_prefix = "";
+static std::string mod_folder = "";
+static std::map<std::string, int> item_name_to_id_map = {};
 static std::map<int, std::string> object_id_to_name_map = {};
 static std::map<std::string, int> object_name_to_id_map = {};
 static std::map<std::string, int> location_name_to_id_map = {};
 static std::vector<std::pair<int, int>> summoning_circle_positions = {};
 static RValue custom_interact_key;
 static RValue* custom_interact_key_ptr = nullptr;
-
-//DEBUG------------------------------------------
-static std::vector<std::string> struct_field_names = {};
-bool GetStructFieldNames(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	struct_field_names.push_back(MemberName);
-	return false;
-}
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
-}
-//------------------------------------------------
+static int summoning_circle_shipping_bin_price = DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE;
+static int summoning_circle_store_price = DEFAULT_SUMMONING_CIRCLE_STORE_PRICE;
+static bool summoning_circle_confirmation_required = DEFAULT_SUMMONING_CIRCLE_CONFIRMATION_REQUIRED;
 
 void ResetStaticFields(bool return_to_title_screen)
 {
@@ -79,10 +75,315 @@ void ResetStaticFields(bool return_to_title_screen)
 		ari_y = 0;
 		teleport_ari_to = {};
 		ari_current_location = "";
+		save_prefix = "";
 		summoning_circle_positions = {};
 		custom_interact_key = "";
 		custom_interact_key_ptr = nullptr;
 	}
+}
+
+void PrintError(std::exception_ptr eptr)
+{
+	try {
+		if (eptr) {
+			std::rethrow_exception(eptr);
+		}
+	}
+	catch (const std::exception& e) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Error: %s", VERSION, e.what());
+	}
+}
+
+json CreateModSaveJson()
+{
+	json save_json = {
+		{ SUMMONING_CIRCLE_POSITIONS_KEY, summoning_circle_positions }
+	};
+	return save_json;
+}
+
+void WriteModSaveFile()
+{
+	if (save_prefix.length() != 0 && mod_folder.length() != 0)
+	{
+		json mod_save_data = CreateModSaveJson();
+
+		std::exception_ptr eptr;
+		try
+		{
+			std::ofstream out_stream(mod_folder + "\\" + save_prefix + ".json");
+			out_stream << std::setw(4) << mod_save_data << std::endl;
+			out_stream.close();
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully saved the mod file!", MOD_NAME, VERSION);
+		}
+		catch (...)
+		{
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred writing the mod file.", MOD_NAME, VERSION);
+
+			eptr = std::current_exception();
+			PrintError(eptr);
+		}
+	}
+	else
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Unable to write mod save file!", MOD_NAME, VERSION);
+	}
+}
+
+void ReadModSaveFile()
+{
+	if (save_prefix.length() != 0 && mod_folder.length() != 0)
+	{
+		std::exception_ptr eptr;
+		try
+		{
+			std::ifstream in_stream(mod_folder + "\\" + save_prefix + ".json");
+			if (in_stream.good())
+			{
+				json mod_save_data = json::parse(in_stream);
+				summoning_circle_positions = mod_save_data[SUMMONING_CIRCLE_POSITIONS_KEY];
+				g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully loaded the mod file!", MOD_NAME, VERSION);
+			}
+		}
+		catch (...)
+		{
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred reading the mod file.", MOD_NAME, VERSION);
+
+			eptr = std::current_exception();
+			PrintError(eptr);
+		}
+	}
+	else
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Unable to read mod save file!", MOD_NAME, VERSION);
+	}
+}
+
+json CreateModConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, use_defaults ? DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE : summoning_circle_shipping_bin_price },
+		{ SUMMONING_CIRCLE_STORE_PRICE_KEY, use_defaults ? DEFAULT_SUMMONING_CIRCLE_STORE_PRICE : summoning_circle_store_price },
+		{ SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, use_defaults ? DEFAULT_SUMMONING_CIRCLE_CONFIRMATION_REQUIRED : summoning_circle_confirmation_required }
+	};
+	return config_json;
+}
+
+void LogDefaultModConfigValues()
+{
+	summoning_circle_shipping_bin_price = DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE;
+	summoning_circle_store_price = DEFAULT_SUMMONING_CIRCLE_STORE_PRICE;
+	summoning_circle_confirmation_required = DEFAULT_SUMMONING_CIRCLE_CONFIRMATION_REQUIRED;
+
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_STORE_PRICE);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, DEFAULT_SUMMONING_CIRCLE_CONFIRMATION_REQUIRED);
+}
+
+bool CreateOrLoadModConfigFile()
+{
+	std::exception_ptr eptr;
+	try
+	{
+		// Try to find the mod_data directory.
+		std::string current_dir = std::filesystem::current_path().string();
+		std::string mod_data_folder = current_dir + "\\mod_data";
+		if (!std::filesystem::exists(mod_data_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
+			std::filesystem::create_directory(mod_data_folder);
+
+			// Verify the directory now exists.
+			if (!std::filesystem::exists(mod_data_folder))
+			{
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the \"mod_data\" directory: ", MOD_NAME, VERSION, mod_data_folder.c_str());
+				return false;
+			}
+		}
+
+		// Try to find the mod_data/SummoningCircle directory.
+		std::string summoning_circle_folder = mod_data_folder + "\\SummoningCircle";
+		if (!std::filesystem::exists(summoning_circle_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - The \"SummoningCircle\" directory was not found. Creating directory: %s", VERSION, summoning_circle_folder.c_str());
+			std::filesystem::create_directory(summoning_circle_folder);
+
+			// Verify the directory now exists.
+			if (!std::filesystem::exists(summoning_circle_folder))
+			{
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the \"SummoningCircle\" directory: ", MOD_NAME, VERSION, summoning_circle_folder.c_str());
+				return false;
+			}
+		}
+
+		mod_folder = summoning_circle_folder;
+
+		// Try to find the mod_data/SummoningCircle/SummoningCircle.json config file.
+		bool update_config_file = false;
+		std::string config_file = summoning_circle_folder + "\\" + "SummoningCircle.json";
+		std::ifstream in_stream(config_file);
+		if (in_stream.good())
+		{
+			try
+			{
+				json json_object = json::parse(in_stream);
+
+				// Check if the json_object is empty.
+				if (json_object.empty())
+				{
+					g_ModuleInterface->Print(CM_LIGHTRED, "[SummoningCircle %s] - No values found in mod configuration file: %s!", VERSION, config_file.c_str());
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Add your desired values to the configuration file, otherwise defaults will be used.", VERSION);
+					LogDefaultModConfigValues();
+				}
+				else
+				{
+					// Try loading the summoning_circle_shipping_bin_price value.
+					if (json_object.contains(SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY))
+					{
+						summoning_circle_shipping_bin_price = json_object[SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY];
+						if (summoning_circle_shipping_bin_price < 1 || summoning_circle_shipping_bin_price > 10000)
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[SummoningCircle %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, summoning_circle_shipping_bin_price, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE);
+							summoning_circle_shipping_bin_price = DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE;
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using CUSTOM \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, summoning_circle_shipping_bin_price);
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE);
+					}
+
+					// Try loading the summoning_circle_store_price value.
+					if (json_object.contains(SUMMONING_CIRCLE_STORE_PRICE_KEY))
+					{
+						summoning_circle_store_price = json_object[SUMMONING_CIRCLE_STORE_PRICE_KEY];
+						if (summoning_circle_store_price < 1 || summoning_circle_store_price > 10000)
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[SummoningCircle %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, summoning_circle_store_price, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_STORE_PRICE);
+							summoning_circle_store_price = DEFAULT_SUMMONING_CIRCLE_STORE_PRICE;
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using CUSTOM \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, summoning_circle_store_price);
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_STORE_PRICE);
+					}
+
+					// Try loading the summoning_circle_confirmation_required value.
+					if (json_object.contains(SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY))
+					{
+						summoning_circle_confirmation_required = json_object[SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, summoning_circle_confirmation_required ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, DEFAULT_SUMMONING_CIRCLE_CONFIRMATION_REQUIRED ? "true" : "false");
+					}
+				}
+
+				update_config_file = true;
+			}
+			catch (...)
+			{
+				eptr = std::current_exception();
+				PrintError(eptr);
+
+				g_ModuleInterface->Print(CM_LIGHTRED, "[SummoningCircle %s] - Failed to parse JSON from configuration file: %s", VERSION, config_file.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Make sure the file is valid JSON!", VERSION);
+				LogDefaultModConfigValues();
+			}
+
+			in_stream.close();
+		}
+		else
+		{
+			in_stream.close();
+
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - The \"SummoningCircle.json\" file was not found. Creating file: %s", VERSION, config_file.c_str());
+
+			json default_config_json = CreateModConfigJson(true);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << default_config_json << std::endl;
+			out_stream.close();
+
+			// Verify the file now exists.
+			if (!std::filesystem::exists(config_file))
+			{
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the \"SummoningCircle.json\" file: ", MOD_NAME, VERSION, config_file.c_str());
+				return false;
+			}
+
+			LogDefaultModConfigValues();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateModConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
+		}
+	}
+	catch (...)
+	{
+		eptr = std::current_exception();
+		PrintError(eptr);
+
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred loading the mod configuration file.", MOD_NAME, VERSION);
+		return false;
+	}
+
+	return true;
+}
+
+bool LoadItemIds(CInstance* global_instance)
+{
+	RValue item_data = *global_instance->GetRefMember("__item_data");
+	size_t array_length;
+	g_ModuleInterface->GetArraySize(item_data, array_length);
+
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(item_data, i, array_element);
+
+		RValue name_key = *array_element->GetRefMember("name_key"); // The item's localization key
+		if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
+		{
+			RValue item_id = *array_element->GetRefMember("item_id");
+			RValue recipe_key = *array_element->GetRefMember("recipe_key"); // The internal item name
+			item_name_to_id_map[recipe_key.ToString()] = item_id.ToInt64();
+		}
+	}
+
+	bool success = true;
+
+	if (!item_name_to_id_map.contains(SUMMONING_CIRCLE_ITEM_NAME))
+	{
+		success = false;
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load item data for: %s", MOD_NAME, VERSION, SUMMONING_CIRCLE_ITEM_NAME.c_str());
+	}
+	
+	if (item_name_to_id_map.size() == 0)
+	{
+		success = false;
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load ANY item data!", MOD_NAME, VERSION);
+	}
+
+	return success;
 }
 
 bool LoadObjectIds(CInstance* Self, CInstance* Other)
@@ -162,59 +463,56 @@ void PruneMissingSummoningCircles()
 	if (!AurieSuccess(g_ModuleInterface->GetCurrentRoomData(current_room)))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to obtain the current room!", MOD_NAME, VERSION);
+		return;
 	}
-	else
+
+	std::vector<std::pair<int, int>> existing_positions;
+	for (CInstance* inst = current_room->GetMembers().m_ActiveInstances.m_First; inst != nullptr; inst = inst->GetMembers().m_Flink)
 	{
-		std::vector<bool> summoning_circle_exists = {};
-		for (int i = 0; i < summoning_circle_positions.size(); i++)
-			summoning_circle_exists.push_back(false); // Assume it doesn't exist to start
+		auto map = inst->ToRValue().ToRefMap();
+		if (!map.contains("node")) continue;
 
-		for (CInstance* inst = current_room->GetMembers().m_ActiveInstances.m_First; inst != nullptr; inst = inst->GetMembers().m_Flink)
+		RValue* nodeValue = map["node"];
+		if (!nodeValue || nodeValue->GetKindName() != "struct") continue;
+
+		auto nodeRefMap = nodeValue->ToRefMap();
+		if (!nodeRefMap.contains("prototype")) continue;
+
+		RValue* protoVal = nodeRefMap["prototype"];
+		if (!protoVal || protoVal->GetKindName() != "struct") continue;
+
+		auto protoMap = protoVal->ToRefMap();
+		if (!protoMap.contains("object_id")) continue;
+
+		int object_id = protoMap["object_id"]->ToInt64();
+		if (object_id == object_name_to_id_map["summoning_circle"])
 		{
-			auto map = inst->ToRValue().ToRefMap();
-			if (!map.contains("node"))
-				continue;
-
-			RValue* nodeValue = map["node"];
-			if (!nodeValue || nodeValue->GetKindName() != "struct")
-				continue;
-
-			auto nodeRefMap = nodeValue->ToRefMap();
-			if (!nodeRefMap.contains("prototype"))
-				continue;
-
-			RValue* protoVal = nodeRefMap["prototype"];
-			if (!protoVal || protoVal->GetKindName() != "struct")
-				continue;
-
-			auto protoMap = protoVal->ToRefMap();
-			if (!protoMap.contains("object_id"))
-				continue;
-
-			// This works to "scan" for the furniture.
-			// To be used when loading in to check if the mod items got unloaded or something caused the furniture to vanish.
-			// Each match is a separate furniture node for the matching ID
-			int object_id = protoMap["object_id"]->ToInt64();
-			if (object_id == object_name_to_id_map["summoning_circle"])
-			{
-				int x = nodeRefMap["top_left_x"]->ToInt64();
-				int y = nodeRefMap["top_left_y"]->ToInt64();
-
-				for (int i = 0; i < summoning_circle_positions.size(); i++)
-				{
-					if (summoning_circle_positions[i].first == x && summoning_circle_positions[i].second == y)
-						summoning_circle_exists[i] = true;
-				}
-			}
-		}
-
-		// Prune missing summoning circles.
-		for (int i = 0; i < summoning_circle_exists.size(); i++)
-		{
-			if (!summoning_circle_exists[i])
-				summoning_circle_positions.erase(summoning_circle_positions.begin() + i);
+			int x = nodeRefMap["top_left_x"]->ToInt64();
+			int y = nodeRefMap["top_left_y"]->ToInt64();
+			existing_positions.emplace_back(x, y);
 		}
 	}
+
+	std::erase_if(summoning_circle_positions, [&](const std::pair<int, int>& p) {
+		return std::find(existing_positions.begin(), existing_positions.end(), p) == existing_positions.end();
+	});
+}
+
+void ModifyItem(int item_id)
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
+	RValue item = g_ModuleInterface->CallBuiltin("array_get", { __item_data, item_id });
+
+	// Modify the item's value.
+	RValue value = *item.GetRefMember("value");
+	RValue bin = *value.GetRefMember("bin");
+	RValue store = *value.GetRefMember("store");
+	
+	//bin = summoning_circle_shipping_bin_price;
+	//store = summoning_circle_store_price;
 }
 
 void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
@@ -386,7 +684,7 @@ RValue& GmlScriptInteractCallback(
 					}
 				}
 
-				if (confirmation_required)
+				if (summoning_circle_confirmation_required)
 				{
 					play_conversation = true;
 				}
@@ -495,7 +793,7 @@ RValue& GmlScriptWriteFurnitureToLocationCallback(
 	IN RValue** Arguments
 )
 {
-	if (summoning_circle_positions.size() == 2)
+	if (mod_is_healthy && game_is_active && summoning_circle_positions.size() == 2)
 	{
 		CreateNotification(SUMMONING_CIRCLE_TWO_ALREADY_PRESENT_NOTIFICATION_KEY, Self, Other);
 		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] You already have two summoning circles on your farm!");
@@ -532,7 +830,7 @@ RValue& GmlScriptWriteFurnitureToLocationCallback(
 	return Result;
 }
 
-RValue& GmlScriptPickNodeCallback(
+RValue& GmlScriptEraseObjectRendererCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
 	OUT RValue& Result,
@@ -540,93 +838,7 @@ RValue& GmlScriptPickNodeCallback(
 	IN RValue** Arguments
 )
 {
-	//if (mod_is_healthy && game_is_active && ari_current_location == "farm")
-	//{
-	//	// Arguments
-	//	if (game_is_active)
-	//	{
-	//		g_ModuleInterface->Print(CM_WHITE, "ENTER: gml_Script_poof_furniture_to_items");
-	//		for (int i = 0; i < ArgumentCount; i++)
-	//		{
-	//			g_ModuleInterface->Print(CM_WHITE, "=============== Argument[%d] ===============", i);
-	//			g_ModuleInterface->Print(CM_AQUA, "OBJECT:", Arguments[i]->m_Real);
-	//			if (Arguments[i]->m_Kind == VALUE_OBJECT)
-	//			{
-	//				struct_field_names = {};
-	//				g_ModuleInterface->EnumInstanceMembers(Arguments[i]->m_Object, GetStructFieldNames);
-	//				for (int j = 0; j < struct_field_names.size(); j++)
-	//				{
-	//					std::string field_name = struct_field_names[j];
-	//					RValue field = *Arguments[i]->GetRefMember(field_name);
-	//					if (field.m_Kind == VALUE_OBJECT)
-	//					{
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: OBJECT", field_name.c_str());
-	//						g_ModuleInterface->EnumInstanceMembers(field, EnumFunction);
-	//						g_ModuleInterface->Print(CM_WHITE, "------------------------------");
-	//					}
-	//					else if (field.m_Kind == VALUE_ARRAY)
-	//					{
-	//						RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { field });
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: ARRAY (length == %d)", field_name.c_str(), static_cast<int>(array_length.m_Real));
-	//						for (int k = 0; k < array_length.m_Real; k++)
-	//						{
-	//							//INT64 == 956
-	//							RValue array_element = g_ModuleInterface->CallBuiltin("array_get", { field, k });
-	//							int temp = 5;
-	//						}
-	//					}
-	//					else if (field.m_Kind == VALUE_INT32)
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: INT32 == %d", field_name.c_str(), field.m_i32);
-	//					else if (field.m_Kind == VALUE_INT64)
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: INT64 == %d", field_name.c_str(), field.m_i64);
-	//					else if (field.m_Kind == VALUE_REAL)
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: REAL == %f", field_name.c_str(), field.m_Real);
-	//					else if (field.m_Kind == VALUE_BOOL)
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: BOOL == %s", field_name.c_str(), field.m_Real == 0 ? "false" : "true");
-	//					else if (field.m_Kind == VALUE_STRING)
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: STRING == %s", field_name.c_str(), field.ToString());
-	//					else if (field.m_Kind == VALUE_REF)
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: REFERENCE", field_name.c_str());
-	//					else if (field.m_Kind == VALUE_NULL)
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: NULL", field_name.c_str());
-	//					else if (field.m_Kind == VALUE_UNDEFINED)
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: UNDEFINED", field_name.c_str());
-	//					else if (field.m_Kind == VALUE_UNSET)
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: UNSET", field_name.c_str());
-	//					else
-	//						g_ModuleInterface->Print(CM_AQUA, "%s: OTHER", field_name.c_str());
-	//				}
-	//			}
-	//			else if (Arguments[i]->m_Kind == VALUE_ARRAY)
-	//			{
-	//				RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { *Arguments[i] });
-	//				g_ModuleInterface->Print(CM_AQUA, "ARRAY (length == %d)", static_cast<int>(array_length.m_Real));
-	//			}
-	//			else if (Arguments[i]->m_Kind == VALUE_REAL)
-	//				g_ModuleInterface->Print(CM_AQUA, "REAL: %f", Arguments[i]->m_Real);
-	//			else if (Arguments[i]->m_Kind == VALUE_INT64)
-	//				g_ModuleInterface->Print(CM_AQUA, "INT64: %d", Arguments[i]->m_i64);
-	//			else if (Arguments[i]->m_Kind == VALUE_INT32)
-	//				g_ModuleInterface->Print(CM_AQUA, "INT32: %d", Arguments[i]->m_i32);
-	//			else if (Arguments[i]->m_Kind == VALUE_BOOL)
-	//				g_ModuleInterface->Print(CM_AQUA, "BOOL: %s", Arguments[i]->m_Real == 0 ? "false" : "true");
-	//			else if (Arguments[i]->m_Kind == VALUE_STRING)
-	//				g_ModuleInterface->Print(CM_AQUA, "STRING: %s", Arguments[i]->ToString());
-	//			else if (Arguments[i]->m_Kind == VALUE_REF)
-	//				g_ModuleInterface->Print(CM_AQUA, "REFERENCE");
-	//			else if (Arguments[i]->m_Kind == VALUE_NULL)
-	//				g_ModuleInterface->Print(CM_AQUA, "NULL");
-	//			else if (Arguments[i]->m_Kind == VALUE_UNDEFINED)
-	//				g_ModuleInterface->Print(CM_AQUA, "UNDEFINED");
-	//			else if (Arguments[i]->m_Kind == VALUE_UNSET)
-	//				g_ModuleInterface->Print(CM_AQUA, "UNSET");
-	//			else
-	//				g_ModuleInterface->Print(CM_AQUA, "OTHER");
-	//		}
-	//	}
-	//}
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PICK_NODE));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ERASE_OBJECT_RENDERER));
 	original(
 		Self,
 		Other,
@@ -652,36 +864,6 @@ RValue& GmlScriptPickNodeCallback(
 				summoning_circle_positions.erase(it);
 			}
 		}
-
-		//if (game_is_active)
-		//{
-		//	g_ModuleInterface->Print(CM_WHITE, "=============== Result ===============");
-		//	if (Result.m_Kind == VALUE_OBJECT)
-		//	{
-		//		g_ModuleInterface->Print(CM_AQUA, "OBJECT");
-		//		g_ModuleInterface->EnumInstanceMembers(Result, EnumFunction);
-		//		g_ModuleInterface->Print(CM_WHITE, "------------------------------");
-		//	}
-		//	else if (Result.m_Kind == VALUE_ARRAY)
-		//	{
-		//		RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { Result });
-		//		g_ModuleInterface->Print(CM_AQUA, "ARRAY (length == %d)", static_cast<int>(array_length.m_Real));
-		//	}
-		//	else if (Result.m_Kind == VALUE_INT32)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: INT32 == %d", Result.m_i32);
-		//	else if (Result.m_Kind == VALUE_INT64)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: INT64 == %d", Result.m_i64);
-		//	else if (Result.m_Kind == VALUE_REAL)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: REAL == %f", Result.m_Real);
-		//	else if (Result.m_Kind == VALUE_BOOL)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: BOOL == %s", Result.m_Real == 0 ? "false" : "true");
-		//	else if (Result.m_Kind == VALUE_STRING)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: STRING == %s", Result.ToString());
-		//	else
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: OTHER");
-		//}
-
-		//PruneMissingSummoningCircles();
 	}
 
 	return Result;
@@ -695,7 +877,7 @@ RValue& GmlScriptOnRoomStartCallback(
 	IN RValue** Arguments
 )
 {
-	if (mod_is_healthy && once_per_save_load && ari_current_location == "farm")
+	if (mod_is_healthy && game_is_active && once_per_save_load && ari_current_location == "farm")
 	{
 		once_per_save_load = false;
 		PruneMissingSummoningCircles();
@@ -767,6 +949,22 @@ RValue& GmlScriptLoadGameCallback(
 	IN RValue** Arguments
 )
 {
+	if (mod_is_healthy)
+	{
+		// Get the save file name.
+		std::string save_file = std::string(Arguments[0]->GetRefMember("save_path")->ToString());
+		std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
+		std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
+
+		// Get the save prefix.
+		std::size_t first_hyphen_index = save_name.find_first_of("-") + 1;
+		std::size_t second_hyphen_index = save_name.find_last_of("-");
+		save_prefix = save_name.substr(first_hyphen_index, (second_hyphen_index - first_hyphen_index));
+
+		// Read from the custom mod data file.
+		ReadModSaveFile();
+	}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_LOAD_GAME));
 	original(
 		Self,
@@ -787,6 +985,30 @@ RValue& GmlScriptSaveGameCallback(
 	IN RValue** Arguments
 )
 {
+	if (mod_is_healthy)
+	{
+		// No save prefix has been detected. This should only happen when a new game is started.
+		if (save_prefix.size() == 0)
+		{
+			// Get the save file name.
+			std::string save_file = Arguments[0]->ToString();
+			std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
+			std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
+
+			// Check it's a valid value.
+			if (save_name.find("undefined") == std::string::npos)
+			{
+				// Get the save prefix.
+				std::size_t first_hyphen_index = save_name.find_first_of("-") + 1;
+				std::size_t second_hyphen_index = save_name.find_last_of("-");
+				save_prefix = save_name.substr(first_hyphen_index, (second_hyphen_index - first_hyphen_index));
+			}
+		}
+
+		if (save_prefix.size() != 0)
+			WriteModSaveFile();
+	}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SAVE_GAME));
 	original(
 		Self,
@@ -807,6 +1029,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 	IN RValue** Arguments
 )
 {
+	ResetStaticFields(true);
+
 	if (load_on_start)
 	{
 		load_on_start = false;
@@ -814,13 +1038,15 @@ RValue& GmlScriptSetupMainScreenCallback(
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		LoadObjectIds(Self, Other);
-		LoadLocationIds(global_instance);
+		mod_is_healthy &= LoadItemIds(global_instance);
+		mod_is_healthy &= LoadObjectIds(Self, Other);
+		mod_is_healthy &= LoadLocationIds(global_instance);
+		mod_is_healthy &= CreateOrLoadModConfigFile();
+		ModifyItem(item_name_to_id_map[SUMMONING_CIRCLE_ITEM_NAME]);
 
-		mod_is_healthy = true;
-	}
-	else
-		ResetStaticFields(true);
+		if (!mod_is_healthy)
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - The mod loaded in an unhealthy state and will NOT function!", MOD_NAME, VERSION);
+	}	
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SETUP_MAIN_SCREEN));
 	original(
@@ -957,30 +1183,30 @@ void CreateHookGmlScriptWriteFurnitureToLocation(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptPickNode(AurieStatus& status)
+void CreateHookGmlScriptEraseObjectRenderer(AurieStatus& status)
 {
-	CScript* gml_script_pick_node = nullptr;
+	CScript* gml_script_erase_object_renderer = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_PICK_NODE,
-		(PVOID*)&gml_script_pick_node
+		GML_SCRIPT_ERASE_OBJECT_RENDERER,
+		(PVOID*)&gml_script_erase_object_renderer
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PICK_NODE);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ERASE_OBJECT_RENDERER);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		GML_SCRIPT_PICK_NODE,
-		gml_script_pick_node->m_Functions->m_ScriptFunction,
-		GmlScriptPickNodeCallback,
+		GML_SCRIPT_ERASE_OBJECT_RENDERER,
+		gml_script_erase_object_renderer->m_Functions->m_ScriptFunction,
+		GmlScriptEraseObjectRendererCallback,
 		nullptr
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PICK_NODE);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ERASE_OBJECT_RENDERER);
 	}
 }
 
@@ -1200,7 +1426,7 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
-	CreateHookGmlScriptPickNode(status);
+	CreateHookGmlScriptEraseObjectRenderer(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
