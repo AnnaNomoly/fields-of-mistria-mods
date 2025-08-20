@@ -7,10 +7,11 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "SummoningCircle";
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.0.1";
 static const char* const GML_SCRIPT_TRY_OBJECT_ID_TO_STRING = "gml_Script_try_object_id_to_string";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
+static const char* const GML_SCRIPT_CLOSE_TEXTBOX = "gml_Script_begin_close@TextboxMenu@TextboxMenu";
 static const char* const GML_SCRIPT_TELEPORT_ARI_TO_ROOM = "gml_Script_ari_teleport_to_room"; // Used to teleport Ari.
 static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact"; // Used to track when the furniture is used.
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
@@ -90,7 +91,7 @@ void PrintError(std::exception_ptr eptr)
 		}
 	}
 	catch (const std::exception& e) {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Error: %s", VERSION, e.what());
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
 	}
 }
 
@@ -205,7 +206,7 @@ bool CreateOrLoadModConfigFile()
 		std::string summoning_circle_folder = mod_data_folder + "\\SummoningCircle";
 		if (!std::filesystem::exists(summoning_circle_folder))
 		{
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - The \"SummoningCircle\" directory was not found. Creating directory: %s", VERSION, summoning_circle_folder.c_str());
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"SummoningCircle\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, summoning_circle_folder.c_str());
 			std::filesystem::create_directory(summoning_circle_folder);
 
 			// Verify the directory now exists.
@@ -231,8 +232,8 @@ bool CreateOrLoadModConfigFile()
 				// Check if the json_object is empty.
 				if (json_object.empty())
 				{
-					g_ModuleInterface->Print(CM_LIGHTRED, "[SummoningCircle %s] - No values found in mod configuration file: %s!", VERSION, config_file.c_str());
-					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Add your desired values to the configuration file, otherwise defaults will be used.", VERSION);
+					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in mod configuration file: %s!", MOD_NAME, VERSION, config_file.c_str());
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Add your desired values to the configuration file, otherwise defaults will be used.", MOD_NAME, VERSION);
 					LogDefaultModConfigValues();
 				}
 				else
@@ -243,20 +244,20 @@ bool CreateOrLoadModConfigFile()
 						summoning_circle_shipping_bin_price = json_object[SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY];
 						if (summoning_circle_shipping_bin_price < 1 || summoning_circle_shipping_bin_price > 10000)
 						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[SummoningCircle %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, summoning_circle_shipping_bin_price, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", VERSION);
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE);
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, summoning_circle_shipping_bin_price, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE);
 							summoning_circle_shipping_bin_price = DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE;
 						}
 						else
 						{
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using CUSTOM \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, summoning_circle_shipping_bin_price);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, summoning_circle_shipping_bin_price);
 						}
 					}
 					else
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE);
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, SUMMONING_CIRCLE_SHIPPING_BIN_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_SHIPPING_BIN_PRICE);
 					}
 
 					// Try loading the summoning_circle_store_price value.
@@ -265,32 +266,32 @@ bool CreateOrLoadModConfigFile()
 						summoning_circle_store_price = json_object[SUMMONING_CIRCLE_STORE_PRICE_KEY];
 						if (summoning_circle_store_price < 1 || summoning_circle_store_price > 10000)
 						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[SummoningCircle %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, summoning_circle_store_price, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", VERSION);
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_STORE_PRICE);
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, summoning_circle_store_price, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_STORE_PRICE);
 							summoning_circle_store_price = DEFAULT_SUMMONING_CIRCLE_STORE_PRICE;
 						}
 						else
 						{
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using CUSTOM \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, summoning_circle_store_price);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, summoning_circle_store_price);
 						}
 					}
 					else
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[SummoningCircle %s] - Using DEFAULT \"%s\" value: %d!", VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_STORE_PRICE);
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, SUMMONING_CIRCLE_STORE_PRICE_KEY, DEFAULT_SUMMONING_CIRCLE_STORE_PRICE);
 					}
 
 					// Try loading the summoning_circle_confirmation_required value.
 					if (json_object.contains(SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY))
 					{
 						summoning_circle_confirmation_required = json_object[SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY];
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %s!", VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, summoning_circle_confirmation_required ? "true" : "false");
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, summoning_circle_confirmation_required ? "true" : "false");
 					}
 					else
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, DEFAULT_SUMMONING_CIRCLE_CONFIRMATION_REQUIRED ? "true" : "false");
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, SUMMONING_CIRCLE_CONFIRMATION_REQUIRED_KEY, DEFAULT_SUMMONING_CIRCLE_CONFIRMATION_REQUIRED ? "true" : "false");
 					}
 				}
 
@@ -301,8 +302,8 @@ bool CreateOrLoadModConfigFile()
 				eptr = std::current_exception();
 				PrintError(eptr);
 
-				g_ModuleInterface->Print(CM_LIGHTRED, "[SummoningCircle %s] - Failed to parse JSON from configuration file: %s", VERSION, config_file.c_str());
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - Make sure the file is valid JSON!", VERSION);
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from configuration file: %s", MOD_NAME, VERSION, config_file.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the file is valid JSON!", MOD_NAME, VERSION);
 				LogDefaultModConfigValues();
 			}
 
@@ -312,7 +313,7 @@ bool CreateOrLoadModConfigFile()
 		{
 			in_stream.close();
 
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SummoningCircle %s] - The \"SummoningCircle.json\" file was not found. Creating file: %s", VERSION, config_file.c_str());
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"SummoningCircle.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
 
 			json default_config_json = CreateModConfigJson(true);
 			std::ofstream out_stream(config_file);
@@ -369,21 +370,19 @@ bool LoadItemIds(CInstance* global_instance)
 		}
 	}
 
-	bool success = true;
-
 	if (!item_name_to_id_map.contains(SUMMONING_CIRCLE_ITEM_NAME))
 	{
-		success = false;
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load item data for: %s", MOD_NAME, VERSION, SUMMONING_CIRCLE_ITEM_NAME.c_str());
+		return false;
 	}
 	
 	if (item_name_to_id_map.size() == 0)
 	{
-		success = false;
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load ANY item data!", MOD_NAME, VERSION);
+		return false;
 	}
 
-	return success;
+	return true;
 }
 
 bool LoadObjectIds(CInstance* Self, CInstance* Other)
@@ -415,15 +414,15 @@ bool LoadObjectIds(CInstance* Self, CInstance* Other)
 			
 	}
 
-	if (object_id_to_name_map.size() == 0 || object_name_to_id_map.size() == 0)
+	if (!object_name_to_id_map.contains(SUMMONING_CIRCLE_ITEM_NAME) || !object_id_to_name_map.contains(object_name_to_id_map[SUMMONING_CIRCLE_ITEM_NAME]))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load ANY object data!", MOD_NAME, VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load object data for: %s", MOD_NAME, VERSION, SUMMONING_CIRCLE_ITEM_NAME.c_str());
 		return false;
 	}
 
-	if (!object_name_to_id_map.contains("summoning_circle") || !object_id_to_name_map.contains(object_name_to_id_map["summoning_circle"]))
+	if (object_id_to_name_map.size() == 0 || object_name_to_id_map.size() == 0)
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load summoning_circle object data!", MOD_NAME, VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load ANY object data!", MOD_NAME, VERSION);
 		return false;
 	}
 
@@ -444,6 +443,12 @@ bool LoadLocationIds(CInstance* global_instance)
 		location_name_to_id_map[array_element->ToString()] = i;
 	}
 
+	if (!location_name_to_id_map.contains(FARM_LOCATION_NAME))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to location data for: %s", MOD_NAME, VERSION, FARM_LOCATION_NAME.c_str());
+		return false;
+	}
+
 	if (location_name_to_id_map.size() == 0)
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load ANY location data!", MOD_NAME, VERSION);
@@ -462,7 +467,7 @@ void PruneMissingSummoningCircles()
 	CRoom* current_room = nullptr;
 	if (!AurieSuccess(g_ModuleInterface->GetCurrentRoomData(current_room)))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to obtain the current room!", MOD_NAME, VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get data for the current room!", MOD_NAME, VERSION);
 		return;
 	}
 
@@ -485,7 +490,7 @@ void PruneMissingSummoningCircles()
 		if (!protoMap.contains("object_id")) continue;
 
 		int object_id = protoMap["object_id"]->ToInt64();
-		if (object_id == object_name_to_id_map["summoning_circle"])
+		if (object_id == object_name_to_id_map[SUMMONING_CIRCLE_ITEM_NAME])
 		{
 			int x = nodeRefMap["top_left_x"]->ToInt64();
 			int y = nodeRefMap["top_left_y"]->ToInt64();
@@ -508,9 +513,11 @@ void ModifyItem(int item_id)
 
 	// Modify the item's value.
 	RValue value = *item.GetRefMember("value");
-	RValue bin = *value.GetRefMember("bin");
-	RValue store = *value.GetRefMember("store");
-	
+	*value.GetRefMember("bin") = summoning_circle_shipping_bin_price;
+	*value.GetRefMember("store") = summoning_circle_store_price;
+	//RValue bin = *value.GetRefMember("bin");
+	//RValue store = *value.GetRefMember("store");
+	//
 	//bin = summoning_circle_shipping_bin_price;
 	//store = summoning_circle_store_price;
 }
@@ -567,7 +574,7 @@ void CloseTextbox(CInstance* Self, CInstance* Other)
 {
 	CScript* gml_script_close_textbox = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_begin_close@TextboxMenu@TextboxMenu",
+		GML_SCRIPT_CLOSE_TEXTBOX,
 		(PVOID*)&gml_script_close_textbox
 	);
 
@@ -638,7 +645,7 @@ void ObjectCallback(
 			int y = (teleport_ari_to.second * 8) + 12;
 
 			teleport_ari_to = {};
-			TeleportAriToRoom(self, other, location_name_to_id_map["farm"], x, y);
+			TeleportAriToRoom(self, other, location_name_to_id_map[FARM_LOCATION_NAME], x, y);
 		}
 
 		if (play_conversation)
@@ -663,7 +670,7 @@ RValue& GmlScriptInteractCallback(
 		int object_id = object.GetMember("object_id").ToInt64();
 		std::string object_name = object_id_to_name_map[object_id];
 
-		if (object_name == "summoning_circle")
+		if (object_name == SUMMONING_CIRCLE_ITEM_NAME)
 		{
 			if (summoning_circle_positions.size() < 2)
 			{
@@ -721,7 +728,7 @@ RValue& GmlScriptGetLocalizerCallback(
 {
 	if (mod_is_healthy && game_is_active)
 	{
-		if (ari_current_location == "farm" && Arguments[0]->ToString() == "misc_local/input_interact")
+		if (ari_current_location == FARM_LOCATION_NAME && Arguments[0]->ToString() == "misc_local/input_interact")
 		{
 			for (auto it : summoning_circle_positions)
 			{
@@ -814,7 +821,7 @@ RValue& GmlScriptWriteFurnitureToLocationCallback(
 		if (Result.m_Kind != VALUE_UNDEFINED && Result.m_Kind != VALUE_UNSET && Result.m_Kind != VALUE_NULL)
 		{
 			RValue object_id = Result.GetMember("object_id");
-			if (object_id.ToInt64() == object_name_to_id_map["summoning_circle"])
+			if (object_id.ToInt64() == object_name_to_id_map[SUMMONING_CIRCLE_ITEM_NAME])
 			{
 				RValue top_left_x = Result.GetMember("top_left_x");
 				RValue top_left_y = Result.GetMember("top_left_y");
@@ -847,10 +854,10 @@ RValue& GmlScriptEraseObjectRendererCallback(
 		Arguments
 	);
 
-	if (mod_is_healthy && game_is_active && ari_current_location == "farm")
+	if (mod_is_healthy && game_is_active && ari_current_location == FARM_LOCATION_NAME)
 	{
 		int object_id = Arguments[0]->GetMember("object_id").ToInt64();
-		if (object_id == object_name_to_id_map["summoning_circle"])
+		if (object_id == object_name_to_id_map[SUMMONING_CIRCLE_ITEM_NAME])
 		{
 			int x = Arguments[0]->GetMember("top_left_x").ToInt64();
 			int y = Arguments[0]->GetMember("top_left_y").ToInt64();
@@ -877,7 +884,7 @@ RValue& GmlScriptOnRoomStartCallback(
 	IN RValue** Arguments
 )
 {
-	if (mod_is_healthy && game_is_active && once_per_save_load && ari_current_location == "farm")
+	if (mod_is_healthy && game_is_active && once_per_save_load && ari_current_location == FARM_LOCATION_NAME)
 	{
 		once_per_save_load = false;
 		PruneMissingSummoningCircles();
