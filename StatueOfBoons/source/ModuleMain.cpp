@@ -33,7 +33,7 @@ static const char* const GML_SCRIPT_CREATE_BUG = "gml_Script_setup@gml_Object_ob
 static const char* const GML_SCRIPT_ADD_HEART_POINTS = "gml_Script_add_heart_points@Npc@Npc";
 static const char* const GML_SCRIPT_MODIFY_STAMINA = "gml_Script_modify_stamina@Ari@Ari";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
-static const char* const GML_SCRIPT_END_DAY = "gml_Script_can_talk@gml_Object_par_NPC_Create_0";
+static const char* const GML_SCRIPT_END_DAY = "gml_Script_end_day";
 static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
@@ -124,16 +124,6 @@ static std::random_device rd;
 static std::mt19937 gen(rd());
 static std::string save_prefix = "";
 static std::string mod_folder = "";
-static std::vector<std::string> struct_field_names = {};
-
-
-bool GameIsPaused()
-{
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-	RValue paused = global_instance->at("__pause_status");
-	return paused.m_i64 > 0;
-}
 
 int RValueAsInt(RValue value)
 {
@@ -697,24 +687,6 @@ void ResetStaticFields(bool returned_to_title_screen)
 	dragon_fairy_location = NONE;
 }
 
-bool GetStructFieldNames(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	struct_field_names.push_back(MemberName);
-	return false;
-}
-
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
-}
-
 void ObjectCallback(
 	IN FWCodeEvent& CodeEvent
 )
@@ -746,59 +718,6 @@ void ObjectCallback(
 
 		ari_current_mana = RValueAsInt(GetCurrentMana(global_instance->at("__ari").m_Object, self));
 		ari_current_essence = RValueAsInt(GetCurrentEssence(global_instance->at("__ari").m_Object, self));
-	}
-
-	if (strstr(self->m_Object->m_Name, "obj_dozy") && !GameIsPaused())
-	{
-		//g_ModuleInterface->Print(CM_WHITE, "========== %s ==========", "obj_dozy");
-		//struct_field_names = {};
-		//g_ModuleInterface->EnumInstanceMembers(self, GetStructFieldNames);
-		//for (int j = 0; j < struct_field_names.size(); j++)
-		//{
-		//	std::string field_name = struct_field_names[j];
-		//	RValue field = self->at(field_name);
-		//	if (field.m_Kind == VALUE_OBJECT)
-		//	{
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: OBJECT", field_name.c_str());
-		//		g_ModuleInterface->EnumInstanceMembers(field, EnumFunction);
-		//		g_ModuleInterface->Print(CM_WHITE, "------------------------------");
-		//	}
-		//	else if (field.m_Kind == VALUE_ARRAY)
-		//	{
-		//		RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { field });
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: ARRAY (length == %d)", field_name.c_str(), static_cast<int>(array_length.m_Real));
-		//		for (int k = 0; k < array_length.m_Real; k++)
-		//		{
-		//			//INT64 == 956
-		//			RValue array_element = g_ModuleInterface->CallBuiltin("array_get", { field, k });
-		//			int temp = 5;
-		//		}
-		//	}
-		//	else if (field.m_Kind == VALUE_INT32)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: INT32 == %d", field_name.c_str(), field.m_i32);
-		//	else if (field.m_Kind == VALUE_INT64)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: INT64 == %d", field_name.c_str(), field.m_i64);
-		//	else if (field.m_Kind == VALUE_REAL)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: REAL == %f", field_name.c_str(), field.m_Real);
-		//	else if (field.m_Kind == VALUE_BOOL)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: BOOL == %s", field_name.c_str(), field.m_Real == 0 ? "false" : "true");
-		//	else if (field.m_Kind == VALUE_STRING)
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: STRING == %s", field_name.c_str(), field.AsString().data());
-		//	else
-		//		g_ModuleInterface->Print(CM_AQUA, "%s: OTHER", field_name.c_str());
-		//}
-
-	
-		//RValue me_exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "me" });
-		//if (me_exists.m_Kind == VALUE_BOOL && me_exists.m_Real == 1)
-		//{
-		//	RValue talk = g_ModuleInterface->CallBuiltin("struct_get", { self, "talk" });
-		//	g_ModuleInterface->CallBuiltin("struct_set", { talk, "timer", 0.0 });
-
-		//	RValue can_talk = g_ModuleInterface->CallBuiltin("struct_get", { self, "can_talk" });
-		//	g_ModuleInterface->CallBuiltin("struct_set", { can_talk, "timer", 0.0 });
-		//}
-			
 	}
 }
 
@@ -1107,13 +1026,12 @@ RValue& GmlScriptEndDayCallback(
 		Arguments
 	);
 
-	//std::string active_boon_str = GetActiveBoonString();
-	//if (active_boon_str != NONE)
-	//	previous_boon = active_boon_str;
+	std::string active_boon_str = GetActiveBoonString();
+	if (active_boon_str != NONE)
+		previous_boon = active_boon_str;
 
-	//ResetStaticFields(false);
+	ResetStaticFields(false);
 	
-	Result = true;
 	return Result;
 }
 

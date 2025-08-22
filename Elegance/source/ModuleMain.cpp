@@ -1,5 +1,6 @@
 #include <unordered_set>
 #include <fstream>
+#include <nlohmann/json.hpp>
 #include <YYToolkit/YYTK_Shared.hpp>
 using namespace Aurie;
 using namespace YYTK;
@@ -9,7 +10,8 @@ static const char* const VERSION = "1.0.0";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_CLOSE_TEXTBOX = "gml_Script_begin_close@TextboxMenu@TextboxMenu";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
-static const char* const GML_SCRIPT_GET_GOSSIP_SELECTIONS = "gml_Script_get_gossip_selections";
+static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_get_gossip_selections";
+static const char* const GML_SCRIPT_GOSSIP_MENU = "gml_Script_GossipMenu";
 static const char* const GML_SCRIPT_ADD_NPC_HEART_POINTS = "gml_Script_add_heart_points@Npc@Npc";
 static const char* const GML_SCRIPT_GOSSIP_MENU_ON_CLOSE = "gml_Script_on_close@GossipMenu@GossipMenu";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
@@ -23,10 +25,22 @@ static const std::string ELEGANT_SHOES_ITEM_NAME = "elegant_shoes";
 static const std::string TEAPOT_HAT_ITEM_NAME = "head_teapot";
 static const std::unordered_set<std::string> ELEGANT_SET_ITEMS = { ELEGANT_HAT_ITEM_NAME, ELEGANT_DRESS_ITEM_NAME, ELEGANT_SHOES_ITEM_NAME };
 static const std::unordered_set<std::string> INELEGANT_ITEMS = { TEAPOT_HAT_ITEM_NAME };
+static const std::unordered_set<std::string> GOSSIP_CONVERSATIONS = {
+	"Conversations/gossip/gossip_one",
+	"Conversations/gossip/gossip_two",
+	"Conversations/gossip/gossip_three",
+	"Conversations/gossip/gossip_four",
+	"Conversations/gossip/gossip_five",
+	"Conversations/gossip/gossip_six",
+	"Conversations/gossip/gossip_seven",
+	"Conversations/gossip/gossip_eight",
+};
 static const std::string ELSIE_NO_GOSSIP_CONVERSATION_KEY = "Conversations/gossip/no_gossip";
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static CInstance* global_instance = nullptr;
+static bool load_on_start = true;
+static bool mod_is_healthy = true;
 static bool game_is_active = false;
 static bool inelegant_cosmetics_equipped = false;
 static bool wont_gossip = false;
@@ -34,17 +48,30 @@ static int elegant_cosmetics_equipped = 0;
 static bool can_gossip_again = true;
 static std::map<std::string, int> item_name_to_id_map = {};
 
+bool EnumFunction(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
+	return false;
+}
+
 void ResetStaticFields(bool returned_to_title_screen)
 {
 	if (returned_to_title_screen)
 	{
-		game_is_active = false;
 		inelegant_cosmetics_equipped = false;
 		wont_gossip = false;
 		elegant_cosmetics_equipped = 0;
 	}
 	
 	can_gossip_again = true;
+}
+
+void SetHasGossipedToday()
+{
+	global_instance->ToRValue()["__ari"]["has_gossiped_today"] = true;
 }
 
 void ResetHasGossipedToday()
@@ -180,7 +207,7 @@ void ObjectCallback(
 	if (!strstr(self->m_Object->m_Name, "obj_ari"))
 		return;
 
-	if (game_is_active)
+	if (/*mod_is_healthy &&*/ game_is_active)
 	{
 		elegant_cosmetics_equipped = CountElegantItemsEquipped();
 		inelegant_cosmetics_equipped = InelegantItemsEquipped();
@@ -202,6 +229,10 @@ RValue& GmlScriptPlayConversationCallback(
 			wont_gossip = false;
 			*Arguments[1] = RValue(ELEGANCE_WONT_GOSSIP_CONVERSATION_KEY);
 		}
+		//if (GOSSIP_CONVERSATIONS.contains(Arguments[1]->ToString()))
+		//{
+		//	*Arguments[1] = RValue(ELEGANCE_WONT_GOSSIP_CONVERSATION_KEY);
+		//}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_CONVERSATION));
@@ -224,7 +255,7 @@ RValue& GmlScriptPlayTextCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_GOSSIP_SELECTIONS));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_TEXT));
 	original(
 		Self,
 		Other,
@@ -235,10 +266,30 @@ RValue& GmlScriptPlayTextCallback(
 
 	if (game_is_active && inelegant_cosmetics_equipped)
 	{
-		wont_gossip = true;
 		Result = g_ModuleInterface->CallBuiltin("array_create", { 0 });
+		wont_gossip = true;
 	}
 	
+	return Result;
+}
+
+RValue& GmlScriptGossipMenuCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GOSSIP_MENU));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
 	return Result;
 }
 
@@ -419,18 +470,18 @@ void CreateHookGmlScriptPlayText(AurieStatus& status)
 {
 	CScript* gml_script_play_text = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_GET_GOSSIP_SELECTIONS,
+		GML_SCRIPT_PLAY_TEXT,
 		(PVOID*)&gml_script_play_text
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_GOSSIP_SELECTIONS);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_TEXT);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		GML_SCRIPT_GET_GOSSIP_SELECTIONS,
+		GML_SCRIPT_PLAY_TEXT,
 		gml_script_play_text->m_Functions->m_ScriptFunction,
 		GmlScriptPlayTextCallback,
 		nullptr
@@ -438,7 +489,34 @@ void CreateHookGmlScriptPlayText(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_GOSSIP_SELECTIONS);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_TEXT);
+	}
+}
+
+void CreateHookGmlScriptGossipMenu(AurieStatus& status)
+{
+	CScript* gml_script_gossip_menu = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GOSSIP_MENU,
+		(PVOID*)&gml_script_gossip_menu
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GOSSIP_MENU);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GOSSIP_MENU,
+		gml_script_gossip_menu->m_Functions->m_ScriptFunction,
+		GmlScriptGossipMenuCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GOSSIP_MENU);
 	}
 }
 
@@ -611,6 +689,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptPlayText(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptGossipMenu(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);

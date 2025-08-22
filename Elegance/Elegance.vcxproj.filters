@@ -44,13 +44,8 @@
     <ClInclude Include="include\YYToolkit\YYTK_Shared_Types.hpp">
       <Filter>Hlavičkové soubory</Filter>
     </ClInclude>
-    <ClInclude Include="resource.h">
+    <ClInclude Include="include\nlohmann\json.hpp">
       <Filter>Hlavičkové soubory</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="Elegance.rc">
-      <Filter>Soubory zdrojů</Filter>
-    </ResourceCompile>
   </ItemGroup>
 </Project>

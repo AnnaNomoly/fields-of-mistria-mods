@@ -7,7 +7,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "SummoningCircle";
-static const char* const VERSION = "1.0.2";
+static const char* const VERSION = "1.0.1";
 static const char* const GML_SCRIPT_TRY_OBJECT_ID_TO_STRING = "gml_Script_try_object_id_to_string";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
@@ -800,9 +800,7 @@ RValue& GmlScriptWriteFurnitureToLocationCallback(
 	IN RValue** Arguments
 )
 {
-	if (mod_is_healthy && game_is_active && 
-		Arguments[3]->GetRefMember("object_id")->ToInt64() == object_name_to_id_map[SUMMONING_CIRCLE_ITEM_NAME] &&
-		summoning_circle_positions.size() == 2)
+	if (mod_is_healthy && game_is_active && summoning_circle_positions.size() == 2)
 	{
 		CreateNotification(SUMMONING_CIRCLE_TWO_ALREADY_PRESENT_NOTIFICATION_KEY, Self, Other);
 		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] You already have two summoning circles on your farm!");
