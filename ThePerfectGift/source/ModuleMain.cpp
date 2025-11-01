@@ -1,13 +1,13 @@
 #include <map>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "ThePerfectGift";
-static const char* const VERSION = "1.1.4";
+static const char* const VERSION = "1.1.5";
 static const char* const UNLOCK_ALL_GIFT_PREFERENCES_KEY = "unlock_all_gift_preferences";
 static const char* const SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS_KEY = "show_gift_preferences_on_item_tooltips";
 static const char* const GML_SCRIPT_TRY_ITEM_ID_TO_STRING = "gml_Script_try_item_id_to_string";
@@ -83,6 +83,8 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Adeline/Market Lines/market_darcy_4/market_darcy_4/init", { ADELINE, "spicy_cheddar_biscuit" }},
 	{ "Cutscenes/Story Events/adeline_quest_board/adeline_quest_board/15", { ADELINE, "tulip" }},
 	{ "Cutscenes/Story Events/adeline_quest_board/adeline_quest_board/17", { ADELINE, "tulip" }},
+	{ "Conversations/Bank/Josephine/Banked Lines/week_one_pt_2/week_two/4", { ADELINE, "coffee" }},
+	{ "Conversations/Group Conversations/Adeline_Balor/market/market/2", { ADELINE, "coffee" }},
 	// Balor
 	{ "Conversations/Bank/Balor/Relationship Lines/Relationship/post_8h_lines_romantic/balor_post_8h_romantic_3/init", { BALOR, "ore_diamond", "ore_ruby"}},
 	{ "Conversations/Bank/Balor/Banked Lines/bath_smelled_nice/bath_smelled_nice/1", { BALOR, "jasmine" }},
@@ -120,20 +122,25 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Celine/Market Lines/market_darcy_3/market_darcy_3/init", { CELINE, "rose_tea" }},
 	{ "Conversations/Group Conversations/Celine_Reina/foraging/foraging/1", { CELINE, "frost_lily" }},	
 	// Darcy
-	{ "Conversations/General Dialogue/birthday_anticipation/darcy_birthday_anticipation/1", { DARCY, "apple" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/darcy_birthday_anticipation_dell/1", { DARCY, "apple" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/darcy_birthday_anticipation_luc/1", { DARCY, "apple" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/darcy_birthday_anticipation_maple/1", { DARCY, "apple" }},
 	// Dell
 	{ "Conversations/Bank/Dell/Museum Lines/alda_bronze_sword/alda_bronze_sword/init", { DELL, "alda_bronze_sword" }},
 	{ "Conversations/Bank/Dell/Museum Lines/aldarian_sword/aldarian_sword/init", { DELL, "aldarian_sword" }},
 	{ "Conversations/Bank/Dell/Museum Lines/caldosian_sword/caldosian_sword/init", { DELL, "caldosian_sword" }},
 	{ "Conversations/Bank/Dell/Museum Lines/lightning_dragonfly/lightning_dragonfly/init", { DELL, "lightning_dragonfly" }},
-	{ "Conversations/General Dialogue/birthday_anticipation/dell_birthday_anticipation_family/init", { DELL, "chocolate" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/dell_birthday_anticipation_holt/init", { DELL, "chocolate" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/dell_birthday_anticipation_nora/init", { DELL, "chocolate" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/dell_birthday_anticipation_celine/init", { DELL, "chocolate" }},
 	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_dell/12", { DELL, "chocolate" }},
 	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_turn_in/2", { DELL, "chocolate" }},
 	// Dozy
 	// Eiland
-	{ "Conversations/Bank/Eiland/Relationship Lines/post_8h_lines_romantic/eiland_post_8h_romantic_4/2", { EILAND, "golden_cheesecake" }},
+	{ "Conversations/Bank/Eiland/Relationship Lines/Relationship/post_8h_lines_romantic/eiland_post_8h_romantic_4/2", { EILAND, "golden_cheesecake" }},
 	{ "Conversations/Bank/Eiland/Banked Lines/pumpkin_pie/pumpkin_pie/init", { EILAND, "pumpkin_pie" }},
 	{ "Conversations/Bank/Eiland/Market Lines/market_darcy_1/market_darcy_1/init", { EILAND, "roasted_rice_tea" }},
+	{ "Conversations/Bank/Eiland/Banked Lines/breakfast/breakfast_2/2", { EILAND, "strawberry_shortcake" }},
 	// Elsie
 	{ "Conversations/Bank/Elsie/Market Lines/market_darcy_1/market_darcy_1/init", { ELSIE, "jasmine_tea" }},
 	{ "Conversations/Bank/Elsie/Market Lines/market_darcy_2/market_darcy_2/init", { ELSIE, "jasmine_tea" }},
@@ -165,7 +172,8 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/fetch_quests_follow_ups/request_for_ultimate_small_animal_feed_follow_up_henrietta/init", { HENRIETTA, "ultimate_small_animal_feed" }},
 	// Holt
 	{ "Conversations/Bank/Holt/Museum Lines/narrows_moss/narrows_moss/init", { HOLT, "narrows_moss" }},
-	{ "Conversations/General Dialogue/birthday_anticipation/holt_birthday_anticipation_kids/1", { HOLT, "hard_wood" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/holt_birthday_anticipation_dell/1", { HOLT, "hard_wood" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/holt_birthday_anticipation_celine/1", { HOLT, "hard_wood" }},
 	// Josephine
 	{ "Conversations/Bank/Hemlock/Gift Lines/gift_lines/crayfish_etouffee/init", { JOSEPHINE, "crayfish_etouffee" }}, // Gift Line
 	{ "Conversations/Bank/Josephine/Gift Lines/gift_lines/crayfish_etouffee/init", { JOSEPHINE, "crayfish_etouffee" }}, // Gift Line
@@ -181,20 +189,22 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Juniper/Banked Lines/middlemist_red/middlemist_red/init", { JUNIPER, "middlemist" }},
 	{ "Conversations/Bank/Juniper/Banked Lines/new_potion/new_potion/init", { JUNIPER, "newt" }},
 	{ "Conversations/Bank/Juniper/Banked Lines/orb_viewing/orb_viewing_2/1", { JUNIPER, "water_chestnut_fritters" }},
-	{ "Conversations/Bank/Juniper/Gift Lines/gift_lines/ancient_royal_scepter/init", { JUNIPER, "ancient_royal_scepter" } }, // Gift Line
-	{ "Conversations/Bank/Juniper/Gift Lines/gift_lines/crystal_rose/init", { JUNIPER, "crystal_rose" } }, // Gift Line
+	{ "Conversations/Bank/Juniper/Gift Lines/gift_lines/ancient_royal_scepter/init", { JUNIPER, "ancient_royal_scepter" }}, // Gift Line
+	{ "Conversations/Bank/Juniper/Gift Lines/gift_lines/crystal_rose/init", { JUNIPER, "crystal_rose" }}, // Gift Line
 	{ "Conversations/Bank/Juniper/Market Lines/market_darcy_1/market_darcy_1/init", { JUNIPER, "latte" }},
 	{ "Conversations/Bank/Juniper/Museum Lines/ancient_royal_scepter/ancient_royal_scepter/init", { JUNIPER, "ancient_royal_scepter" }},
 	{ "Conversations/Bank/Valen/Market Lines/market_darcy_4/market_darcy_4/init", { JUNIPER, "latte" }},
 	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_balor/2", { JUNIPER, "newt" }},
 	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_balor/4", { JUNIPER, "newt" }},
 	{ "Conversations/Tutorial Dialogue/misc_quest_lines/gossip_for_elsie_turn_in/7", { JUNIPER, "newt" }},
+	{ "Conversations/General Dialogue/ari_birthday/ari_birthday_juniper_low_hearts/2", { JUNIPER, "newt" }},
 	// Landen
 	{ "Conversations/Bank/Landen/Banked Lines/inn_special/inn_special/init", { LANDEN, "vegetable_pot_pie" }},
 	{ "Cutscenes/Heart Events/Ryis/ryis_six_hearts/ryis_six_hearts/17", { LANDEN, "coconut_cream_pie" }},
+	{ "Cutscenes/Story Events/Town Repair/upgrade_the_carpenters_shop/upgrade_the_carpenters_shop_pt_2_follow_up_landen/1", { LANDEN, "vegetable_pot_pie" }},
 	// Luc
-	{ "Conversations/fetch_quests_follow_ups/request_for_cheese_follow_up_hemlock/init", { LUC, "cheese" } },
-	{ "Conversations/Bank/Luc/Gift Lines/gift_lines/grilled_cheese/init", { LUC, "grilled_cheese" } }, // Gift Line
+	{ "Conversations/fetch_quests_follow_ups/request_for_cheese_follow_up_hemlock/init", { LUC, "cheese" }},
+	{ "Conversations/Bank/Luc/Gift Lines/gift_lines/grilled_cheese/init", { LUC, "grilled_cheese" }}, // Gift Line
 	{ "Conversations/Bank/Luc/Market Lines/market_darcy_1/market_darcy_1/init", { LUC, "hot_cocoa" }},
 	{ "Conversations/Bank/Luc/Museum Lines/amber_trapped_insect/amber_trapped_insect/init", { LUC, "amber_trapped_insect" }},
 	{ "Conversations/Bank/Luc/Museum Lines/cave_shrimp/cave_shrimp/init", { LUC, "cave_shrimp" }},
@@ -206,12 +216,12 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Luc/Museum Lines/strobe_firefly/strobe_firefly/init", { LUC, "strobe_firefly" }},
 	{ "Conversations/Bank/Reina/Banked Lines/luc_and_maple_cheese/luc_and_maple_cheese/init", { LUC, "cheese" }},
 	// Louis
-	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/crystal/init", { LOUIS, "crystal" } }, // Gift Line
-	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/lilac/init", { LOUIS, "lilac" } }, // Gift Line
-	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/red_wine/init", { LOUIS, "red_wine" } }, // Gift Line
-	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/white_wine/init", { LOUIS, "white_wine" } }, // Gift Line
+	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/crystal/init", { LOUIS, "crystal" }}, // Gift Line
+	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/lilac/init", { LOUIS, "lilac" }}, // Gift Line
+	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/red_wine/init", { LOUIS, "red_wine" }}, // Gift Line
+	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/white_wine/init", { LOUIS, "white_wine" }}, // Gift Line
 	// Maple
-	{ "Conversations/Bank/Maple/Gift Lines/gift_lines/berries_and_cream/init", { MAPLE, "berries_and_cream" } }, // Gift Line
+	{ "Conversations/Bank/Maple/Gift Lines/gift_lines/berries_and_cream/init", { MAPLE, "berries_and_cream" }}, // Gift Line
 	{ "Conversations/Bank/Maple/Market Lines/market_darcy_2/market_darcy_2/init", { MAPLE, "hot_cocoa" }},
 	{ "Conversations/Bank/Maple/Market Lines/market_darcy_4/market_darcy_4/init", { MAPLE, "hot_cocoa" }},
 	{ "Conversations/Bank/Maple/Museum Lines/stone_shell/stone_shell/init", { MAPLE, "stone_shell" }},
@@ -221,81 +231,89 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/March/Banked Lines/beer/beer/init", { MARCH, "beer" }},
 	{ "Conversations/Bank/March/Banked Lines/chocolate/chocolate/init", { MARCH, "chocolate" }},
 	{ "Conversations/Bank/March/Banked Lines/cold_beer_long_day/cold_beer_long_day/init", { MARCH, "beer" }},
-	{ "Conversations/Bank/March/Gift Lines/gift_lines/gold_ingot/init", { MARCH, "gold_ingot" } }, // Gift Line
-	{ "Conversations/Bank/March/Gift Lines/gift_lines/mocha/init", { MARCH, "mocha" } }, // Gift Line
-	{ "Conversations/Bank/March/Gift Lines/gift_lines/red_snapper_sushi/init", { MARCH, "red_snapper_sushi" } }, // Gift Line
+	{ "Conversations/Bank/March/Gift Lines/gift_lines/gold_ingot/init", { MARCH, "gold_ingot" }}, // Gift Line
+	{ "Conversations/Bank/March/Gift Lines/gift_lines/mocha/init", { MARCH, "mocha" }}, // Gift Line
+	{ "Conversations/Bank/March/Gift Lines/gift_lines/red_snapper_sushi/init", { MARCH, "red_snapper_sushi" }}, // Gift Line
 	{ "Conversations/Bank/March/Market Lines/market_darcy_1/market_darcy_1/init", { MARCH, "hot_cocoa" }},
 	{ "Conversations/Bank/March/Market Lines/market_darcy_3/market_darcy_3/init", { MARCH, "hot_cocoa" }},
 	{ "Conversations/Bank/March/Museum Lines/meteorite/meteorite/init", { MARCH, "meteorite" }},
 	{ "Conversations/Bank/March/Museum Lines/perfect_copper_ore/perfect_copper_ore/init", { MARCH, "perfect_copper_ore" }},
 	{ "Conversations/Bank/March/Museum Lines/perfect_iron_ore/perfect_iron_ore/init", { MARCH, "perfect_iron_ore" }},
 	{ "Conversations/Bank/March/Museum Lines/perfect_silver_ore/perfect_silver_ore/init", { MARCH, "perfect_silver_ore" }},
-	{ "Conversations/Festival Lines/March/animal_festival/animal_festival_0/init", { MARCH, "hot_cocoa" } },
-	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/1", { MARCH, "coffee" } },
+	{ "Conversations/Festival Lines/March/animal_festival/animal_festival_0/init", { MARCH, "hot_cocoa" }},
+	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/1", { MARCH, "coffee" }},
 	// Merri
-	{ "Conversations/Bank/Merri/Gift Lines/gift_lines/glass/init", { MERRI, "glass" } }, // Gift Line
-	{ "Conversations/Bank/Merri/Gift Lines/gift_lines/hard_wood/init", { MERRI, "hard_wood" } }, // Gift Line
-	{ "Conversations/Bank/Merri/Gift Lines/gift_lines/latte/init", { MERRI, "latte" } }, // Gift Line
+	{ "Conversations/Bank/Merri/Gift Lines/gift_lines/glass/init", { MERRI, "glass" }}, // Gift Line
+	{ "Conversations/Bank/Merri/Gift Lines/gift_lines/hard_wood/init", { MERRI, "hard_wood" }}, // Gift Line
+	{ "Conversations/Bank/Merri/Gift Lines/gift_lines/latte/init", { MERRI, "latte" }}, // Gift Line
 	// Nora
-	{ "Conversations/Bank/Nora/Gift Lines/gift_lines/ancient_gold_coin/init", { NORA, "ancient_gold_coin" } }, // Gift Line
-	{ "Conversations/Bank/Nora/Gift Lines/gift_lines/coffee/init", { NORA, "coffee" } }, // Gift Line
+	{ "Conversations/Bank/Nora/Gift Lines/gift_lines/ancient_gold_coin/init", { NORA, "ancient_gold_coin" }}, // Gift Line
+	{ "Conversations/Bank/Nora/Gift Lines/gift_lines/coffee/init", { NORA, "coffee" }}, // Gift Line
 	{ "Conversations/Bank/Nora/Market Lines/market_darcy_4/market_darcy_4/init", { NORA, "latte" }},
 	{ "Conversations/Bank/Nora/Museum Lines/ancient_gold_coin/ancient_gold_coin/init", { NORA, "ancient_gold_coin" }},
-	{ "Conversations/General Dialogue/birthday_anticipation/nora_birthday_anticipation_kids/1", { NORA, "baked_potato" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/nora_birthday_anticipation_dell/1", { NORA, "baked_potato" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/nora_birthday_anticipation_celine/1", { NORA, "baked_potato" }},
 	// Olric
-	{ "Conversations/Bank/March/Banked Lines/hardboiled_egg/hardboiled_egg/init", { OLRIC, "hard_boiled_egg" } },
-	{ "Conversations/Bank/Olric/Gift Lines/gift_lines/hard_boiled_egg/init", { OLRIC, "hard_boiled_egg" } }, // Gift Line
-	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/3", { OLRIC, "hard_boiled_egg" } },
-	{ "Conversations/Bank/March/Banked Lines/olric_stone/olric_stone/init", { OLRIC, "ore_stone" } },
-	{ "Conversations/Bank/Olric/Market Lines/market_wheedle_1/market_wheedle_1/init", { OLRIC, "ore_stone" } },
+	{ "Conversations/Bank/March/Banked Lines/hardboiled_egg/hardboiled_egg/init", { OLRIC, "hard_boiled_egg" }},
+	{ "Conversations/Bank/Olric/Gift Lines/gift_lines/hard_boiled_egg/init", { OLRIC, "hard_boiled_egg" }}, // Gift Line
+	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/3", { OLRIC, "hard_boiled_egg" }},
+	{ "Conversations/Bank/March/Banked Lines/olric_stone/olric_stone/init", { OLRIC, "ore_stone" }},
+	{ "Conversations/Bank/Olric/Market Lines/market_wheedle_1/market_wheedle_1/init", { OLRIC, "ore_stone" }},
 	// Priestess
 	// Reina
-	{ "Conversations/Bank/Reina/Relationship Lines/post_8h_lines_romantic/reina_post_8h_romantic_2/1", { REINA, "cauliflower_curry" } },
-	{ "Conversations/Bank/Reina/Relationship Lines/post_8h_lines_romantic/reina_post_8h_romantic_8/1", { REINA, "turnip_and_potato_gratin" } },
+	{ "Conversations/Bank/Reina/Relationship Lines/Relationship/post_8h_lines_romantic/reina_post_8h_romantic_2/1", { REINA, "cauliflower_curry" }},
+	{ "Conversations/Bank/Reina/Relationship Lines/Relationship/post_8h_lines_romantic/reina_post_8h_romantic_8/1", { REINA, "turnip_and_potato_gratin" }},
 	{ "Conversations/Bank/Reina/Banked Lines/garlic/garlic/init", { REINA, "garlic" }},
 	{ "Conversations/Bank/Reina/Banked Lines/garlic/garlic_2/init", { REINA, "garlic" }},
-	{ "Conversations/Bank/Reina/Gift Lines/gift_lines/daffodil/init", { REINA, "daffodil" } }, // Gift Line
+	{ "Conversations/Bank/Reina/Banked Lines/general_store_shopping/general_store_shopping_3/init", { REINA, "garlic" }},
+	{ "Conversations/Bank/Reina/Gift Lines/gift_lines/daffodil/init", { REINA, "daffodil" }}, // Gift Line
 	{ "Conversations/Bank/Reina/Market Lines/market_darcy_1/market_darcy_1/init", { REINA, "coffee", "iced_coffee"}},
 	{ "Conversations/Bank/Reina/Market Lines/market_darcy_4/market_darcy_4/init", { REINA, "coffee" }},
 	{ "Cutscenes/Heart Events/Reina/reina_six_hearts/reina_six_hearts/37", { REINA, "grilled_cheese" }},
 	{ "Cutscenes/Heart Events/Reina/reina_two_hearts/reina_two_hearts/1", { REINA, "wildberry_pie" }},
+	{ "Conversations/General Dialogue/ari_birthday/ari_birthday_reina_romantic/1", { REINA, "wildberry_pie" }},
 	// Ryis
-	{ "Conversations/Bank/Ryis/Relationship Lines/post_8h_lines_romantic/ryis_post_8h_romantic_10/init", { RYIS, "iced_coffee" } },
-	{ "Conversations/Bank/Ryis/Relationship Lines/post_8h_lines_best_friend/ryis_post_8h_best_friend_12/4", { RYIS, "golden_horse_hair" } },
-	{ "Conversations/Bank/Ryis/Relationship Lines/post_8h_lines_best_friend/ryis_post_8h_best_friend_2/1", { RYIS, "iced_coffee" } },
+	{ "Conversations/Bank/Ryis/Relationship Lines/Relationship/post_8h_lines_romantic/ryis_post_8h_romantic_10/init", { RYIS, "iced_coffee" }},
+	{ "Conversations/Bank/Ryis/Relationship Lines/Relationship/post_8h_lines_best_friend/ryis_post_8h_best_friend_12/4", { RYIS, "golden_horse_hair" }},
+	{ "Conversations/Bank/Ryis/Relationship Lines/Relationship/post_8h_lines_best_friend/ryis_post_8h_best_friend_2/1", { RYIS, "iced_coffee" }},
 	{ "Conversations/Bank/Ryis/Banked Lines/bath_smells_like_lavender/bath_smells_like_lavender/init", { RYIS, "lilac" }},
-	{ "Conversations/Bank/Ryis/Gift Lines/gift_lines/hard_wood/1", { RYIS, "hard_wood" } }, // Gift Line
+	{ "Conversations/Bank/Ryis/Gift Lines/gift_lines/hard_wood/1", { RYIS, "hard_wood" }}, // Gift Line
 	{ "Conversations/Bank/Ryis/Market Lines/market_darcy_1/market_darcy_1/init", { RYIS, "iced_coffee" }},
 	{ "Conversations/Bank/Ryis/Market Lines/market_darcy_2/market_darcy_2/init", { RYIS, "iced_coffee" }},
 	{ "Conversations/Bank/Ryis/Market Lines/market_darcy_3/market_darcy_3/init", { RYIS, "iced_coffee" }},
 	{ "Conversations/Bank/Landen/Banked Lines/veggie_sub/veggie_sub/init", { RYIS, "veggie_sub_sandwich" }},
-	{ "Conversations/Bank/Ryis/Banked Lines/shopping_for_landen/shopping_for_landen_2/init", { RYIS, "bread" } },
-	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/2", { RYIS, "bread" } },
+	{ "Conversations/Bank/Ryis/Banked Lines/shopping_for_landen/shopping_for_landen_2/init", { RYIS, "bread" }},
+	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/2", { RYIS, "bread" }},
 	// Stillwell
 	// Taliferro
-	{ "Conversations/Bank/Taliferro/Banked Lines/challenge_completed_lines/incredibly_hot_pot_terithia/init", { TALIFERRO, "incredibly_hot_pot" } },
-	{ "Conversations/Bank/Taliferro/Banked Lines/challenge_completed_lines/veggie_sub_sandwich_holt/init", { TALIFERRO, "veggie_sub_sandwich" } },
+	{ "Conversations/Bank/Taliferro/Banked Lines/challenge_completed_lines/incredibly_hot_pot_terithia/init", { TALIFERRO, "incredibly_hot_pot" }},
+	{ "Conversations/Bank/Taliferro/Banked Lines/challenge_completed_lines/veggie_sub_sandwich_holt/init", { TALIFERRO, "veggie_sub_sandwich" }},
 	// Terithia
-	{ "Conversations/Bank/Terithia/Gift Lines/gift_lines/fish_stew/init", { TERITHIA, "fish_stew" } }, // Gift Line
+	{ "Conversations/Bank/Terithia/Gift Lines/gift_lines/fish_stew/init", { TERITHIA, "fish_stew" }}, // Gift Line
 	{ "Conversations/Bank/Valen/Banked Lines/terithia_fish_jerky/terithia_fish_jerky/init", { TERITHIA, "canned_sardines" }},
-	{ "Conversations/General Dialogue/birthday_anticipation/terithia_birthday_anticipation/1", { TERITHIA, "dried_squid" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/terithia_birthday_anticipation_errol/1", { TERITHIA, "dried_squid" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/terithia_birthday_anticipation_landen/1", { TERITHIA, "dried_squid" }},
 	// Valen
 	{ "Conversations/Bank/Valen/Banked Lines/rainy_stock_up/rainy_stock_up/init", { VALEN, "honey" }},
 	{ "Conversations/Bank/Valen/Banked Lines/winter_honey/winter_honey/init", { VALEN, "honey" }},
 	{ "Conversations/Bank/Valen/Market Lines/market_darcy_1/market_darcy_1/init", { VALEN, "coffee" }},
 	{ "Conversations/Bank/Valen/Market Lines/market_darcy_2/market_darcy_2/init", { VALEN, "coffee" }},
 	{ "Conversations/Bank/Valen/Market Lines/market_darcy_3/market_darcy_3/init", { VALEN, "coffee" }},
+	{ "Conversations/Bank/Valen/Banked Lines/breakfast/breakfast_4/init", { VALEN, "coffee" }},
+	{ "Conversations/General Dialogue/ari_birthday/ari_birthday_valen_low_hearts/1", { VALEN, "coffee" }},
 	{ "Conversations/Festival Lines/Valen/shooting_star/shooting_star_romantic_follow_up_A/1", { VALEN, "beet_soup" }},
-	{ "Conversations/General Dialogue/birthday_anticipation/valen_birthday_anticipation/1", { VALEN, "vegetable_soup" }},
+	{ "Conversations/General Dialogue/birthday_anticipation/valen_birthday_anticipation_hayden/1", { VALEN, "vegetable_soup" }},
 	{ "Conversations/Group Conversations/Adeline_Valen/salmon_benefits/salmon_benefits/init", { VALEN, "pan_fried_salmon" }},
 	{ "Conversations/Group Conversations/Celine_Valen/deep_woods_nettle/deep_woods_nettle/1", { VALEN, "nettle" }},
+	{ "Conversations/Bank/Reina/Banked Lines/general_store_shopping/general_store_shopping_3/init", { VALEN, "garlic" }},
+	{ "Conversations/General Dialogue/ari_birthday/ari_birthday_valen_high_hearts/1", { VALEN, "green_tea" }},
 	// Vera
-	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/coconut_milk/init", { VERA, "coconut_milk" } }, // Gift Line
-	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/cranberry_juice/init", { VERA, "cranberry_juice" } }, // Gift Line
-	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/gazpacho/init", { VERA, "gazpacho" } }, // Gift Line
-	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/orange_juice/init", { VERA, "orange_juice" } }, // Gift Line
-	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/pomegranate/init", { VERA, "pomegranate" } }, // Gift Line
-	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/summer_salad/init", { VERA, "summer_salad" } }, // Gift Line
+	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/coconut_milk/init", { VERA, "coconut_milk" }}, // Gift Line
+	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/cranberry_juice/init", { VERA, "cranberry_juice" }}, // Gift Line
+	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/gazpacho/init", { VERA, "gazpacho" }}, // Gift Line
+	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/orange_juice/init", { VERA, "orange_juice" }}, // Gift Line
+	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/pomegranate/init", { VERA, "pomegranate" }}, // Gift Line
+	{ "Conversations/Bank/Vera/Gift Lines/gift_lines/summer_salad/init", { VERA, "summer_salad" }}, // Gift Line
 	// Wheedle
 	// Zorel
 	// MOD: Talkative Celine
@@ -316,7 +334,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "conversations/talkative_celine/dandelion/init", { CELINE, "dandelion" }},
 	{ "conversations/talkative_celine/dandelion/init", { VALEN, "dandelion" }},
 	{ "conversations/talkative_celine/tulip/init", { CELINE, "tulip" }},
-	{ "conversations/talkative_celine/spring galette/init", { CELINE, "spring_galette" }},
+	{ "conversations/talkative_celine/spring galette/init", { ADELINE, "spring_galette" }}, // Verify this mentions Adeline
 	{ "conversations/talkative_celine/rose tea/init", { CELINE, "rose_tea" }},
 	{ "conversations/talkative_celine/spring salad/init", { CELINE, "spring_salad" }},
 	{ "conversations/talkative_celine/hydrangea/init", { CELINE, "hydrangea" }},
@@ -361,7 +379,7 @@ bool GameIsPaused()
 {
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
-	RValue paused = global_instance->at("__pause_status");
+	RValue paused = *global_instance->GetRefMember("__pause_status");
 	return paused.m_i64 > 0;
 }
 
@@ -562,26 +580,26 @@ void LoadNpcData()
 
 	// Load NPC IDs
 	size_t npc_ids_length;
-	RValue npc_ids = global_instance->at("__npc_id__");
+	RValue npc_ids = *global_instance->GetRefMember("__npc_id__");
 	g_ModuleInterface->GetArraySize(npc_ids, npc_ids_length);
 	for (size_t i = 0; i < npc_ids_length; i++)
 	{
-		RValue* npc_name;
+		RValue* npc_name = nullptr;
 		g_ModuleInterface->GetArrayEntry(npc_ids, i, npc_name);
-		npc_id_to_name_map[i] = npc_name->AsString().data();
+		npc_id_to_name_map[i] = npc_name->ToString();
 	}
 
 	// Load NPC Gift Preferences
 	size_t npc_prototypes_length;
-	RValue npc_prototypes = global_instance->at("__npc_prototypes");
+	RValue npc_prototypes = *global_instance->GetRefMember("__npc_prototypes");
 	g_ModuleInterface->GetArraySize(npc_prototypes, npc_prototypes_length);
 	for (size_t i = 0; i < npc_prototypes_length; i++)
 	{
-		RValue* npc_prototype;
+		RValue* npc_prototype = nullptr;
 		g_ModuleInterface->GetArrayEntry(npc_prototypes, i, npc_prototype);
 
-		RValue liked_gifts = npc_prototype->at("liked_gifts").at("__buffer");
-		RValue loved_gifts = npc_prototype->at("loved_gifts").at("__buffer");
+		RValue liked_gifts = *npc_prototype->GetRefMember("liked_gifts")->GetRefMember("__buffer");
+		RValue loved_gifts = *npc_prototype->GetRefMember("loved_gifts")->GetRefMember("__buffer");
 
 		// Liked Gifts
 		size_t liked_gifts_length;
@@ -629,7 +647,7 @@ void LoadItemData(CInstance* Self, CInstance* Other)
 
 		if (item_name.m_Kind != VALUE_NULL && item_name.m_Kind != VALUE_UNSET && item_name.m_Kind != VALUE_UNDEFINED)
 		{
-			const char* item_name_str = item_name.AsString().data();
+			std::string item_name_str = item_name.ToString();
 			if (item_name_to_id_map.count(item_name_str) <= 0)
 				item_name_to_id_map[item_name_str] = i;
 			if (item_id_to_name_map.count(i) <= 0)
@@ -654,7 +672,7 @@ void DisplayNotification(CInstance* Self, CInstance* Other, std::string localiza
 	);
 
 	RValue result;
-	RValue notification = localization_key;
+	RValue notification = RValue(localization_key);
 	RValue* notification_ptr = &notification;
 	gml_script_create_notification->m_Functions->m_ScriptFunction(
 		Self,
@@ -781,7 +799,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	);
 
 	RValue result;
-	RValue input = localization_key;
+	RValue input = RValue(localization_key);
 	RValue* input_ptr = &input;
 	gml_script_get_localizer->m_Functions->m_ScriptFunction(
 		Self,
@@ -938,7 +956,7 @@ RValue& GmlScriptGetDisplayNameCallback(
 		Arguments
 	);
 
-	localized_item_name = Result.AsString().data();
+	localized_item_name = Result.ToString();
 	return Result;
 }
 
@@ -1010,9 +1028,9 @@ RValue& GmlScriptGetDisplayDescriptionCallback(
 				}
 
 				if (liked_by_string.size() > 0)
-					Result = liked_by_string + Result.AsString().data();
+					Result = RValue(liked_by_string + Result.ToString());
 				if (loved_by_string.size() > 0)
-					Result = loved_by_string + Result.AsString().data();
+					Result = RValue(loved_by_string + Result.ToString());
 			}
 		}
 	}
@@ -1037,7 +1055,7 @@ RValue& GmlScriptTextboxTranslateCallback(
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		RValue __item_data = global_instance->at("__item_data");
+		RValue __item_data = *global_instance->GetRefMember("__item_data");
 
 		size_t array_length;
 		g_ModuleInterface->GetArraySize(__item_data, array_length);
@@ -1047,13 +1065,13 @@ RValue& GmlScriptTextboxTranslateCallback(
 			RValue* array_element;
 			g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
 
-			RValue name_key = array_element->at("name_key");
+			RValue name_key = *array_element->GetRefMember("name_key");
 			if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
 			{
-				RValue recipe_key = array_element->at("recipe_key");
-				RValue localized_name = GetLocalizedString(Self, Other, name_key.AsString().data());
-				localized_item_name_to_internal_item_name_map[localized_name.AsString().data()] = recipe_key.AsString().data();
-				internal_item_name_to_localized_item_name_map[recipe_key.AsString().data()] = localized_name.AsString().data();
+				RValue recipe_key = *array_element->GetRefMember("recipe_key");
+				RValue localized_name = GetLocalizedString(Self, Other, name_key.ToString());
+				localized_item_name_to_internal_item_name_map[localized_name.ToString()] = recipe_key.ToString();
+				internal_item_name_to_localized_item_name_map[recipe_key.ToString()] = localized_name.ToString();
 			}
 		}
 	}
@@ -1069,10 +1087,10 @@ RValue& GmlScriptTextboxTranslateCallback(
 
 	if (ArgumentCount == 1 && Arguments[0]->m_Kind == VALUE_STRING)
 	{
-		std::string localization_key = Arguments[0]->AsString().data();
+		std::string localization_key = Arguments[0]->ToString();
 		if (localization_key.compare(GIFT_PREFERENCE_DETECTED_LOCALIZATION_KEY) == 0 || localization_key.compare(GIFT_PREFERENCE_UNLOCKED_LOCALIZATION_KEY) == 0)
 		{
-			std::string result_str = Result.AsString().data();
+			std::string result_str = Result.ToString();
 
 			// Replace the <ITEM> placeholder text.
 			size_t item_placeholder_index = result_str.find(ITEM_PLACEHOLDER_TEXT);
@@ -1088,7 +1106,7 @@ RValue& GmlScriptTextboxTranslateCallback(
 				result_str.replace(npc_placeholder_index, NPC_PLACEHOLDER_TEXT.length(), npc_name);
 			}
 
-			Result = result_str;
+			Result = RValue(result_str);
 		}
 	}
 	
@@ -1103,7 +1121,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	IN RValue** Arguments
 )
 {
-	gifts_to_unlock = {}; // { { EILAND, {"pumpkin_pie", "apple_pie"} } };
+	gifts_to_unlock = {}; // { { EILAND, {"pumpkin_pie", "apple_pie"}} };
 	localized_item_name = "";
 	gift_preference_npc_name = "";
 	gift_preference_internal_item_name = "";
@@ -1143,8 +1161,8 @@ RValue& GmlScriptTranslateCallback(
 {
 	if (!unlock_all_gift_preferences)
 	{
-		std::string dialog_string = Arguments[0]->AsString().data();
-		std::string dialog_string_lowercase = Arguments[0]->AsString().data();
+		std::string dialog_string = Arguments[0]->ToString();
+		std::string dialog_string_lowercase = Arguments[0]->ToString();
 		std::transform(dialog_string_lowercase.begin(), dialog_string_lowercase.end(), dialog_string_lowercase.begin(), [](unsigned char c) { return std::tolower(c); });
 		if (dialog_string_lowercase.find("conversations/mods") != std::string::npos && dialog_string_lowercase.find("gift_hint_") != std::string::npos)
 		{
