@@ -14,7 +14,7 @@ From the perspective of this mod there are two "types" of cooked dishes in the g
 - **Non-craftable** dishes are food that __has no recipe__. You normally receive it as a reward for doing something or buy it from a shop. This mod does NOT allow you to obtain those food items. Use the **DigUpAnything** mod to obtain them if desired.
 > **REMINDER**: This mod only unlocks **craftable** food (those __with recipes__).
 
-## Craftable Food Recipe Table (FoM v0.14.0)
+## Craftable Food Recipe Table (FoM v0.14.4)
 | Internal Recipe Name | Displayed Recipe Name |
 | -------------------- | --------------------- |
 | apple_honey_curry | Apple Honey Curry |
@@ -181,7 +181,7 @@ From the perspective of this mod there are two "types" of cooked dishes in the g
 | winter_stew | Winter Stew |
 | wintergreen_ice_cream | Wintergreen Ice Cream |
 
-## Non-Craftable Food Table (FoM v0.14.0)
+## Non-Craftable Food Table (FoM v0.14.4)
 | Internal Item Name | Displayed Item Name |
 | ------------------ | ------------------- |
 | beer | Beer |

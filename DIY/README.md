@@ -14,7 +14,7 @@ From the perspective of this mod there are two "types" of furniture in the game:
 - **Non-craftable** furniture __has no recipe__. You normally receive it as a reward for doing something or buy it from a shop. This mod does NOT allow you to obtain those furniture items. Use the **DigUpAnything** mod to obtain them if desired.
 > **REMINDER**: This mod only unlocks **craftable** furniture (those __with recipes__).
 
-## Craftable Furniture Recipe Table (FoM v0.14.0)
+## Craftable Furniture Recipe Table (FoM v0.14.4)
 | Internal Recipe Name | Displayed Recipe Name |
 | -------------------- | --------------------- |
 | alda_pot_replica | Alda Pot Replica |
@@ -525,9 +525,10 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | worn_well | Worn Well |
 | worn_window | Worn Window |
 
-## Non-Craftable Furniture Table (FoM v0.14.0)
+## Non-Craftable Furniture Table (FoM v0.14.4)
 | Internal Item Name | Displayed Item Name |
 | ------------------ | ------------------- |
+| animated_bird_fountain | Animated Bird Fountain |
 | animated_snow_globe | Animated Snow Globe |
 | blue_pet_bed | Blue Pet Bed |
 | blue_pet_dish | Blue Pet Dish |
@@ -562,6 +563,34 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | inn_wooden_flooring | Inn Wooden Flooring |
 | ladder | House Ladder |
 | lovely_cottage_scroll_bundle | Lovely Cottage Scroll Bundle |
+| mist_bed_v1 | Mist Bed |
+| mist_bed_v2 | Mist Bed |
+| mist_bed_v3 | Mist Bed |
+| mist_bed_v4 | Mist Bed |
+| mist_cushion_v1 | Mist Cushion |
+| mist_cushion_v2 | Mist Cushion |
+| mist_cushion_v3 | Mist Cushion |
+| mist_cushion_v4 | Mist Cushion |
+| mist_double_bed_v1 | Mist Double Bed |
+| mist_double_bed_v2 | Mist Double Bed |
+| mist_double_bed_v3 | Mist Double Bed |
+| mist_double_bed_v4 | Mist Double Bed |
+| mist_lamp_v1 | Mist Lamp |
+| mist_lamp_v2 | Mist Lamp |
+| mist_lamp_v3 | Mist Lamp |
+| mist_lamp_v4 | Mist Lamp |
+| mist_pet_bed_v1 | Mist Pet Bed |
+| mist_pet_bed_v2 | Mist Pet Bed |
+| mist_pet_bed_v3 | Mist Pet Bed |
+| mist_pet_bed_v4 | Mist Pet Bed |
+| mist_rug_v1 | Mist Rug |
+| mist_rug_v2 | Mist Rug |
+| mist_rug_v3 | Mist Rug |
+| mist_rug_v4 | Mist Rug |
+| mist_storage_chest_v1 | Mist Storage Chest |
+| mist_storage_chest_v2 | Mist Storage Chest |
+| mist_storage_chest_v3 | Mist Storage Chest |
+| mist_storage_chest_v4 | Mist Storage Chest |
 | mournful_clown_painting | Mournful Clown Painting |
 | pink_pet_bed | Pink Pet Bed |
 | pink_pet_dish | Pink Pet Dish |
@@ -577,3 +606,4 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | teleportation_pad | Teleportation Circle |
 | weather_crystal_ball | Weather Crystal Ball |
 | winter_crop_sign_scroll_bundle | Winter Crop Sign Scroll Bundle |
+
