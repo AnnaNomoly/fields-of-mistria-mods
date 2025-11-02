@@ -471,25 +471,25 @@ EXPORTED AurieStatus ModuleInitialize(
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[Zoom Control] - Hello from PluginEntry!");
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Hello from PluginEntry!", MOD_NAME, VERSION);
 
 	CreateHookGmlScriptGetLocalizer(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Zoom Control] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Zoom Control] - Exiting due to failure on start!");
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Zoom Control] - Failed to register callback!");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to register callback!", MOD_NAME, VERSION);
 	}
 
 	return AURIE_SUCCESS;
