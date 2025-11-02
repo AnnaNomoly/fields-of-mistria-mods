@@ -594,7 +594,6 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 779 | dough_lad_doll | Doughlad Doll |
 | 783 | dragon_altar | Dragon Claw Altar |
 | 784 | dragon_claw | Dragon Claw |
-| 2101 | dragon_fairy | Dragon Fairy |
 | 785 | dragon_forged_bracelet | Dragon-Forged Bracelet |
 | 786 | dragon_horn_beetle | Dragon Horn Beetle |
 | 787 | dragon_horn_mushroom | Dragon Horn Mushroom |
@@ -618,7 +617,6 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 808 | earth_infused_stone | Earth-Infused Stone |
 | 809 | earth_tablet_rubbing | Earth Tablet Rubbing |
 | 810 | earthshroom | Earthshroom |
-| 2110 | echo_mint | Echo Mint |
 | 811 | egg | Chicken Egg |
 | 817 | emerald_bed | Emerald Double Bed |
 | 815 | emerald_chair | Emerald Chair |
@@ -1477,7 +1475,6 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 1873 | starter_well | Water Well |
 | 1874 | starter_wheelbarrow | Wheelbarrow |
 | 1875 | starter_wood_fence | Wooden Fence |
-| 2100 | statue_of_boons | Statue of Boons |
 | 1876 | statuette_of_caldarus | Statuette of Caldarus |
 | 1877 | steamed_broccoli | Steamed Broccoli |
 | 1878 | stingray | Stingray |
@@ -1512,7 +1509,6 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 1924 | summer_table | Summer Table |
 | 1926 | summer_wallpaper | Summer Wallpaper |
 | 1928 | summit_wallpaper | Summit Wallpaper |
-| 2102 | summoning_circle | Summoning Circle |
 | 1929 | sunflower | Sunflower |
 | 1930 | sunny | Sunny |
 | 1931 | surf_beetle | Surf Beetle |
@@ -1542,13 +1538,6 @@ The `animal_currency` portion of that text is the item's *internal name*. If you
 | 1955 | tea | Tea |
 | 1956 | tea_black | Black Tea Cup |
 | 1957 | tea_green | Green Tea Cup |
-| 2104 | telepop_blue | Telepop (Blue) |
-| 2107 | telepop_green | Telepop (Green) |
-| 2109 | telepop_mystery | Telepop (Mystery) |
-| 2105 | telepop_orange | Telepop (Orange) |
-| 2106 | telepop_pink | Telepop (Pink) |
-| 2103 | telepop_purple | Telepop (Purple) |
-| 2108 | telepop_yellow | Telepop (Yellow) |
 | 1958 | teleportation_pad | Teleportation Circle |
 | 1959 | temple_flower | Temple Flower |
 | 1960 | tetra | Tetra |
