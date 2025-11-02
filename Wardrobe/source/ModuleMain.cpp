@@ -6,15 +6,16 @@
 #include <iostream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Wardrobe";
-static const char* const VERSION = "1.1.0";
+static const char* const VERSION = "1.1.1";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const UNLOCK_EVERYTHING_KEY = "unlock_everything";
+static const char* const EXAMPLE_COSMETIC_KEY = "example_cosmetic";
 static const std::string COSMETIC_AQUIRED_LOCALIZATION_KEY = "mods/Wardrobe/cosmetic_acquired";
 static const std::string UNRECOGNIZED_COSMETIC_LOCALIZATION_KEY = "mods/Wardrobe/unrecognized_cosmetic";
 static const std::string COSMETIC_NOT_ACQUIRED_LOCALIZATION_KEY = "mods/Wardrobe/cosmetic_not_acquired";
@@ -24,6 +25,7 @@ static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Lo
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const std::string DEFAULT_ACTIVATION_BUTTON = "F9";
+static const std::string DEFAULT_EXAMPLE_COSMETIC = "Flower Hat";
 static const bool DEFAULT_UNLOCK_EVERYTHING = false;
 static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
@@ -44,6 +46,7 @@ static bool processing_user_input = false;
 static std::string activation_button = DEFAULT_ACTIVATION_BUTTON;
 static bool unlock_everything = DEFAULT_UNLOCK_EVERYTHING;
 static bool unlock_cosmetics = false;
+static std::string example_cosmetic = DEFAULT_EXAMPLE_COSMETIC;
 static std::vector<std::string> cosmetic_names;
 static std::map<std::string, std::string> cosmetic_name_to_localized_name_map = {};
 static std::map<std::string, std::string> lowercase_localized_name_to_cosmetic_name_map = {};
@@ -336,18 +339,18 @@ void LoadCosmeticData()
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __pad = global_instance->at("__pad");
-	RValue player_assets = __pad.at("player_assets");
-	RValue inner = player_assets.at("inner");
+	RValue __pad = *global_instance->GetRefMember("__pad");
+	RValue player_assets = *__pad.GetRefMember("player_assets");
+	RValue inner = *player_assets.GetRefMember("inner");
 
 	g_ModuleInterface->EnumInstanceMembers(inner, CollectAllCosmeticNames);
 	if (cosmetic_names.size() > 0)
 	{
 		for (std::string cosmetic_name : cosmetic_names)
 		{
-			RValue cosmetic = inner.at(cosmetic_name);
-			RValue cosmetic_localization_key = cosmetic.at("name");
-			cosmetic_name_to_localized_name_map[cosmetic_name] = cosmetic_localization_key.AsString().data();
+			RValue cosmetic = *inner.GetRefMember(cosmetic_name);
+			RValue cosmetic_localization_key = *cosmetic.GetRefMember("name");
+			cosmetic_name_to_localized_name_map[cosmetic_name] = cosmetic_localization_key.ToString();
 		}
 
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Loaded data for %d cosmetics!", MOD_NAME, VERSION, cosmetic_names.size());
@@ -369,13 +372,25 @@ void PrintError(std::exception_ptr eptr)
 	}
 }
 
+json CreateConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ ACTIVATION_BUTTON_KEY, use_defaults ? DEFAULT_ACTIVATION_BUTTON : activation_button },
+		{ UNLOCK_EVERYTHING_KEY, use_defaults ? DEFAULT_UNLOCK_EVERYTHING : unlock_everything },
+		{ EXAMPLE_COSMETIC_KEY, use_defaults ? DEFAULT_EXAMPLE_COSMETIC : example_cosmetic}
+	};
+	return config_json;
+}
+
 void LogDefaultConfigValues()
 {
 	activation_button = DEFAULT_ACTIVATION_BUTTON;
 	unlock_everything = DEFAULT_UNLOCK_EVERYTHING;
+	example_cosmetic = DEFAULT_EXAMPLE_COSMETIC;
 
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON.c_str());
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_COSMETIC_KEY, DEFAULT_EXAMPLE_COSMETIC.c_str());
 }
 
 void CreateOrLoadConfigFile()
@@ -402,6 +417,7 @@ void CreateOrLoadConfigFile()
 		}
 
 		// Try to find the mod_data/Wardrobe/Wardrobe.json config file.
+		bool update_config_file = false;
 		std::string config_file = wardrobe_folder + "\\" + "Wardrobe.json";
 		std::ifstream in_stream(config_file);
 		if (in_stream.good())
@@ -453,7 +469,21 @@ void CreateOrLoadConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING ? "true" : "false");
 					}
+
+					// Try loading the example_cosmetic value.
+					if (json_object.contains(EXAMPLE_COSMETIC_KEY))
+					{
+						example_cosmetic = json_object[EXAMPLE_COSMETIC_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_COSMETIC_KEY, example_cosmetic.c_str());
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, EXAMPLE_COSMETIC_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_COSMETIC_KEY, DEFAULT_EXAMPLE_COSMETIC.c_str());
+					}
 				}
+
+				update_config_file = true;
 			}
 			catch (...)
 			{
@@ -472,16 +502,21 @@ void CreateOrLoadConfigFile()
 			in_stream.close();
 
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"Wardrobe.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
-			json default_json = {
-				{ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON},
-				{UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING}
-			};
 
+			json default_config_json = CreateConfigJson(true);
 			std::ofstream out_stream(config_file);
-			out_stream << std::setw(4) << default_json << std::endl;
+			out_stream << std::setw(4) << default_config_json << std::endl;
 			out_stream.close();
 
 			LogDefaultConfigValues();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
 		}
 	}
 	catch (...)
@@ -517,7 +552,7 @@ void CreateNotification(std::string notification_localization_str, CInstance* Se
 	);
 
 	RValue result;
-	RValue notification = notification_localization_str;
+	RValue notification = RValue(notification_localization_str);
 	RValue* notification_ptr = &notification;
 	gml_script_create_notification->m_Functions->m_ScriptFunction(
 		Self,
@@ -533,13 +568,13 @@ void UnlockCosmetic(std::string cosmetic_name, CInstance* Self, CInstance* Other
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
-	RValue cosmetic_unlocks = __ari.at("cosmetic_unlocks");
-	RValue inner = cosmetic_unlocks.at("inner");
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue cosmetic_unlocks = *__ari.GetRefMember("cosmetic_unlocks");
+	RValue inner = *cosmetic_unlocks.GetRefMember("inner");
 
 	RValue cosmetic_unlocked = g_ModuleInterface->CallBuiltin(
 		"struct_exists", {
-			inner, cosmetic_name
+			inner, RValue(cosmetic_name)
 		}
 	);
 
@@ -548,7 +583,7 @@ void UnlockCosmetic(std::string cosmetic_name, CInstance* Self, CInstance* Other
 		RValue zero = 0.0;
 		g_ModuleInterface->CallBuiltin(
 			"struct_set", {
-				inner, cosmetic_name, zero
+				inner, RValue(cosmetic_name), zero
 			}
 		);
 
@@ -577,7 +612,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	);
 
 	RValue result;
-	RValue input = localization_key;
+	RValue input = RValue(localization_key);
 	RValue* input_ptr = &input;
 	gml_script_get_localizer->m_Functions->m_ScriptFunction(
 		Self,
@@ -637,10 +672,10 @@ RValue& GmlScriptGetLocalizerCallback(
 		for (auto& pair : cosmetic_name_to_localized_name_map)
 		{
 			RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-			std::string localized_name_str = localized_name.AsString().data();
+			std::string localized_name_str = localized_name.ToString();
 			pair.second = localized_name_str;
 
-			std::string lowercase_localized_name_str = localized_name.AsString().data();
+			std::string lowercase_localized_name_str = localized_name.ToString();
 			std::transform(lowercase_localized_name_str.begin(), lowercase_localized_name_str.end(), lowercase_localized_name_str.begin(), [](unsigned char c) { return std::tolower(c); });
 			lowercase_localized_name_to_cosmetic_name_map[lowercase_localized_name_str] = pair.first;
 		}
@@ -671,9 +706,9 @@ RValue& GmlScriptSetupMainScreenCallback(
 
 	if (load_on_start)
 	{
+		LoadCosmeticData();
 		CreateOrLoadConfigFile();
 		ConfigureActivationButton();
-		LoadCosmeticData();
 
 		load_on_start = false;
 		localize_cosmetics = true;
@@ -710,7 +745,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 		if (activate)
 		{
 			std::string modal_text =
-				"DIY v" + std::string(VERSION) + "\r\n" +
+				"Wardrobe v" + std::string(VERSION) + "\r\n" +
 				"------------------------------\r\n" +
 				"Input the desired cosmetic's Display Name or Internal Name.\r\n" +
 				"Case (capitalization) does not matter.\r\n" +
@@ -722,13 +757,13 @@ RValue& GmlScriptOnDrawGuiCallback(
 			RValue user_input = g_ModuleInterface->CallBuiltin(
 				"get_string",
 				{
-					modal_text,
-					"Flower Hat"
+					RValue(modal_text),
+					RValue(example_cosmetic)
 				}
 			);
 
 			// Convert the user input to lowercase.
-			std::string user_input_str = trim(user_input.AsString().data());
+			std::string user_input_str = trim(user_input.ToString());
 			std::transform(user_input_str.begin(), user_input_str.end(), user_input_str.begin(), [](unsigned char c) { return std::tolower(c); });
 
 			// Check if it was a localized item name.
