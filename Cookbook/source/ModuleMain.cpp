@@ -741,13 +741,9 @@ RValue& GmlScriptSetupMainScreenCallback(
 
 	if (load_items)
 	{
-
-
 		CreateOrLoadConfigFile();
 		ConfigureActivationButton();
 		LoadRecipeData();
-
-
 
 		load_items = false;
 		localize_items = true;
