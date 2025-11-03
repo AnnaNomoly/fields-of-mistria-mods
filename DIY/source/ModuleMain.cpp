@@ -6,20 +6,25 @@
 #include <iostream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "DIY";
-static const char* const VERSION = "1.1.1";
+static const char* const VERSION = "1.1.2";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const UNLOCK_EVERYTHING_KEY = "unlock_everything";
+static const char* const EXAMPLE_FURNITURE_KEY = "example_furniture";
+static const std::string UNRECOGNIZED_FURNITURE_LOCALIZATION_KEY = "mods/DIY/unrecognized_furniture";
+static const std::string FURNITURE_NOT_ACQUIRED_LOCALIZATION_KEY = "mods/DIY/furniture_not_acquired";
+static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const std::string DEFAULT_ACTIVATION_BUTTON = "F8";
+static const std::string DEFAULT_EXAMPLE_FURNITURE = "Picnic Display Donuts";
 static const bool DEFAULT_UNLOCK_EVERYTHING = false;
 static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
@@ -40,6 +45,7 @@ static bool processing_user_input = false;
 static std::string activation_button = DEFAULT_ACTIVATION_BUTTON;
 static bool unlock_everything = DEFAULT_UNLOCK_EVERYTHING;
 static bool unlock_recipes = false;
+static std::string example_furniture = DEFAULT_EXAMPLE_FURNITURE;
 static std::map<std::string, std::vector<int>> item_name_to_id_map = {};
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
 static std::map<std::string, std::string> lowercase_localized_name_to_item_name_map = {};
@@ -330,7 +336,7 @@ void LoadFurnitureData()
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __item_data = global_instance->at("__item_data");
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
 
 	size_t array_length;
 	g_ModuleInterface->GetArraySize(__item_data, array_length);
@@ -340,35 +346,35 @@ void LoadFurnitureData()
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
 
-		RValue item_id = array_element->at("item_id");
-		RValue name_key = array_element->at("name_key");
-		RValue recipe_key = array_element->at("recipe_key");
+		RValue item_id = *array_element->GetRefMember("item_id");
+		RValue name_key = *array_element->GetRefMember("name_key");
+		RValue recipe_key = *array_element->GetRefMember("recipe_key");
 
-		if (strstr(name_key.AsString().data(), "furniture"))
+		if (name_key.ToString().contains("furniture"))
 		{
 			if (StructVariableExists(*array_element, "recipe"))
 			{
-				RValue recipe = array_element->at("recipe");
+				RValue recipe = *array_element->GetRefMember("recipe");
 				if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
 				{
 					if (StructVariableExists(recipe, "item_id"))
 					{
-						item_name_to_id_map[recipe_key.AsString().data()].push_back(item_id.m_i64);
-						item_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+						item_name_to_id_map[recipe_key.ToString()].push_back(item_id.m_i64);
+						item_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 					}
 					else if (debug_logging)
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Item ID for: %s", recipe_key.AsString().data());
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Item ID for: %s", recipe_key.ToString());
 					}	
 				}
 				else if (debug_logging)
 				{
-					g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.AsString().data());
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.ToString());
 				}
 			}
 			else if (debug_logging)
 			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.AsString().data());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.ToString());
 			}
 		}
 	}
@@ -394,13 +400,25 @@ void PrintError(std::exception_ptr eptr)
 	}
 }
 
+json CreateConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ ACTIVATION_BUTTON_KEY, use_defaults ? DEFAULT_ACTIVATION_BUTTON : activation_button },
+		{ UNLOCK_EVERYTHING_KEY, use_defaults ? DEFAULT_UNLOCK_EVERYTHING : unlock_everything },
+		{ EXAMPLE_FURNITURE_KEY, use_defaults ? DEFAULT_EXAMPLE_FURNITURE : example_furniture}
+	};
+	return config_json;
+}
+
 void LogDefaultConfigValues()
 {
 	activation_button = DEFAULT_ACTIVATION_BUTTON;
 	unlock_everything = DEFAULT_UNLOCK_EVERYTHING;
+	example_furniture = DEFAULT_EXAMPLE_FURNITURE;
 
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON.c_str());
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_FURNITURE_KEY, DEFAULT_EXAMPLE_FURNITURE.c_str());
 }
 
 void CreateOrLoadConfigFile()
@@ -427,6 +445,7 @@ void CreateOrLoadConfigFile()
 		}
 
 		// Try to find the mod_data/DIY/DIY.json config file.
+		bool update_config_file = false;
 		std::string config_file = diy_folder + "\\" + "DIY.json";
 		std::ifstream in_stream(config_file);
 		if (in_stream.good())
@@ -478,7 +497,21 @@ void CreateOrLoadConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING ? "true" : "false");
 					}
+
+					// Try loading the example_furniture value.
+					if (json_object.contains(EXAMPLE_FURNITURE_KEY))
+					{
+						example_furniture = json_object[EXAMPLE_FURNITURE_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_FURNITURE_KEY, example_furniture.c_str());
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, EXAMPLE_FURNITURE_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_FURNITURE_KEY, DEFAULT_EXAMPLE_FURNITURE.c_str());
+					}
 				}
+
+				update_config_file = true;
 			}
 			catch (...)
 			{
@@ -497,16 +530,21 @@ void CreateOrLoadConfigFile()
 			in_stream.close();
 
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"DIY.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
-			json default_json = {
-				{ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON},
-				{UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING}
-			};
 
+			json default_config_json = CreateConfigJson(true);
 			std::ofstream out_stream(config_file);
-			out_stream << std::setw(4) << default_json << std::endl;
+			out_stream << std::setw(4) << default_config_json << std::endl;
 			out_stream.close();
 
 			LogDefaultConfigValues();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
 		}
 	}
 	catch (...)
@@ -533,13 +571,33 @@ std::string trim(std::string s) {
 	return s;
 }
 
+void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_create_notification = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CREATE_NOTIFICATION,
+		(PVOID*)&gml_script_create_notification
+	);
+
+	RValue result;
+	RValue notification = RValue(notification_localization_str);
+	RValue* notification_ptr = &notification;
+	gml_script_create_notification->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &notification_ptr }
+	);
+}
+
 void UnlockFurnitureRecipe(std::string item_name, CInstance* Self, CInstance* Other, bool silent)
 {
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
-	RValue recipe_unlocks = __ari.at("recipe_unlocks");
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue recipe_unlocks = *__ari.GetRefMember("recipe_unlocks");
 
 	bool new_furniture_unlocked = false;
 	std::vector<int> furniture_ids = item_name_to_id_map[item_name];
@@ -578,6 +636,7 @@ void UnlockFurnitureRecipe(std::string item_name, CInstance* Self, CInstance* Ot
 			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Unlocked recipe: %s", MOD_NAME, VERSION, item_name.c_str());
 		}
 		else {
+			CreateNotification(FURNITURE_NOT_ACQUIRED_LOCALIZATION_KEY, Self, Other);
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Ignoring already known recipe: %s", MOD_NAME, VERSION, item_name.c_str());
 		}
 	}
@@ -592,7 +651,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	);
 
 	RValue result;
-	RValue input = localization_key;
+	RValue input = RValue(localization_key);
 	RValue* input_ptr = &input;
 	gml_script_get_localizer->m_Functions->m_ScriptFunction(
 		Self,
@@ -652,10 +711,10 @@ RValue& GmlScriptGetLocalizerCallback(
 		for (auto& pair : item_name_to_localized_name_map)
 		{
 			RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-			std::string localized_name_str = localized_name.AsString().data();
+			std::string localized_name_str = localized_name.ToString();
 			pair.second = localized_name_str;
 
-			std::string lowercase_localized_name_str = localized_name.AsString().data();
+			std::string lowercase_localized_name_str = localized_name.ToString();
 			std::transform(lowercase_localized_name_str.begin(), lowercase_localized_name_str.end(), lowercase_localized_name_str.begin(), [](unsigned char c) { return std::tolower(c); });
 			lowercase_localized_name_to_item_name_map[lowercase_localized_name_str] = pair.first;
 		}
@@ -737,13 +796,13 @@ RValue& GmlScriptOnDrawGuiCallback(
 			RValue user_input = g_ModuleInterface->CallBuiltin(
 				"get_string",
 				{
-					modal_text,
-					"Picnic Display Donuts"
+					RValue(modal_text),
+					RValue(example_furniture)
 				}
 			);
 
 			// Convert the user input to lowercase.
-			std::string user_input_str = trim(user_input.AsString().data());
+			std::string user_input_str = trim(user_input.ToString());
 			std::transform(user_input_str.begin(), user_input_str.end(), user_input_str.begin(), [](unsigned char c) { return std::tolower(c); });
 
 			// Check if it was a localized item name.
@@ -755,6 +814,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 				UnlockFurnitureRecipe(user_input_str, Self, Other, false);
 			}
 			else {
+				CreateNotification(UNRECOGNIZED_FURNITURE_LOCALIZATION_KEY, Self, Other);
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Ignoring invalid recipe: %s", MOD_NAME, VERSION, user_input_str.c_str());
 			}
 		}
