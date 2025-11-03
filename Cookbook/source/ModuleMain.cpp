@@ -6,20 +6,25 @@
 #include <iostream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Cookbook";
-static const char* const VERSION = "1.1.4";
+static const char* const VERSION = "1.1.5";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const UNLOCK_EVERYTHING_KEY = "unlock_everything";
+static const char* const EXAMPLE_RECIPE_KEY = "example_recipe";
+static const std::string UNRECOGNIZED_RECIPE_LOCALIZATION_KEY = "mods/Cookbook/unrecognized_recipe";
+static const std::string RECIPE_NOT_ACQUIRED_LOCALIZATION_KEY = "mods/Cookbook/recipe_not_acquired";
+static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const std::string DEFAULT_ACTIVATION_BUTTON = "F10";
+static const std::string DEFAULT_EXAMPLE_RECIPE = "Hot Chocolate";
 static const bool DEFAULT_UNLOCK_EVERYTHING = false;
 static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
@@ -39,6 +44,7 @@ static bool processing_user_input = false;
 static std::string activation_button = DEFAULT_ACTIVATION_BUTTON;
 static bool unlock_everything = DEFAULT_UNLOCK_EVERYTHING;
 static bool unlock_recipes = false;
+static std::string example_recipe = DEFAULT_EXAMPLE_RECIPE;
 static std::map<std::string, int> item_name_to_id_map = {};
 static std::map<int, std::string> item_id_to_name_map = {};
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
@@ -325,6 +331,66 @@ void ConfigureActivationButton()
 	}
 }
 
+void LoadRecipeData()
+{
+	// Load recipes.
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
+
+	size_t array_length;
+	g_ModuleInterface->GetArraySize(__item_data, array_length);
+
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
+
+		RValue item_id = *array_element->GetRefMember("item_id");
+		RValue name_key = *array_element->GetRefMember("name_key");
+		RValue recipe_key = *array_element->GetRefMember("recipe_key");
+		RValue kitchen_tier_requirement = *array_element->GetRefMember("kitchen_tier_requirement");
+
+		if (name_key.ToString().contains("cooked_dishes") || (kitchen_tier_requirement.m_Kind != VALUE_NULL && kitchen_tier_requirement.m_Kind != VALUE_UNDEFINED && kitchen_tier_requirement.m_Kind != VALUE_UNSET))
+		{
+			if (StructVariableExists(*array_element, "recipe"))
+			{
+				RValue recipe = *array_element->GetRefMember("recipe");
+				if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
+				{
+					if (StructVariableExists(recipe, "item_id"))
+					{
+						item_name_to_id_map[recipe_key.ToString()] = RValueAsInt(item_id);
+						item_id_to_name_map[RValueAsInt(item_id)] = recipe_key.ToString();
+						item_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
+					}
+					else if (debug_logging)
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing Recipe Item ID for: %s", recipe_key.ToString());
+					}
+				}
+				else if (debug_logging)
+				{
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.ToString());
+				}
+			}
+			else if (debug_logging)
+			{
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.ToString());
+			}
+		}
+	}
+
+	if (item_name_to_id_map.size() > 0)
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Loaded data for %d recipes!", MOD_NAME, VERSION, item_name_to_id_map.size());
+	}
+	else {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load data for recipes!", MOD_NAME, VERSION);
+	}
+}
+
 void PrintError(std::exception_ptr eptr)
 {
 	try {
@@ -337,13 +403,161 @@ void PrintError(std::exception_ptr eptr)
 	}
 }
 
+json CreateConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ ACTIVATION_BUTTON_KEY, use_defaults ? DEFAULT_ACTIVATION_BUTTON : activation_button },
+		{ UNLOCK_EVERYTHING_KEY, use_defaults ? DEFAULT_UNLOCK_EVERYTHING : unlock_everything },
+		{ EXAMPLE_RECIPE_KEY, use_defaults ? DEFAULT_EXAMPLE_RECIPE : example_recipe}
+	};
+	return config_json;
+}
+
 void LogDefaultConfigValues()
 {
 	activation_button = DEFAULT_ACTIVATION_BUTTON;
 	unlock_everything = DEFAULT_UNLOCK_EVERYTHING;
+	example_recipe = DEFAULT_EXAMPLE_RECIPE;
 
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_RECIPE_KEY, DEFAULT_EXAMPLE_RECIPE.c_str());
+}
+
+void CreateOrLoadConfigFile()
+{
+	// Load config file.
+	std::exception_ptr eptr;
+	try
+	{
+		// Try to find the mod_data directory.
+		std::string current_dir = std::filesystem::current_path().string();
+		std::string mod_data_folder = current_dir + "\\mod_data";
+		if (!std::filesystem::exists(mod_data_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
+			std::filesystem::create_directory(mod_data_folder);
+		}
+
+		// Try to find the mod_data/Cookbook directory.
+		std::string cookbook_folder = mod_data_folder + "\\Cookbook";
+		if (!std::filesystem::exists(cookbook_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"Cookbook\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, cookbook_folder.c_str());
+			std::filesystem::create_directory(cookbook_folder);
+		}
+
+		// Try to find the mod_data/Cookbook/Cookbook.json config file.
+		bool update_config_file = false;
+		std::string config_file = cookbook_folder + "\\" + "Cookbook.json";
+		std::ifstream in_stream(config_file);
+		if (in_stream.good())
+		{
+			try
+			{
+				json json_object = json::parse(in_stream);
+
+				// Check if the json_object is empty.
+				if (json_object.empty())
+				{
+					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in mod configuration file: %s!", MOD_NAME, VERSION, config_file.c_str());
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Add your desired values to the configuration file, otherwise defaults will be used.", MOD_NAME, VERSION);
+					LogDefaultConfigValues();
+				}
+				else
+				{
+					// Try loading the activation_button value.
+					if (json_object.contains(ACTIVATION_BUTTON_KEY))
+					{
+						activation_button = json_object[ACTIVATION_BUTTON_KEY];
+						auto allowed_button = std::find(std::begin(ALLOWED_ACTIVATION_BUTTONS), std::end(ALLOWED_ACTIVATION_BUTTONS), activation_button);
+						if (allowed_button == std::end(ALLOWED_ACTIVATION_BUTTONS))
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%s) in mod configuration file: %s", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, activation_button, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the value is one of the supported keys!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON.c_str());
+							activation_button = DEFAULT_ACTIVATION_BUTTON;
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, activation_button.c_str());
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON.c_str());
+					}
+
+					// Try loading the unlock_everything value.
+					if (json_object.contains(UNLOCK_EVERYTHING_KEY))
+					{
+						unlock_everything = json_object[UNLOCK_EVERYTHING_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, unlock_everything ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING ? "true" : "false");
+					}
+
+					// Try loading the example_recipe value.
+					if (json_object.contains(EXAMPLE_RECIPE_KEY))
+					{
+						example_recipe = json_object[EXAMPLE_RECIPE_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_RECIPE_KEY, example_recipe.c_str());
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, EXAMPLE_RECIPE_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_RECIPE_KEY, DEFAULT_EXAMPLE_RECIPE.c_str());
+					}
+				}
+
+				update_config_file = true;
+			}
+			catch (...)
+			{
+				eptr = std::current_exception();
+				PrintError(eptr);
+
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from configuration file: %s", MOD_NAME, VERSION, config_file.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the file is valid JSON!", MOD_NAME, VERSION);
+				LogDefaultConfigValues();
+			}
+
+			in_stream.close();
+		}
+		else
+		{
+			in_stream.close();
+
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"Cookbook.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
+
+			json default_config_json = CreateConfigJson(true);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << default_config_json << std::endl;
+			out_stream.close();
+
+			LogDefaultConfigValues();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
+		}
+	}
+	catch (...)
+	{
+		eptr = std::current_exception();
+		PrintError(eptr);
+
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred loading the mod configuration file.", MOD_NAME, VERSION);
+		LogDefaultConfigValues();
+	}
 }
 
 std::string trim(std::string s) {
@@ -360,19 +574,44 @@ std::string trim(std::string s) {
 	return s;
 }
 
+void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_create_notification = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CREATE_NOTIFICATION,
+		(PVOID*)&gml_script_create_notification
+	);
+
+	RValue result;
+	RValue notification = RValue(notification_localization_str);
+	RValue* notification_ptr = &notification;
+	gml_script_create_notification->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &notification_ptr }
+	);
+}
+
 void UnlockRecipe(int item_id, CInstance* Self, CInstance* Other, bool silent)
 {
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
-	RValue recipe_unlocks = __ari.at("recipe_unlocks");
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue recipe_unlocks = *__ari.GetRefMember("recipe_unlocks");
+	bool new_recipe_unlocked = false;
 
 	if (recipe_unlocks[item_id].m_Real == 0.0)
 	{
 		recipe_unlocks[item_id] = 1.0; // This value is ultimately what unlocks the recipe.
+		new_recipe_unlocked = true;
+	}
 
-		if (!silent)
+	if (!silent)
+	{
+		if (new_recipe_unlocked)
 		{
 			// This script actually just displays the "recipe unlocked!" window.
 			CScript* gml_script_unlock_recipe = nullptr;
@@ -394,10 +633,11 @@ void UnlockRecipe(int item_id, CInstance* Self, CInstance* Other, bool silent)
 
 			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Unlocked recipe: %s", MOD_NAME, VERSION, item_id_to_name_map[item_id].c_str());
 		}
-	}
-	else {
-		if(!silent)
+		else
+		{
+			CreateNotification(RECIPE_NOT_ACQUIRED_LOCALIZATION_KEY, Self, Other);
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Ignoring already known recipe: %s", MOD_NAME, VERSION, item_id_to_name_map[item_id].c_str());
+		}	
 	}
 }
 
@@ -410,7 +650,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	);
 
 	RValue result;
-	RValue input = localization_key;
+	RValue input = RValue(localization_key);
 	RValue* input_ptr = &input;
 	gml_script_get_localizer->m_Functions->m_ScriptFunction(
 		Self,
@@ -468,10 +708,10 @@ RValue& GmlScriptGetLocalizerCallback(
 		for (auto& pair : item_name_to_localized_name_map)
 		{
 			RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-			std::string localized_name_str = localized_name.AsString().data();
+			std::string localized_name_str = localized_name.ToString();
 			pair.second = localized_name_str;
 
-			std::string lowercase_localized_name_str = localized_name.AsString().data();
+			std::string lowercase_localized_name_str = localized_name.ToString();
 			std::transform(lowercase_localized_name_str.begin(), lowercase_localized_name_str.end(), lowercase_localized_name_str.begin(), [](unsigned char c) { return std::tolower(c); });
 			lowercase_localized_name_to_item_name_map[lowercase_localized_name_str] = pair.first;
 		}
@@ -501,178 +741,13 @@ RValue& GmlScriptSetupMainScreenCallback(
 
 	if (load_items)
 	{
-		// Load config file.
-		std::exception_ptr eptr;
-		try
-		{
-			// Try to find the mod_data directory.
-			std::string current_dir = std::filesystem::current_path().string();
-			std::string mod_data_folder = current_dir + "\\mod_data";
-			if (!std::filesystem::exists(mod_data_folder))
-			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
-				std::filesystem::create_directory(mod_data_folder);
-			}
 
-			// Try to find the mod_data/Cookbook directory.
-			std::string cookbook_folder = mod_data_folder + "\\Cookbook";
-			if (!std::filesystem::exists(cookbook_folder))
-			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"Cookbook\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, cookbook_folder.c_str());
-				std::filesystem::create_directory(cookbook_folder);
-			}
 
-			// Try to find the mod_data/Cookbook/Cookbook.json config file.
-			std::string config_file = cookbook_folder + "\\" + "Cookbook.json";
-			std::ifstream in_stream(config_file);
-			if (in_stream.good())
-			{
-				try
-				{
-					json json_object = json::parse(in_stream);
-
-					// Check if the json_object is empty.
-					if (json_object.empty())
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in mod configuration file: %s!", MOD_NAME, VERSION, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Add your desired values to the configuration file, otherwise defaults will be used.", MOD_NAME, VERSION);
-						LogDefaultConfigValues();
-					}
-					else
-					{
-						// Try loading the activation_button value.
-						if (json_object.contains(ACTIVATION_BUTTON_KEY))
-						{
-							activation_button = json_object[ACTIVATION_BUTTON_KEY];
-							auto allowed_button = std::find(std::begin(ALLOWED_ACTIVATION_BUTTONS), std::end(ALLOWED_ACTIVATION_BUTTONS), activation_button);
-							if (allowed_button == std::end(ALLOWED_ACTIVATION_BUTTONS))
-							{
-								g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%s) in mod configuration file: %s", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, activation_button, config_file.c_str());
-								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the value is one of the supported keys!", MOD_NAME, VERSION);
-								g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON.c_str());
-								activation_button = DEFAULT_ACTIVATION_BUTTON;
-							}
-							else
-							{
-								g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, activation_button.c_str());
-							}
-						}
-						else
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON.c_str());
-						}
-
-						// Try loading the unlock_everything value.
-						if (json_object.contains(UNLOCK_EVERYTHING_KEY))
-						{
-							unlock_everything = json_object[UNLOCK_EVERYTHING_KEY];
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, unlock_everything ? "true" : "false");
-						}
-						else
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING ? "true" : "false");
-						}
-					}
-				}
-				catch (...)
-				{
-					eptr = std::current_exception();
-					PrintError(eptr);
-
-					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from configuration file: %s", MOD_NAME, VERSION, config_file.c_str());
-					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the file is valid JSON!", MOD_NAME, VERSION);
-					LogDefaultConfigValues();
-				}
-
-				in_stream.close();
-			}
-			else
-			{
-				in_stream.close();
-
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"Cookbook.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
-				json default_json = {
-					{ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON},
-					{UNLOCK_EVERYTHING_KEY, DEFAULT_UNLOCK_EVERYTHING}
-				};
-
-				std::ofstream out_stream(config_file);
-				out_stream << std::setw(4) << default_json << std::endl;
-				out_stream.close();
-
-				LogDefaultConfigValues();
-			}
-		}
-		catch (...)
-		{
-			eptr = std::current_exception();
-			PrintError(eptr);
-
-			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred loading the mod configuration file.", MOD_NAME, VERSION);
-			LogDefaultConfigValues();
-		}
-
-		// Configure activation button.
+		CreateOrLoadConfigFile();
 		ConfigureActivationButton();
+		LoadRecipeData();
 
-		// Load recipes.
-		CInstance* global_instance = nullptr;
-		g_ModuleInterface->GetGlobalInstance(&global_instance);
-		
-		RValue __item_data = global_instance->at("__item_data");
 
-		size_t array_length;
-		g_ModuleInterface->GetArraySize(__item_data, array_length);
-
-		for (size_t i = 0; i < array_length; i++)
-		{
-			RValue* array_element;
-			g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
-
-			RValue item_id = array_element->at("item_id");
-			RValue name_key = array_element->at("name_key");
-			RValue recipe_key = array_element->at("recipe_key");
-			RValue kitchen_tier_requirement = array_element->at("kitchen_tier_requirement");
-
-			if (strstr(name_key.AsString().data(), "cooked_dishes") || (kitchen_tier_requirement.m_Kind != VALUE_NULL && kitchen_tier_requirement.m_Kind != VALUE_UNDEFINED && kitchen_tier_requirement.m_Kind != VALUE_UNSET))
-			{
-				if (StructVariableExists(*array_element, "recipe"))
-				{
-					RValue recipe = array_element->at("recipe");
-					if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
-					{
-						if (StructVariableExists(recipe, "item_id"))
-						{
-							item_name_to_id_map[recipe_key.AsString().data()] = RValueAsInt(item_id);
-							item_id_to_name_map[RValueAsInt(item_id)] = recipe_key.AsString().data();
-							item_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
-						}
-						else if (debug_logging)
-						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing Recipe Item ID for: %s", recipe_key.AsString().data());
-						}
-					}
-					else if (debug_logging)
-					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.AsString().data());
-					}
-				}
-				else if (debug_logging)
-				{
-					g_ModuleInterface->Print(CM_LIGHTYELLOW, "Missing Recipe Data for: %s", recipe_key.AsString().data());
-				}
-			}
-		}
-
-		if (item_name_to_id_map.size() > 0)
-		{
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Loaded data for %d recipes!", MOD_NAME, VERSION, item_name_to_id_map.size());
-		}
-		else {
-			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load data for recipes!", MOD_NAME, VERSION);
-		}
 
 		load_items = false;
 		localize_items = true;
@@ -721,13 +796,13 @@ RValue& GmlScriptOnDrawGuiCallback(
 			RValue user_input = g_ModuleInterface->CallBuiltin(
 				"get_string",
 				{
-					modal_text,
-					"Hot Chocolate"
+					RValue(modal_text),
+					RValue(example_recipe)
 				}
 			);
 
 			// Convert the user input to lowercase.
-			std::string user_input_str = trim(user_input.AsString().data());
+			std::string user_input_str = trim(user_input.ToString());
 			std::transform(user_input_str.begin(), user_input_str.end(), user_input_str.begin(), [](unsigned char c) { return std::tolower(c); });
 
 			// Check if it was a localized item name.
@@ -739,6 +814,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 				UnlockRecipe(item_name_to_id_map[user_input_str], Self, Other, false);
 			}
 			else {
+				CreateNotification(UNRECOGNIZED_RECIPE_LOCALIZATION_KEY, Self, Other);
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Ignoring invalid recipe: %s", MOD_NAME, VERSION, user_input_str.c_str());
 			}
 		}
