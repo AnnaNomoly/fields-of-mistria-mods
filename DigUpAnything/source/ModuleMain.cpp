@@ -6,14 +6,15 @@
 #include <iostream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "DigUpAnything";
-static const char* const VERSION = "1.2.2";
+static const char* const VERSION = "1.2.3";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
+static const char* const EXAMPLE_ITEM_KEY = "example_item";
 static const std::string VALID_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/valid_item";
 static const std::string DISABLED_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/disabled_item";
 static const std::string UNRECOGNIZED_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/unrecognized_item";
@@ -28,6 +29,7 @@ static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Displa
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const std::string DISABLED_ITEMS[] = { "animal_cosmetic", "cosmetic", "crafting_scroll", "purse", "recipe_scroll", "unidentified_artifact" };
 static const std::string DEFAULT_ACTIVATION_BUTTON = "F11";
+static const std::string DEFAULT_EXAMPLE_ITEM = "Tea with Lemon";
 static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
 	"NUMPAD_0", "NUMPAD_1", "NUMPAD_2", "NUMPAD_3", "NUMPAD_4", "NUMPAD_5", "NUMPAD_6", "NUMPAD_7", "NUMPAD_8", "NUMPAD_9",
@@ -48,46 +50,13 @@ static bool activation_button_is_controller_key = false;
 static int activation_button_int_value = -1;
 static bool processing_user_input = false;
 static std::string activation_button = DEFAULT_ACTIVATION_BUTTON;
+static std::string example_item = DEFAULT_EXAMPLE_ITEM;
 static std::map<std::string, int> item_name_to_id_map = {};
 static std::map<int, std::string> item_id_to_name_map = {};
 static std::map<int, int> item_id_to_max_stack = {}; // Uses the max_stack assigned to each item in __item_data
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
 static std::map<std::string, std::string> lowercase_localized_name_to_item_name_map = {};
 static std::vector<std::string> unacquired_items_spawned = {};
-
-void PrintError(std::exception_ptr eptr)
-{
-	try {
-		if (eptr) {
-			std::rethrow_exception(eptr);
-		}
-	}
-	catch (const std::exception& e) {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
-	}
-}
-
-std::string trim(std::string s) {
-	// Trim leading
-	s.erase(s.begin(), std::find_if_not(s.begin(), s.end(), [](unsigned char ch) {
-		return std::isspace(ch);
-	}));
-
-	// Trim trailing
-	s.erase(std::find_if_not(s.rbegin(), s.rend(), [](unsigned char ch) {
-		return std::isspace(ch);
-	}).base(), s.end());
-
-	return s;
-}
-
-void ResetStaticFields()
-{
-	item_id = 0;
-	override_next_dig_spot = false;
-	duplicate_item = false;
-	std::vector<std::string> unacquired_items_spawned = {};
-}
 
 int RValueAsInt(RValue value)
 {
@@ -106,6 +75,81 @@ bool RValueAsBool(RValue value)
 	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
 		return true;
 	return false;
+}
+
+bool GlobalVariableExists(const char* variable_name)
+{
+	RValue global_variable_exists = g_ModuleInterface->CallBuiltin(
+		"variable_global_exists",
+		{ variable_name }
+	);
+
+	return RValueAsBool(global_variable_exists);
+}
+
+RValue GlobalVariableGet(const char* variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_get",
+		{ variable_name }
+	);
+}
+
+RValue GlobalVariableSet(const char* variable_name, RValue value)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_set",
+		{ variable_name, value }
+	);
+}
+
+bool StructVariableExists(RValue the_struct, const char* variable_name)
+{
+	RValue struct_exists = g_ModuleInterface->CallBuiltin(
+		"struct_exists",
+		{ the_struct, variable_name }
+	);
+
+	return RValueAsBool(struct_exists);
+}
+
+RValue StructVariableGet(RValue the_struct, const char* variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"struct_get",
+		{ the_struct, variable_name }
+	);
+}
+
+RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue value)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"struct_set",
+		{ the_struct, variable_name, value }
+	);
+}
+
+void CreateOrGetGlobalYYTKVariable()
+{
+	if (!GlobalVariableExists("__YYTK"))
+	{
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&__YYTK);
+		GlobalVariableSet("__YYTK", __YYTK);
+	}
+	else
+		__YYTK = GlobalVariableGet("__YYTK");
+}
+
+void CreateModInfoInGlobalYYTKVariable()
+{
+	if (!StructVariableExists(__YYTK, MOD_NAME))
+	{
+		RValue DigUpAnything;
+		RValue version = VERSION;
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&DigUpAnything);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&DigUpAnything, "version", &version);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&__YYTK, MOD_NAME, &DigUpAnything);
+	}
 }
 
 bool GameWindowHasFocus()
@@ -359,63 +403,70 @@ void ConfigureActivationButton()
 	}
 }
 
-bool GlobalVariableExists(const char* variable_name)
+void LoadItemData()
 {
-	RValue global_variable_exists = g_ModuleInterface->CallBuiltin(
-		"variable_global_exists",
-		{ variable_name }
-	);
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	return RValueAsBool(global_variable_exists);
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
+	size_t array_length;
+	g_ModuleInterface->GetArraySize(__item_data, array_length);
+
+	// Load all items.
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
+
+		RValue name_key = *array_element->GetRefMember("name_key"); // The item's localization key
+		if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
+		{
+			RValue item_id = *array_element->GetRefMember("item_id");
+			RValue recipe_key = *array_element->GetRefMember("recipe_key"); // The internal item name
+			RValue max_stack = *array_element->GetRefMember("max_stack"); // The max_stack amount
+			item_name_to_id_map[recipe_key.ToString()] = RValueAsInt(item_id);
+			item_id_to_name_map[RValueAsInt(item_id)] = recipe_key.ToString();
+			item_id_to_max_stack[RValueAsInt(item_id)] = RValueAsInt(max_stack);
+			item_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
+		}
+	}
+	if (item_name_to_id_map.size() > 0)
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Loaded data for %d items!", MOD_NAME, VERSION, item_name_to_id_map.size());
+	}
+	else {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load data for items!", MOD_NAME, VERSION);
+	}
 }
 
-RValue GlobalVariableGet(const char* variable_name)
+void PrintError(std::exception_ptr eptr)
 {
-	return g_ModuleInterface->CallBuiltin(
-		"variable_global_get",
-		{ variable_name }
-	);
+	try {
+		if (eptr) {
+			std::rethrow_exception(eptr);
+		}
+	}
+	catch (const std::exception& e) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
+	}
 }
 
-RValue GlobalVariableSet(const char* variable_name, RValue value)
+json CreateConfigJson(bool use_defaults)
 {
-	return g_ModuleInterface->CallBuiltin(
-		"variable_global_set",
-		{ variable_name, value }
-	);
-}
-
-bool StructVariableExists(RValue the_struct, const char* variable_name)
-{
-	RValue struct_exists = g_ModuleInterface->CallBuiltin(
-		"struct_exists",
-		{ the_struct, variable_name }
-	);
-
-	return RValueAsBool(struct_exists);
-}
-
-RValue StructVariableGet(RValue the_struct, const char* variable_name)
-{
-	return g_ModuleInterface->CallBuiltin(
-		"struct_get",
-		{ the_struct, variable_name }
-	);
-}
-
-RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue value)
-{
-	return g_ModuleInterface->CallBuiltin(
-		"struct_set",
-		{ the_struct, variable_name, value }
-	);
+	json config_json = {
+		{ ACTIVATION_BUTTON_KEY, use_defaults ? DEFAULT_ACTIVATION_BUTTON : activation_button },
+		{ EXAMPLE_ITEM_KEY, use_defaults ? DEFAULT_EXAMPLE_ITEM : example_item}
+	};
+	return config_json;
 }
 
 void LogDefaultConfigValues()
 {
 	activation_button = DEFAULT_ACTIVATION_BUTTON;
+	example_item = DEFAULT_EXAMPLE_ITEM;
 
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_ITEM_KEY, DEFAULT_EXAMPLE_ITEM);
 }
 
 void CreateOrLoadConfigFile()
@@ -442,6 +493,7 @@ void CreateOrLoadConfigFile()
 		}
 
 		// Try to find the mod_data/DigUpAnything/DigUpAnything.json config file.
+		bool update_config_file = false;
 		std::string config_file = dig_up_anything_folder + "\\" + "DigUpAnything.json";
 		std::ifstream in_stream(config_file);
 		if (in_stream.good())
@@ -481,7 +533,21 @@ void CreateOrLoadConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON.c_str());
 					}
+
+					// Try loading the example_item value.
+					if (json_object.contains(EXAMPLE_ITEM_KEY))
+					{
+						example_item = json_object[EXAMPLE_ITEM_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_ITEM_KEY, example_item.c_str());
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, EXAMPLE_ITEM_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_ITEM_KEY, DEFAULT_EXAMPLE_ITEM.c_str());
+					}
 				}
+
+				update_config_file = true;
 			}
 			catch (...)
 			{
@@ -500,15 +566,21 @@ void CreateOrLoadConfigFile()
 			in_stream.close();
 
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"DigUpAnything.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
-			json default_json = {
-				{ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON}
-			};
 
+			json default_config_json = CreateConfigJson(true);
 			std::ofstream out_stream(config_file);
-			out_stream << std::setw(4) << default_json << std::endl;
+			out_stream << std::setw(4) << default_config_json << std::endl;
 			out_stream.close();
 
 			LogDefaultConfigValues();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
 		}
 	}
 	catch (...)
@@ -521,27 +593,26 @@ void CreateOrLoadConfigFile()
 	}
 }
 
-void CreateOrGetGlobalYYTKVariable()
-{
-	if (!GlobalVariableExists("__YYTK"))
-	{
-		g_ModuleInterface->GetRunnerInterface().StructCreate(&__YYTK);
-		GlobalVariableSet("__YYTK", __YYTK);
-	}
-	else
-		__YYTK = GlobalVariableGet("__YYTK");
+std::string trim(std::string s) {
+	// Trim leading
+	s.erase(s.begin(), std::find_if_not(s.begin(), s.end(), [](unsigned char ch) {
+		return std::isspace(ch);
+		}));
+
+	// Trim trailing
+	s.erase(std::find_if_not(s.rbegin(), s.rend(), [](unsigned char ch) {
+		return std::isspace(ch);
+		}).base(), s.end());
+
+	return s;
 }
 
-void CreateModInfoInGlobalYYTKVariable()
+void ResetStaticFields()
 {
-	if (!StructVariableExists(__YYTK, MOD_NAME))
-	{
-		RValue DigUpAnything;
-		RValue version = VERSION;
-		g_ModuleInterface->GetRunnerInterface().StructCreate(&DigUpAnything);
-		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&DigUpAnything, "version", &version);
-		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&__YYTK, MOD_NAME, &DigUpAnything);
-	}
+	item_id = 0;
+	override_next_dig_spot = false;
+	duplicate_item = false;
+	std::vector<std::string> unacquired_items_spawned = {};
 }
 
 RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localization_key)
@@ -553,7 +624,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	);
 
 	RValue result;
-	RValue input = localization_key;
+	RValue input = RValue(localization_key);
 	RValue* input_ptr = &input;
 	gml_script_get_localizer->m_Functions->m_ScriptFunction(
 		Self,
@@ -575,7 +646,7 @@ void DisplayNotification(CInstance* Self, CInstance* Other, std::string localiza
 	);
 
 	RValue result;
-	RValue notification = localization_key;
+	RValue notification = RValue(localization_key);
 	RValue* notification_ptr = &notification;
 	gml_script_create_notification->m_Functions->m_ScriptFunction(
 		Self,
@@ -591,8 +662,8 @@ bool ItemHasBeenAcquired(int item_id)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari");
-	RValue items_acquired = __ari.at("items_acquired");
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue items_acquired = *__ari.GetRefMember("items_acquired");
 	RValue item_acquired = g_ModuleInterface->CallBuiltin("array_get", { items_acquired, item_id });
 	return RValueAsBool(item_acquired);
 }
@@ -607,7 +678,7 @@ void UpdateUnacquiredItemsSpawnedList(int item_id)
 bool LiveItemHasId(RValue live_item, int item_id)
 {
 	int value = -1;
-	RValue live_item_id = live_item.at("item_id");
+	RValue live_item_id = *live_item.GetRefMember("item_id");
 	if (live_item_id.m_Kind == VALUE_REAL)
 		value = live_item_id.m_Real;
 	if (live_item_id.m_Kind == VALUE_INT64)
@@ -646,7 +717,7 @@ RValue& GmlScriptGiveItemCallback(
 				RValue user_input = g_ModuleInterface->CallBuiltin(
 					"get_integer",
 					{
-						modal_text,
+						RValue(modal_text),
 						1
 					}
 				);
@@ -724,10 +795,10 @@ RValue& GmlScriptGetLocalizerCallback(
 		for (auto& pair : item_name_to_localized_name_map)
 		{
 			RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-			std::string localized_name_str = localized_name.AsString().data();
+			std::string localized_name_str = localized_name.ToString();
 			pair.second = localized_name_str;
 
-			std::string lowercase_localized_name_str = localized_name.AsString().data();
+			std::string lowercase_localized_name_str = localized_name.ToString();
 			std::transform(lowercase_localized_name_str.begin(), lowercase_localized_name_str.end(), lowercase_localized_name_str.begin(), [](unsigned char c) { return std::tolower(c); });
 			lowercase_localized_name_to_item_name_map[lowercase_localized_name_str] = pair.first;
 		}
@@ -761,39 +832,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 		ConfigureActivationButton();
 		CreateOrGetGlobalYYTKVariable();
 		CreateModInfoInGlobalYYTKVariable();
+		LoadItemData();
 
-		CInstance* global_instance = nullptr;
-		g_ModuleInterface->GetGlobalInstance(&global_instance);
-
-		RValue __item_data = global_instance->at("__item_data");
-		size_t array_length;
-		g_ModuleInterface->GetArraySize(__item_data, array_length);
-
-		// Load all items.
-		for (size_t i = 0; i < array_length; i++)
-		{
-			RValue* array_element;
-			g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
-
-			RValue name_key = array_element->at("name_key"); // The item's localization key
-			if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
-			{
-				RValue item_id = array_element->at("item_id");
-				RValue recipe_key = array_element->at("recipe_key"); // The internal item name
-				RValue max_stack = array_element->at("max_stack"); // The max_stack amount
-				item_name_to_id_map[recipe_key.AsString().data()] = RValueAsInt(item_id);
-				item_id_to_name_map[RValueAsInt(item_id)] = recipe_key.AsString().data();
-				item_id_to_max_stack[RValueAsInt(item_id)] = RValueAsInt(max_stack);
-				item_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
-			}
-		}
-		if (item_name_to_id_map.size() > 0)
-		{
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Loaded data for %d items!", MOD_NAME, VERSION, item_name_to_id_map.size());
-		}
-		else {
-			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load data for items!", MOD_NAME, VERSION);
-		}
 
 		localize_items = true;
 		load_on_start = false;
@@ -846,13 +886,13 @@ RValue& GmlScriptOnDrawGuiCallback(
 			RValue user_input = g_ModuleInterface->CallBuiltin(
 				"get_string",
 				{
-					modal_text,
-					"Tea with Lemon"
+					RValue(modal_text),
+					RValue(example_item)
 				}
 			);
 
 			// Convert the user input to lowercase.
-			std::string user_input_str = trim(user_input.AsString().data());
+			std::string user_input_str = trim(user_input.ToString());
 			std::transform(user_input_str.begin(), user_input_str.end(), user_input_str.begin(), [](unsigned char c) { return std::tolower(c); });
 
 			// Check if it was a localized item name.
