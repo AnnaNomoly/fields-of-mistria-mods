@@ -4,18 +4,19 @@
 #include <shlobj.h>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
-static const char* const VERSION = "1.4.0";
+static const char* const VERSION = "1.4.3";
 static const char* const FRIENDSHIP_MULTIPLIER_KEY = "friendship_multiplier";
 static const char* const AUTO_PET_KEY = "auto_pet";
 static const char* const AUTO_FEED_KEY = "auto_feed";
 static const char* const PREVENT_FRIENDSHIP_LOSS_KEY = "prevent_friendship_loss";
 static const char* const AUTO_BELL_IN_KEY = "auto_bell_in";
 static const char* const AUTO_BELL_OUT_KEY = "auto_bell_out";
+static const char* const ANIMAL_WAKE_UP_TIME_KEY = "animal_wake_up_time";
 static const char* const ANIMAL_BED_TIME_KEY = "animal_bed_time";
 static const char* const MUTE_AUTO_BELL_SOUNDS_KEY = "mute_auto_bell_sounds";
 static const char* const SPAWN_EXTRA_BEADS_DAILY_KEY = "spawn_extra_beads_daily";
@@ -33,6 +34,7 @@ static const bool DEFAULT_SPAWN_EXTRA_BEADS_DAILY = false;
 static const int DEFAULT_EXTRA_BEADS_DAILY_MULTIPLIER = 1;
 static const bool DEFAULT_GAIN_RANCHING_XP = true;
 
+static const int EIGHT_AM_IN_SECONDS = 28800;
 static const int SIX_PM_IN_SECONDS = 64800;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
@@ -43,6 +45,7 @@ static bool auto_pet = DEFAULT_AUTO_PET;
 static bool auto_feed = DEFAULT_AUTO_FEED;
 static bool auto_bell_in = DEFAULT_AUTO_BELL_IN;
 static bool auto_bell_out = DEFAULT_AUTO_BELL_OUT;
+static int animal_wake_up_time = EIGHT_AM_IN_SECONDS;
 static int animal_bed_time = SIX_PM_IN_SECONDS;
 static bool mute_auto_bell_sounds = DEFAULT_MUTE_AUTO_BELL_SOUNDS;
 static bool spawn_extra_beads_daily = DEFAULT_SPAWN_EXTRA_BEADS_DAILY;
@@ -56,6 +59,13 @@ static int current_time_in_seconds = 0;
 static int num_player_animals = 0;
 static bool extra_beads_daily_received = false;
 static bool is_sunny = false;
+static CInstance* global_instance = nullptr;
+
+bool GameIsPaused()
+{
+	RValue paused = *global_instance->GetRefMember("__pause_status");
+	return paused.m_i64 > 0;
+}
 
 int RValueAsInt(RValue value)
 {
@@ -80,7 +90,7 @@ bool StructVariableExists(RValue the_struct, std::string variable_name)
 {
 	RValue struct_exists = g_ModuleInterface->CallBuiltin(
 		"struct_exists",
-		{ the_struct, variable_name }
+		{ the_struct, RValue(variable_name) }
 	);
 
 	return RValueAsBool(struct_exists);
@@ -90,8 +100,15 @@ RValue StructVariableGet(RValue the_struct, std::string variable_name)
 {
 	return g_ModuleInterface->CallBuiltin(
 		"struct_get",
-		{ the_struct, variable_name }
+		{ the_struct, RValue(variable_name) }
 	);
+}
+
+bool IsAnimalWakeUpTime(int clock_time_in_seconds)
+{
+	if (clock_time_in_seconds >= animal_wake_up_time)
+		return true;
+	return false;
 }
 
 bool IsAnimalBedtime(int clock_time_in_seconds)
@@ -130,6 +147,7 @@ json CreateConfigJson(bool use_defaults)
 		{ AUTO_FEED_KEY, use_defaults ? DEFAULT_AUTO_FEED : auto_feed },
 		{ AUTO_BELL_IN_KEY, use_defaults ? DEFAULT_AUTO_BELL_IN : auto_bell_in },
 		{ AUTO_BELL_OUT_KEY, use_defaults ? DEFAULT_AUTO_BELL_OUT : auto_bell_out },
+		{ ANIMAL_WAKE_UP_TIME_KEY, use_defaults ? EIGHT_AM_IN_SECONDS : animal_wake_up_time },
 		{ ANIMAL_BED_TIME_KEY, use_defaults ? SIX_PM_IN_SECONDS : animal_bed_time },
 		{ MUTE_AUTO_BELL_SOUNDS_KEY, use_defaults ? DEFAULT_MUTE_AUTO_BELL_SOUNDS : mute_auto_bell_sounds },
 		{ SPAWN_EXTRA_BEADS_DAILY_KEY, use_defaults ? DEFAULT_SPAWN_EXTRA_BEADS_DAILY : spawn_extra_beads_daily },
@@ -147,6 +165,7 @@ void LogDefaultConfigValues()
 	auto_feed = DEFAULT_AUTO_FEED;
 	auto_bell_in = DEFAULT_AUTO_BELL_IN;
 	auto_bell_out = DEFAULT_AUTO_BELL_OUT;
+	animal_wake_up_time = EIGHT_AM_IN_SECONDS;
 	animal_bed_time = SIX_PM_IN_SECONDS;
 	mute_auto_bell_sounds = DEFAULT_MUTE_AUTO_BELL_SOUNDS;
 	spawn_extra_beads_daily = DEFAULT_SPAWN_EXTRA_BEADS_DAILY;
@@ -159,6 +178,7 @@ void LogDefaultConfigValues()
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_FEED_KEY, DEFAULT_AUTO_FEED ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_IN_KEY, DEFAULT_AUTO_BELL_IN ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_OUT_KEY, DEFAULT_AUTO_BELL_OUT ? "true" : "false");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_WAKE_UP_TIME_KEY, EIGHT_AM_IN_SECONDS);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, MUTE_AUTO_BELL_SOUNDS_KEY, DEFAULT_MUTE_AUTO_BELL_SOUNDS ? "true" : "false");
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, SPAWN_EXTRA_BEADS_DAILY_KEY, DEFAULT_SPAWN_EXTRA_BEADS_DAILY ? "true" : "false");
@@ -173,13 +193,13 @@ void LoadWeather()
 
 	// Load weather types.
 	size_t array_length;
-	RValue weather = global_instance->at("__weather__");
+	RValue weather = *global_instance->GetRefMember("__weather__");
 	g_ModuleInterface->GetArraySize(weather, array_length);
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(weather, i, array_element);
-		weather_name_to_id_map[array_element->AsString().data()] = i;
+		weather_name_to_id_map[array_element->ToString()] = i;
 	}
 }
 
@@ -189,13 +209,13 @@ void LoadSkills()
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
 	size_t array_length;
-	RValue skills = global_instance->at("__skill__");
+	RValue skills = *global_instance->GetRefMember("__skill__");
 	g_ModuleInterface->GetArraySize(skills, array_length);
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(skills, i, array_element);
-		skill_name_to_id_map[array_element->AsString().data()] = i;
+		skill_name_to_id_map[array_element->ToString()] = i;
 	}
 }
 
@@ -215,7 +235,7 @@ void LoadAnimalXP()
 
 	if (StructVariableExists(global_instance, "__animal_xp"))
 	{
-		RValue animal_xp = global_instance->at("__animal_xp");
+		RValue animal_xp = *global_instance->GetRefMember("__animal_xp");
 		g_ModuleInterface->EnumInstanceMembers(animal_xp, GetAnimalXPFieldNames);
 
 		for (auto& pair : animal_xp_map)
@@ -349,6 +369,28 @@ void LoadOrCreateConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, AUTO_BELL_OUT_KEY, DEFAULT_AUTO_BELL_OUT ? "true" : "false");
 					}
 
+					// Try loading the animal_wake_up_time value.
+					if (json_object.contains(ANIMAL_WAKE_UP_TIME_KEY))
+					{
+						animal_wake_up_time = json_object[ANIMAL_WAKE_UP_TIME_KEY];
+						if (animal_wake_up_time < 21600 || animal_wake_up_time > 86400)
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, ANIMAL_WAKE_UP_TIME_KEY, animal_wake_up_time, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the value is a valid integer between 21600 and 86400 (inclusive)!", VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_WAKE_UP_TIME_KEY, EIGHT_AM_IN_SECONDS);
+							animal_wake_up_time = EIGHT_AM_IN_SECONDS;
+						}
+						else
+						{
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using CUSTOM \"%s\" value: %d!", VERSION, ANIMAL_WAKE_UP_TIME_KEY, animal_wake_up_time);
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, ANIMAL_WAKE_UP_TIME_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_WAKE_UP_TIME_KEY, EIGHT_AM_IN_SECONDS);
+					}
+
 					// Try loading the animal_bed_time value.
 					if (json_object.contains(ANIMAL_BED_TIME_KEY))
 					{
@@ -371,6 +413,17 @@ void LoadOrCreateConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
 					}
 
+					// Check that the animal_wake_up_time is before the animal_bed_time.
+					if (animal_wake_up_time >= animal_bed_time)
+					{
+						g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - The \"%s\" value (%d) is greather than or equal to the \"%s\" value (%d) in mod configuration file: %s", VERSION, ANIMAL_WAKE_UP_TIME_KEY, animal_wake_up_time, ANIMAL_BED_TIME_KEY, animal_bed_time, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[AnimalFriends %s] - Make sure the \"%s\" value is before (less than) the \"%s\" value!", VERSION, ANIMAL_WAKE_UP_TIME_KEY, ANIMAL_BED_TIME_KEY);
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_WAKE_UP_TIME_KEY, EIGHT_AM_IN_SECONDS);
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %d!", VERSION, ANIMAL_BED_TIME_KEY, SIX_PM_IN_SECONDS);
+						animal_wake_up_time = EIGHT_AM_IN_SECONDS;
+						animal_bed_time = SIX_PM_IN_SECONDS;
+					}
+
 					// Try loading the mute_bell_sounds value.
 					if (json_object.contains(MUTE_AUTO_BELL_SOUNDS_KEY))
 					{
@@ -383,7 +436,7 @@ void LoadOrCreateConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Using DEFAULT \"%s\" value: %s!", VERSION, MUTE_AUTO_BELL_SOUNDS_KEY, DEFAULT_MUTE_AUTO_BELL_SOUNDS ? "true" : "false");
 					}
 
-					// Try loading the mute_bell_sounds value.
+					// Try loading the spawn_extra_beads_daily value.
 					if (json_object.contains(SPAWN_EXTRA_BEADS_DAILY_KEY))
 					{
 						spawn_extra_beads_daily = json_object[SPAWN_EXTRA_BEADS_DAILY_KEY];
@@ -478,6 +531,11 @@ void LoadOrCreateConfigFile()
 
 void SpawnShinyBeads(CInstance* Self, CInstance* Other, int amount)
 {
+	if (amount <= 0)
+		amount = 1;
+	if (amount > 999)
+		amount = 999;
+
 	CScript* gml_script_create_animal_currency_dance = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
 		"gml_Script_create_animal_currency_dance@gml_Object_obj_player_animal_Create_0",
@@ -492,13 +550,23 @@ void SpawnShinyBeads(CInstance* Self, CInstance* Other, int amount)
 	RValue* spawn_beads_ptr = &spawn_beads;
 	RValue* arguments[2] = { num_beads_ptr, spawn_beads_ptr };
 
-	gml_script_create_animal_currency_dance->m_Functions->m_ScriptFunction(
-		Self,
-		Other,
-		result,
-		2,
-		arguments
-	);
+	std::exception_ptr eptr;
+	try
+	{
+		gml_script_create_animal_currency_dance->m_Functions->m_ScriptFunction(
+			Self,
+			Other,
+			result,
+			2,
+			arguments
+		);
+	}
+	catch (...)
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[AnimalFriends %s] - An error occurred spawning shiny beads.", VERSION);
+		eptr = std::current_exception();
+		handle_eptr(eptr);
+	}
 }
 
 void AriGainXP(CInstance* Self, CInstance* Other, int skill_id, double xp_gained)
@@ -564,7 +632,7 @@ void ObjectCallback(
 	if (!self->m_Object)
 		return;
 
-	if (strstr(self->m_Object->m_Name, "obj_ari"))
+	if (strstr(self->m_Object->m_Name, "obj_ari") && !GameIsPaused())
 	{
 		if (once_per_day)
 		{
@@ -587,7 +655,7 @@ void ObjectCallback(
 
 				if (all_animals.m_Kind == VALUE_OBJECT)
 				{
-					RValue __buffer = all_animals.at("__buffer");
+					RValue __buffer = *all_animals.GetRefMember("__buffer");
 					if (__buffer.m_Kind == VALUE_ARRAY)
 					{
 						size_t size = 0;
@@ -718,7 +786,7 @@ void ObjectCallback(
 							CInstance* global_instance = nullptr;
 							g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-							AriGainXP(global_instance->at("__ari").m_Object, self, skill_name_to_id_map["ranching"], ranching_xp_gained);
+							AriGainXP(global_instance->GetRefMember("__ari")->ToInstance(), self, skill_name_to_id_map["ranching"], ranching_xp_gained);
 							g_ModuleInterface->Print(CM_LIGHTGREEN, "[AnimalFriends %s] - Ari gained %d ranching experience from the AUTO PETTER and AUTO FEEDER!", VERSION, ranching_xp_gained);
 						}
 					}
@@ -729,7 +797,7 @@ void ObjectCallback(
 		}
 	}
 
-	if (strstr(self->m_Object->m_Name, "obj_farm_bell"))
+	if (strstr(self->m_Object->m_Name, "obj_farm_bell") && !GameIsPaused())
 	{
 		if (auto_bell_in)
 		{
@@ -770,7 +838,7 @@ void ObjectCallback(
 			RValue bell_out_exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "bell_out" });
 			if (bell_out_exists.m_Kind == VALUE_BOOL && bell_out_exists.m_Real == 1)
 			{
-				if (!IsAnimalBedtime(current_time_in_seconds) && is_sunny)
+				if (IsAnimalWakeUpTime(current_time_in_seconds) && !IsAnimalBedtime(current_time_in_seconds) && is_sunny)
 				{
 					RValue bell_out = g_ModuleInterface->CallBuiltin("struct_exists", { self, "__animal_friends__bell_out" });
 					if (bell_out.m_Kind == VALUE_BOOL && bell_out.m_Real == 0)
@@ -854,6 +922,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 
 	if (load_on_start)
 	{
+		g_ModuleInterface->GetGlobalInstance(&global_instance);
 		LoadWeather();
 		LoadSkills();
 		LoadAnimalXP();
@@ -903,12 +972,15 @@ RValue& GmlScriptGetMinutesCallback(
 	IN RValue** Arguments
 )
 {
-	if (Arguments[0]->m_Kind == VALUE_INT32)
-		current_time_in_seconds = Arguments[0]->m_i32;
-	else if (Arguments[0]->m_Kind == VALUE_INT64)
-		current_time_in_seconds = Arguments[0]->m_i64;
-	else if (Arguments[0]->m_Kind == VALUE_REAL)
-		current_time_in_seconds = Arguments[0]->m_Real;
+	if (!GameIsPaused())
+	{
+		if (Arguments[0]->m_Kind == VALUE_INT32)
+			current_time_in_seconds = Arguments[0]->m_i32;
+		else if (Arguments[0]->m_Kind == VALUE_INT64)
+			current_time_in_seconds = Arguments[0]->m_i64;
+		else if (Arguments[0]->m_Kind == VALUE_REAL)
+			current_time_in_seconds = Arguments[0]->m_Real;
+	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get_minutes"));
 	original(
@@ -939,23 +1011,26 @@ RValue& GmlScriptGetWeatherCallback(
 		Arguments
 	);
 
-	if (Result.m_Kind == VALUE_REAL)
+	if (!GameIsPaused())
 	{
-		if (Result.m_Real == weather_name_to_id_map["heavy_inclement"])
-			is_sunny = false;
-		else if (Result.m_Real == weather_name_to_id_map["inclement"])
-			is_sunny = false;
-		else
-			is_sunny = true;
-	}
-	if (Result.m_Kind == VALUE_INT64)
-	{
-		if (Result.m_i64 == weather_name_to_id_map["heavy_inclement"])
-			is_sunny = false;
-		else if (Result.m_i64 == weather_name_to_id_map["inclement"])
-			is_sunny = false;
-		else
-			is_sunny = true;
+		if (Result.m_Kind == VALUE_REAL)
+		{
+			if (Result.m_Real == weather_name_to_id_map["heavy_inclement"])
+				is_sunny = false;
+			else if (Result.m_Real == weather_name_to_id_map["inclement"])
+				is_sunny = false;
+			else
+				is_sunny = true;
+		}
+		if (Result.m_Kind == VALUE_INT64)
+		{
+			if (Result.m_i64 == weather_name_to_id_map["heavy_inclement"])
+				is_sunny = false;
+			else if (Result.m_i64 == weather_name_to_id_map["inclement"])
+				is_sunny = false;
+			else
+				is_sunny = true;
+		}
 	}
 
 	return Result;
