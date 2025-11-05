@@ -1,13 +1,13 @@
 #include <map>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Telepop";
-static const char* const VERSION = "2.0.0";
+static const char* const VERSION = "2.1.0";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_TELEPORT_ARI_TO_ROOM = "gml_Script_ari_teleport_to_room";
 static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
@@ -17,6 +17,8 @@ static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_USE_ITEM = "gml_Script_use_item";
 static const char* const GML_SCRIPT_HELD_ITEM = "gml_Script_held_item@Ari@Ari";
+static const char* const GML_SCRIPT_MODIFY_HEALTH = "gml_Script_modify_health@Ari@Ari";
+static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const TELEPOP_MYSTERY_LOCATION_KEY = "telepop_mystery_location";
 static const char* const TELEPOP_MYSTERY_X_COORDINATE_KEY = "telepop_mystery_x_coordinate";
 static const char* const TELEPOP_MYSTERY_Y_COORDINATE_KEY = "telepop_mystery_y_coordinate";
@@ -29,6 +31,14 @@ static const std::string ECHO_MINT_LOCATION_SAVED_NOTIFICATION_KEY = "Notificati
 static const std::string ECHO_MINT_LOCATION_INVALID_NOTIFICATION_KEY = "Notifications/Mods/Telepop/echo_mint/location_invalid";
 static const std::string TELEPOP_MYSTERY_NO_LOCATION_SET_NOTIFICATION_KEY = "Notifications/Mods/Telepop/telepop_mystery/no_location_set";
 static const std::string PLACEHOLDER_TEXT = "<PLACEHOLDER>";
+static const std::string SMALL_BARN = "small_barn";
+static const std::string MEDIUM_BARN = "medium_barn";
+static const std::string LARGE_BARN = "large_barn";
+static const std::string SMALL_COOP = "small_coop";
+static const std::string MEDIUM_COOP = "medium_coop";
+static const std::string LARGE_COOP = "large_coop";
+static const std::string SMALL_GREENHOUSE = "small_greenhouse";
+static const std::string LARGE_GREENHOUSE = "large_greenhouse";
 static const std::string DUNGEON = "dungeon";
 static const std::string WATER_SEAL = "water_seal";
 static const std::string EARTH_SEAL = "earth_seal";
@@ -72,6 +82,7 @@ static bool notify_on_file_load = true;
 static bool teleport_ari = false;
 static bool telepop_mystery = false;
 static bool room_loaded = false;
+static bool telepop_item_used = false;
 static std::map<int, std::string> location_id_to_name_map = {};
 static std::map<std::string, int> location_name_to_id_map = {};
 static std::map<std::string, int> item_name_to_id_map = {};
@@ -111,14 +122,6 @@ void ResetStaticFields(bool returned_to_title_screen)
 	}
 }
 
-bool GameIsPaused()
-{
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-	RValue paused = global_instance->at("__pause_status");
-	return paused.m_i64 > 0;
-}
-
 int RValueAsInt(RValue value)
 {
 	if (value.m_Kind == VALUE_REAL)
@@ -152,7 +155,7 @@ RValue StructVariableGet(RValue the_struct, std::string variable_name)
 {
 	return g_ModuleInterface->CallBuiltin(
 		"struct_get",
-		{ the_struct, variable_name }
+		{ the_struct, RValue(variable_name) }
 	);
 }
 
@@ -172,7 +175,7 @@ void PrintError(std::exception_ptr eptr)
 		}
 	}
 	catch (const std::exception& e) {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Error: %s", VERSION, e.what());
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
 	}
 }
 
@@ -181,7 +184,7 @@ void ModifyItem(int item_id)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __item_data = global_instance->at("__item_data");
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
 	RValue item = g_ModuleInterface->CallBuiltin("array_get", { __item_data, item_id });
 
 	// Modify the item's recipe.
@@ -212,7 +215,7 @@ void ModifyCustomItems()
 
 bool LoadItemIds(CInstance* global_instance)
 {
-	RValue item_data = global_instance->at("__item_data");
+	RValue item_data = *global_instance->GetRefMember("__item_data");
 	size_t array_length;
 	g_ModuleInterface->GetArraySize(item_data, array_length);
 
@@ -221,12 +224,12 @@ bool LoadItemIds(CInstance* global_instance)
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(item_data, i, array_element);
 
-		RValue name_key = array_element->at("name_key"); // The item's localization key
+		RValue name_key = *array_element->GetRefMember("name_key"); // The item's localization key
 		if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
 		{
-			RValue item_id = array_element->at("item_id");
-			RValue recipe_key = array_element->at("recipe_key"); // The internal item name
-			item_name_to_id_map[recipe_key.AsString().data()] = RValueAsInt(item_id);
+			RValue item_id = *array_element->GetRefMember("item_id");
+			RValue recipe_key = *array_element->GetRefMember("recipe_key"); // The internal item name
+			item_name_to_id_map[recipe_key.ToString()] = RValueAsInt(item_id);
 		}
 	}
 
@@ -253,11 +256,22 @@ bool LoadItemIds(CInstance* global_instance)
 bool LoadLocationIds(CInstance* global_instance)
 {
 	static const std::vector<std::string> LOCATION_NAMES = {
+		// Prohibited Echo Mint locations
 		DUNGEON,
 		WATER_SEAL,
 		EARTH_SEAL,
 		FIRE_SEAL,
 		RUINS_SEAL,
+		SMALL_BARN,
+		MEDIUM_BARN,
+		LARGE_BARN,
+		SMALL_COOP,
+		MEDIUM_COOP,
+		LARGE_COOP,
+		SMALL_GREENHOUSE,
+		LARGE_GREENHOUSE,
+
+		// Telepop locations (excluding Mystery)
 		MINES_ENTRY_LOCATION_NAME,
 		BEACH_LOCATION_NAME,
 		TOWN_LOCATION_NAME,
@@ -267,7 +281,7 @@ bool LoadLocationIds(CInstance* global_instance)
 	};
 
 	size_t array_length;
-	RValue location_ids = global_instance->at("__location_id__");
+	RValue location_ids = *global_instance->GetRefMember("__location_id__");
 	g_ModuleInterface->GetArraySize(location_ids, array_length);
 
 	for (size_t i = 0; i < array_length; i++)
@@ -275,12 +289,13 @@ bool LoadLocationIds(CInstance* global_instance)
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(location_ids, i, array_element);
 
-		location_id_to_name_map[i] = array_element->AsString().data();
-		location_name_to_id_map[array_element->AsString().data()] = i;
+		location_id_to_name_map[i] = array_element->ToString();
+		location_name_to_id_map[array_element->ToString()] = i;
 	}
 
 	bool success = true;
 
+	// Verify all expected location names exist in the game.
 	for (std::string location_name : LOCATION_NAMES)
 	{
 		if (location_name_to_id_map.count(location_name) == 0)
@@ -417,7 +432,7 @@ bool CreateOrLoadModConfigFile()
 		std::string telepop_folder = mod_data_folder + "\\Telepop";
 		if (!std::filesystem::exists(telepop_folder))
 		{
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - The \"Telepop\" directory was not found. Creating directory: %s", VERSION, telepop_folder.c_str());
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"Telepop\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, telepop_folder.c_str());
 			std::filesystem::create_directory(telepop_folder);
 
 			// Verify the directory now exists.
@@ -443,8 +458,8 @@ bool CreateOrLoadModConfigFile()
 				// Check if the json_object is empty.
 				if (json_object.empty())
 				{
-					g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - No values found in mod configuration file: %s!", VERSION, config_file.c_str());
-					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Add your desired values to the configuration file, otherwise defaults will be used.", VERSION);
+					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in mod configuration file: %s!", MOD_NAME, VERSION, config_file.c_str());
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Add your desired values to the configuration file, otherwise defaults will be used.", MOD_NAME, VERSION);
 					LogDefaultModConfigValues();
 				}
 				else
@@ -453,22 +468,22 @@ bool CreateOrLoadModConfigFile()
 					if (json_object.contains(TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY))
 					{
 						telepop_recipe_sugar_ingredient_amount = json_object[TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY];
-						if (telepop_recipe_sugar_ingredient_amount < 0 || telepop_recipe_sugar_ingredient_amount > 6)
+						if (telepop_recipe_sugar_ingredient_amount < 1 || telepop_recipe_sugar_ingredient_amount > 5)
 						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, telepop_recipe_sugar_ingredient_amount, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Make sure the value is a valid integer between 0 and 6 (inclusive)!", VERSION);
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using DEFAULT \"%s\" value: %d!", VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, DEFAULT_TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT);
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, telepop_recipe_sugar_ingredient_amount, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the value is a valid integer between 1 and 5 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, DEFAULT_TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT);
 							telepop_recipe_sugar_ingredient_amount = DEFAULT_TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT;
 						}
 						else
 						{
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using CUSTOM \"%s\" value: %d!", VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, telepop_recipe_sugar_ingredient_amount);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, telepop_recipe_sugar_ingredient_amount);
 						}
 					}
 					else
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using DEFAULT \"%s\" value: %d!", VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, DEFAULT_TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT);
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT_KEY, DEFAULT_TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT);
 					}
 
 					// Try loading the telepop_recipe_cooking_time_in_minutes value.
@@ -477,21 +492,21 @@ bool CreateOrLoadModConfigFile()
 						telepop_recipe_cooking_time_in_minutes = json_object[TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY];
 						if (telepop_recipe_cooking_time_in_minutes < 0 || telepop_recipe_cooking_time_in_minutes > 60 || telepop_recipe_cooking_time_in_minutes % 10 != 0)
 						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, telepop_recipe_cooking_time_in_minutes, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Make sure the value is a valid integer between 0 and 60 (inclusive)!", VERSION);
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Make sure the value is a multiple of 10 (or 0)!", VERSION);
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using DEFAULT \"%s\" value: %d!", VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, DEFAULT_TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES);
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, telepop_recipe_cooking_time_in_minutes, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the value is a valid integer between 0 and 60 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the value is a multiple of 10 (or 0)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, DEFAULT_TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES);
 							telepop_recipe_cooking_time_in_minutes = DEFAULT_TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES;
 						}
 						else
 						{
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using CUSTOM \"%s\" value: %d!", VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, telepop_recipe_cooking_time_in_minutes);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, telepop_recipe_cooking_time_in_minutes);
 						}
 					}
 					else
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using DEFAULT \"%s\" value: %d!", VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, DEFAULT_TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES);
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES_KEY, DEFAULT_TELEPOP_RECIPE_COOKING_TIME_IN_MINUTES);
 					}
 
 					// Try loading the telepop_shipping_bin_price value.
@@ -500,20 +515,20 @@ bool CreateOrLoadModConfigFile()
 						telepop_shipping_bin_price = json_object[TELEPOP_SHIPPING_BIN_PRICE_KEY];
 						if (telepop_shipping_bin_price < 1 || telepop_shipping_bin_price > 10000)
 						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, telepop_shipping_bin_price, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", VERSION);
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using DEFAULT \"%s\" value: %d!", VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, DEFAULT_TELEPOP_SHIPPING_BIN_PRICE);
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, telepop_shipping_bin_price, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, DEFAULT_TELEPOP_SHIPPING_BIN_PRICE);
 							telepop_shipping_bin_price = DEFAULT_TELEPOP_SHIPPING_BIN_PRICE;
 						}
 						else
 						{
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using CUSTOM \"%s\" value: %d!", VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, telepop_shipping_bin_price);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, telepop_shipping_bin_price);
 						}
 					}
 					else
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using DEFAULT \"%s\" value: %d!", VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, DEFAULT_TELEPOP_SHIPPING_BIN_PRICE);
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_SHIPPING_BIN_PRICE_KEY, DEFAULT_TELEPOP_SHIPPING_BIN_PRICE);
 					}
 
 					// Try loading the telepop_store_price value.
@@ -522,20 +537,20 @@ bool CreateOrLoadModConfigFile()
 						telepop_store_price = json_object[TELEPOP_STORE_PRICE_KEY];
 						if (telepop_store_price < 1 || telepop_store_price > 10000)
 						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", VERSION, TELEPOP_STORE_PRICE_KEY, telepop_store_price, config_file.c_str());
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", VERSION);
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using DEFAULT \"%s\" value: %d!", VERSION, TELEPOP_STORE_PRICE_KEY, DEFAULT_TELEPOP_STORE_PRICE);
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value (%d) in mod configuration file: %s", MOD_NAME, VERSION, TELEPOP_STORE_PRICE_KEY, telepop_store_price, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the value is a valid integer between 1 and 10,000 (inclusive)!", MOD_NAME, VERSION);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_STORE_PRICE_KEY, DEFAULT_TELEPOP_STORE_PRICE);
 							telepop_store_price = DEFAULT_TELEPOP_STORE_PRICE;
 						}
 						else
 						{
-							g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using CUSTOM \"%s\" value: %d!", VERSION, TELEPOP_STORE_PRICE_KEY, telepop_store_price);
+							g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_STORE_PRICE_KEY, telepop_store_price);
 						}
 					}
 					else
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Missing \"%s\" value in mod configuration file: %s!", VERSION, TELEPOP_STORE_PRICE_KEY, config_file.c_str());
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Using DEFAULT \"%s\" value: %d!", VERSION, TELEPOP_STORE_PRICE_KEY, DEFAULT_TELEPOP_STORE_PRICE);
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, TELEPOP_STORE_PRICE_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, TELEPOP_STORE_PRICE_KEY, DEFAULT_TELEPOP_STORE_PRICE);
 					}
 				}
 
@@ -546,8 +561,8 @@ bool CreateOrLoadModConfigFile()
 				eptr = std::current_exception();
 				PrintError(eptr);
 
-				g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to parse JSON from configuration file: %s", VERSION, config_file.c_str());
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - Make sure the file is valid JSON!", VERSION);
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from configuration file: %s", MOD_NAME, VERSION, config_file.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the file is valid JSON!", MOD_NAME, VERSION);
 				LogDefaultModConfigValues();
 			}
 
@@ -557,7 +572,7 @@ bool CreateOrLoadModConfigFile()
 		{
 			in_stream.close();
 
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[Telepop %s] - The \"Telepop.json\" file was not found. Creating file: %s", VERSION, config_file.c_str());
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"Telepop.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
 
 			json default_config_json = CreateModConfigJson(true);
 			std::ofstream out_stream(config_file);
@@ -607,7 +622,41 @@ bool EchoMintUsable()
 		ari_current_location != WATER_SEAL && 
 		ari_current_location != EARTH_SEAL &&
 		ari_current_location != FIRE_SEAL &&
-		ari_current_location != RUINS_SEAL;
+		ari_current_location != RUINS_SEAL &&
+		ari_current_location != SMALL_COOP &&
+		ari_current_location != MEDIUM_COOP &&
+		ari_current_location != LARGE_COOP &&
+		ari_current_location != SMALL_BARN &&
+		ari_current_location != MEDIUM_BARN &&
+		ari_current_location != LARGE_BARN &&
+		ari_current_location != SMALL_GREENHOUSE &&
+		ari_current_location != LARGE_GREENHOUSE;
+}
+
+bool GameIsPaused(CInstance* Self, CInstance* Other)
+{
+	// Global pause check
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+	RValue __pause_status = global_instance->GetMember("__pause_status");
+
+	// Script pause check
+	CScript* gml_script_game_paused = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_game_paused",
+		(PVOID*)&gml_script_game_paused
+	);
+
+	RValue result;
+	gml_script_game_paused->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		0,
+		nullptr
+	);
+
+	return RValueAsBool(__pause_status) || RValueAsBool(result);
 }
 
 void CreateNotification(CInstance* Self, CInstance* Other, std::string notification_localization_str)
@@ -619,7 +668,7 @@ void CreateNotification(CInstance* Self, CInstance* Other, std::string notificat
 	);
 
 	RValue result;
-	RValue notification = notification_localization_str;
+	RValue notification = RValue(notification_localization_str);
 	RValue* notification_ptr = &notification;
 	gml_script_create_notification->m_Functions->m_ScriptFunction(
 		Self,
@@ -655,19 +704,19 @@ void TeleportAriToRoom(CInstance* Self, CInstance* Other, int location_id, int x
 	);
 
 	if (telepop_mystery)
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to her Echo (%s)!", VERSION, telepop_mystery_location.c_str());
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to her Echo (%s)!", MOD_NAME, VERSION, telepop_mystery_location.c_str());
 	else if (telepop_destination_id == location_name_to_id_map[MINES_ENTRY_LOCATION_NAME])
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to the Mines!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Mines!", MOD_NAME, VERSION);
 	else if (telepop_destination_id == location_name_to_id_map[BEACH_LOCATION_NAME])
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to the Beach!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Beach!", MOD_NAME, VERSION);
 	else if (telepop_destination_id == location_name_to_id_map[TOWN_LOCATION_NAME])
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to the Town!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Town!", MOD_NAME, VERSION);
 	else if (telepop_destination_id == location_name_to_id_map[FARM_LOCATION_NAME])
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to the Farm!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Farm!", MOD_NAME, VERSION);
 	else if (telepop_destination_id == location_name_to_id_map[EASTERN_ROAD_LOCATION_NAME])
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to the Eastern Road!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Eastern Road!", MOD_NAME, VERSION);
 	else if (telepop_destination_id == location_name_to_id_map[WESTERN_RUINS_LOCATION_NAME])
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Ari teleported to the Western Ruins!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Western Ruins!", MOD_NAME, VERSION);
 }
 
 void ObjectCallback(
@@ -739,7 +788,7 @@ RValue& GmlScriptSaveGameCallback(
 	if (mod_healthy && save_prefix.size() == 0)
 	{
 		// Get the save file name.
-		std::string save_file = Arguments[0]->AsString().data();
+		std::string save_file = Arguments[0]->ToString();
 		std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
 		std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
 
@@ -779,7 +828,7 @@ RValue& GmlScriptLoadGameCallback(
 	if (mod_healthy)
 	{
 		// Get the save file name.
-		std::string save_file = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
+		std::string save_file = Arguments[0]->GetRefMember("save_path")->ToString();
 		std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
 		std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
 
@@ -845,7 +894,7 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 	);
 
 	if (mod_healthy && game_is_active && Result.m_Kind == VALUE_STRING)
-		ari_current_location = Result.AsString().data();
+		ari_current_location = Result.ToString();
 
 	return Result;
 }
@@ -869,10 +918,10 @@ RValue& GmlScriptGetLocalizerCallback(
 
 	if (mod_healthy && ArgumentCount == 1 && Arguments[0]->m_Kind == VALUE_STRING)
 	{
-		std::string localization_key = Arguments[0]->AsString().data();
+		std::string localization_key = Arguments[0]->ToString();
 		if (localization_key.compare(ECHO_MINT_LOCATION_REMINDER_NOTIFICATION_KEY) == 0)
 		{
-			std::string result_str = Result.AsString().data();
+			std::string result_str = Result.ToString();
 
 			// Replace the placeholder text.
 			size_t placeholder_index = result_str.find(PLACEHOLDER_TEXT);
@@ -880,7 +929,7 @@ RValue& GmlScriptGetLocalizerCallback(
 				result_str.replace(placeholder_index, PLACEHOLDER_TEXT.length(), telepop_mystery_location);
 			}
 
-			Result = result_str;
+			Result = RValue(result_str);
 		}
 	}
 
@@ -888,16 +937,24 @@ RValue& GmlScriptGetLocalizerCallback(
 }
 
 RValue& GmlScriptUseItemCallback(
-	IN CInstance* Self, // The AriFsm?
-	IN CInstance* Other, // obj_ari
+	IN CInstance* Self, // Changes depending on the invocation context. For world interactables like a fountain, Self->m_Object->m_Name == "obj_world_fountain". For Ari using an item, Self->m_Object == NULL.
+	IN CInstance* Other, // Changes depending on the invocation context. For world interactables like a fountain, Other->m_Object->m_Name == "Game". For Ari using an item, Other->m_Object->m_Name == "obj_ari".
 	OUT RValue& Result,
 	IN int ArgumentCount,
 	IN RValue** Arguments
 )
 {
-	if (mod_healthy)
+	if (mod_healthy && Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari"))
 	{
-		if (held_item_id == item_name_to_id_map[ECHO_MINT_ITEM_NAME])
+		if (held_item_id == item_name_to_id_map[TELEPOP_PURPLE_ITEM_NAME] ||
+			held_item_id == item_name_to_id_map[TELEPOP_BLUE_ITEM_NAME] ||
+			held_item_id == item_name_to_id_map[TELEPOP_ORANGE_ITEM_NAME] ||
+			held_item_id == item_name_to_id_map[TELEPOP_PINK_ITEM_NAME] ||
+			held_item_id == item_name_to_id_map[TELEPOP_GREEN_ITEM_NAME] ||
+			held_item_id == item_name_to_id_map[TELEPOP_YELLOW_ITEM_NAME]
+		)
+			telepop_item_used = true;
+		else if (held_item_id == item_name_to_id_map[ECHO_MINT_ITEM_NAME])
 		{
 			if (!EchoMintUsable())
 			{
@@ -905,6 +962,7 @@ RValue& GmlScriptUseItemCallback(
 				CreateNotification(Self, Other, ECHO_MINT_LOCATION_INVALID_NOTIFICATION_KEY);
 				return Result;
 			}
+			telepop_item_used = true;
 		}
 		else if (held_item_id == item_name_to_id_map[TELEPOP_MYSTERY_ITEM_NAME])
 		{
@@ -914,6 +972,7 @@ RValue& GmlScriptUseItemCallback(
 				CreateNotification(Self, Other, TELEPOP_MYSTERY_NO_LOCATION_SET_NOTIFICATION_KEY);
 				return Result;
 			}
+			telepop_item_used = true;
 		}
 	}
 
@@ -950,9 +1009,9 @@ RValue& GmlScriptHeldItemCallback(
 	{
 		if (Result.m_Kind != VALUE_UNDEFINED)
 		{
-			if (held_item_id != RValueAsInt(Result.at("item_id")) && !teleport_ari)
+			if (held_item_id != RValueAsInt(Result.GetMember("item_id")) && !teleport_ari)
 			{
-				held_item_id = RValueAsInt(Result.at("item_id"));
+				held_item_id = RValueAsInt(Result.GetMember("item_id"));
 			}
 		}
 	}
@@ -961,14 +1020,14 @@ RValue& GmlScriptHeldItemCallback(
 }
 
 RValue& GmlScriptModifyHealthCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
+	IN CInstance* Self, // The __ari global
+	IN CInstance* Other, // obj_ari
 	OUT RValue& Result,
 	IN int ArgumentCount,
 	IN RValue** Arguments
 )
 {
-	if (mod_healthy && !GameIsPaused())
+	if (mod_healthy && !GameIsPaused(Self, Other) && !teleport_ari && telepop_item_used && RValueAsInt(*Arguments[0]) >= 0)
 	{
 		// Telepop (Purple)
 		if (held_item_id == item_name_to_id_map[TELEPOP_PURPLE_ITEM_NAME])
@@ -1032,7 +1091,9 @@ RValue& GmlScriptModifyHealthCallback(
 		held_item_id = UNSET_INT;
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_modify_health@Ari@Ari"));
+	telepop_item_used = false;
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_MODIFY_HEALTH));
 	original(
 		Self,
 		Other,
@@ -1070,7 +1131,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - The mod loaded in an unhealthy state and will NOT function!", MOD_NAME, VERSION);
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SETUP_MAIN_SCREEN));
 	original(
 		Self,
 		Other,
@@ -1227,7 +1288,7 @@ void CreateHookGmlScriptUseItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (%s)!", VERSION, GML_SCRIPT_USE_ITEM);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_USE_ITEM);
 	}
 
 	status = MmCreateHook(
@@ -1241,7 +1302,7 @@ void CreateHookGmlScriptUseItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (%s)!", VERSION, GML_SCRIPT_USE_ITEM);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_USE_ITEM);
 	}
 }
 
@@ -1255,7 +1316,7 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (%s)!", VERSION, GML_SCRIPT_HELD_ITEM);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_HELD_ITEM);
 	}
 
 	status = MmCreateHook(
@@ -1269,7 +1330,7 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (%s)!", VERSION, GML_SCRIPT_HELD_ITEM);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_HELD_ITEM);
 	}
 }
 
@@ -1277,18 +1338,18 @@ void CreateHookGmlScriptModifyHealth(AurieStatus& status)
 {
 	CScript* gml_script_modify_stamina = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_modify_health@Ari@Ari",
+		GML_SCRIPT_MODIFY_HEALTH,
 		(PVOID*)&gml_script_modify_stamina
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (gml_Script_modify_health@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_HEALTH);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_modify_health@Ari@Ari",
+		GML_SCRIPT_MODIFY_HEALTH,
 		gml_script_modify_stamina->m_Functions->m_ScriptFunction,
 		GmlScriptModifyHealthCallback,
 		nullptr
@@ -1296,7 +1357,7 @@ void CreateHookGmlScriptModifyHealth(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (gml_Script_modify_health@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_HEALTH);
 	}
 }
 
@@ -1304,18 +1365,18 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 {
 	CScript* gml_script_setup_main_screen = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
 		(PVOID*)&gml_script_setup_main_screen
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SETUP_MAIN_SCREEN);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
 		gml_script_setup_main_screen->m_Functions->m_ScriptFunction,
 		GmlScriptSetupMainScreenCallback,
 		nullptr
@@ -1324,7 +1385,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SETUP_MAIN_SCREEN);
 	}
 }
 
@@ -1345,7 +1406,7 @@ EXPORTED AurieStatus ModuleInitialize(
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTAQUA, "[Telepop %s] - Plugin starting...", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
 	
 	g_ModuleInterface->CreateCallback(
 		g_ArSelfModule,
@@ -1392,31 +1453,31 @@ EXPORTED AurieStatus ModuleInitialize(
 	CreateHookGmlScriptUseItem(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptHeldItem(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptModifyHealth(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[Telepop %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[Telepop %s] - Plugin started!", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Plugin started!", MOD_NAME, VERSION);
 	return AURIE_SUCCESS;
 }
