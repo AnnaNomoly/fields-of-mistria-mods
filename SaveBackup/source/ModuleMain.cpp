@@ -5,9 +5,8 @@
 #include <filesystem>
 #include <shlobj.h>
 #include <windows.h>
-#include <miniz/miniz.c>
+#include <miniz/miniz.h>
 #include <nlohmann/json.hpp>
-#include <TinySha1/TinySHA1.hpp>
 #include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
@@ -53,7 +52,7 @@ void GetLocalAppDataFolder()
 	{
 		local_app_data_folder = path;
 		CoTaskMemFree(path);
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully found the LocalAppData folder: %s", MOD_NAME, VERSION, local_app_data_folder.wstring().c_str());
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully found the LocalAppData folder: %s", MOD_NAME, VERSION, local_app_data_folder.string().c_str());
 		return;
 	}
 
@@ -96,58 +95,6 @@ bool CheckFoldersExist()
 	return true;
 }
 
-std::string sha1_file(const std::string& filename) {
-	std::ifstream file(filename, std::ios::binary);
-	if (!file)
-		throw std::runtime_error("Failed to open file: " + filename);
-
-	sha1::SHA1 sha1;
-	std::vector<char> buffer(8192);
-
-	while (file.good())
-	{
-		file.read(buffer.data(), buffer.size());
-		sha1.processBytes(buffer.data(), file.gcount());
-	}
-
-	unsigned int digest[5];
-	sha1.getDigest(digest);
-
-	std::ostringstream oss;
-	oss << std::hex << std::setfill('0');
-	for (int i = 0; i < 5; ++i)
-		oss << std::setw(8) << digest[i];
-
-	return oss.str();
-}
-
-void CreateZipFile(const char* zip_filepath, const char* archived_filename, const char* input_filepath)
-{
-	// Prepare ZIP archive structure
-	mz_zip_archive zip;
-	memset(&zip, 0, sizeof(zip));
-
-	// Initialize a new archive for writing
-	if (!mz_zip_writer_init_file(&zip, zip_filepath, 0)) {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to initialize ZIP file writer!", MOD_NAME, VERSION);
-		return;
-	}
-
-	// Add a file from disk into the ZIP
-	if (!mz_zip_writer_add_file(&zip, archived_filename, input_filepath, nullptr, 0, MZ_BEST_COMPRESSION)) {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the ZIP file: %s", MOD_NAME, VERSION, zip_filepath);
-		mz_zip_writer_end(&zip);
-		return;
-	}
-	
-	// Finalize and close the ZIP archive
-	mz_zip_writer_finalize_archive(&zip);
-	mz_zip_writer_end(&zip);
-
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully created the ZIP file: %s", MOD_NAME, VERSION, zip_filepath);
-	return;
-}
-
 std::string GetCurrentISODateTime()
 {
 	auto now = std::chrono::system_clock::now();
@@ -161,37 +108,113 @@ std::string GetCurrentISODateTime()
 	return std::string(buffer);
 }
 
+std::chrono::system_clock::time_point ParseISODateTime(const std::string& datetime_str) {
+	std::tm tm = {};
+	std::istringstream ss(datetime_str);
+	ss >> std::get_time(&tm, "%Y-%m-%dT%H-%M-%SZ");
+	if (ss.fail()) {
+		throw std::runtime_error("Failed to parse datetime: " + datetime_str);
+	}
+	// Treat as UTC time
+	time_t time = _mkgmtime(&tm);
+	return std::chrono::system_clock::from_time_t(time);
+}
+
+bool endsWith(const std::string& str, const std::string& suffix) {
+	return str.size() >= suffix.size() &&
+		str.compare(str.size() - suffix.size(), suffix.size(), suffix) == 0;
+}
+
 void BackupSaves()
 {
-	std::string iso_date_time = GetCurrentISODateTime();
-
-	// Iterate over every save file.
+	// Collect all save filepaths.
+	std::map<std::filesystem::path, std::filesystem::path> save_filepaths = {};
 	for (const auto& entry : fs::directory_iterator(saves_folder))
 	{
 		if (entry.is_regular_file())
 		{
-			std::string save_file_path = entry.path().string(); // check this
-			std::string original_filename = entry.path().filename().string();
+			std::filesystem::path save_file_path = entry.path();
+			std::filesystem::path original_filename = entry.path().filename();
 
-			if (original_filename == "steam_autocloud.vdf")
-				continue;
-			
-			try
-			{
-				std::string save_file_hash = sha1_file(save_file_path);
-				// TODO: Check if a ZIP with this hash in its name already exists.
-
-				std::string zip_filename = iso_date_time + " -- " + original_filename;
-				std::filesystem::path zip_filepath = mod_folder / zip_filename;
-
-				CreateZipFile(zip_filepath.string().c_str(), original_filename.c_str(), save_file_path.c_str());
-			}
-			catch (...)
-			{
-				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to backup save file: %s", MOD_NAME, VERSION, save_file_path.c_str());
-			}
-			
+			if (endsWith(original_filename.string(), ".sav"))
+				save_filepaths[original_filename] = save_file_path;
 		}
+	}
+
+	if (save_filepaths.size() == 0)
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No save files found in folder: ", MOD_NAME, VERSION, saves_folder.c_str());
+		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - A save backup ZIP will not be created!", MOD_NAME, VERSION);
+		return;
+	}
+
+	std::string zip_filename = GetCurrentISODateTime() + ".zip";
+	std::filesystem::path zip_filepath = mod_folder / zip_filename;
+
+	// Prepare ZIP archive structure
+	mz_zip_archive zip;
+	memset(&zip, 0, sizeof(zip));
+
+	// Initialize a new archive for writing
+	if (!mz_zip_writer_init_file(&zip, zip_filepath.string().c_str(), 0)) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to initialize ZIP file writer!", MOD_NAME, VERSION);
+		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - A save backup ZIP will not be created!", MOD_NAME, VERSION);
+		return;
+	}
+
+	// Iterate over every save file.
+	int save_files_zipped = 0;
+	for (const auto& entry : save_filepaths)
+	{
+		std::string save_filepath = entry.second.string();
+		std::string save_filename = entry.first.string();
+
+		// Add file into the ZIP
+		if (mz_zip_writer_add_file(&zip, save_filename.c_str(), save_filepath.c_str(), nullptr, 0, MZ_BEST_COMPRESSION))
+			save_files_zipped++;
+		else
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Failed to ZIP save file: %s", MOD_NAME, VERSION, save_filepath.c_str());
+
+	}
+
+	// Finalize and close the ZIP archive
+	if (save_files_zipped > 0)
+	{
+		if (!mz_zip_writer_finalize_archive(&zip))
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to finalize ZIP archive!", MOD_NAME, VERSION);
+
+		mz_zip_writer_end(&zip);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully backed up (%d) saves in the ZIP file: %s", MOD_NAME, VERSION, save_files_zipped, zip_filepath.string().c_str());
+	}
+	else
+	{
+		mz_zip_writer_end(&zip);
+		std::remove(zip_filepath.string().c_str());
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - The ZIP file had no save files added. The backup was not created!", MOD_NAME, VERSION);
+	}
+}
+
+void PruneOldBackups()
+{
+	std::map<std::chrono::system_clock::time_point, std::string> all_backups_map;
+
+	for (const auto& entry : fs::directory_iterator(mod_folder))
+	{
+		if (entry.is_regular_file())
+		{
+			std::filesystem::path filename = entry.path().filename();
+			if (filename.string().contains(".zip"))
+				all_backups_map[ParseISODateTime(filename.string())] = filename.string();
+		}
+	}
+
+	while (all_backups_map.size() > 10) {
+		auto it = all_backups_map.begin();
+		std::filesystem::path zip_filepath = mod_folder / it->second;
+
+		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Removing old backup: %s", MOD_NAME, VERSION, zip_filepath.string().c_str());
+		std::remove(zip_filepath.string().c_str());
+		all_backups_map.erase(it);
 	}
 }
 
@@ -213,6 +236,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	if (CheckFoldersExist())
 	{
 		BackupSaves();
+		PruneOldBackups();
 	}
 	else
 	{
