@@ -6,14 +6,19 @@
 #include <iostream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "SaveAnywhere";
-static const char* const VERSION = "1.1.0";
+static const char* const VERSION = "1.2.0";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
+static const char* const SAVE_LOCATION_KEY = "save_location";
+static const char* const SAVE_X_POSITION_KEY = "save_x_position";
+static const char* const SAVE_Y_POSITION_KEY = "save_y_position";
+static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
+static const char* const GML_SCRIPT_CREATE_SAVE_NOTIFICATION = "gml_Script_create_save_notification";
 static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
 static const char* const GML_SCRIPT_LOAD_GAME = "gml_Script_load_game";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
@@ -22,12 +27,23 @@ static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_
 static const char* const GML_SCRIPT_END_DAY = "gml_Script_end_day";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
+static const std::string DUNGEON_SAVE_NOTIFICATION_KEY = "Notifications/Mods/SaveAnywhere/location/dungeon";
+static const std::string FARM_BUILDING_SAVE_NOTIFICATION_KEY = "Notifications/Mods/SaveAnywhere/location/farm_building";
+static const std::string SMALL_BARN = "small_barn";
+static const std::string MEDIUM_BARN = "medium_barn";
+static const std::string LARGE_BARN = "large_barn";
+static const std::string SMALL_COOP = "small_coop";
+static const std::string MEDIUM_COOP = "medium_coop";
+static const std::string LARGE_COOP = "large_coop";
+static const std::string SMALL_GREENHOUSE = "small_greenhouse";
+static const std::string LARGE_GREENHOUSE = "large_greenhouse";
 static const std::string MINES_ENTRY = "mines_entry";
 static const std::string DUNGEON = "dungeon";
 static const std::string WATER_SEAL = "water_seal";
 static const std::string EARTH_SEAL = "earth_seal";
 static const std::string FIRE_SEAL = "fire_seal";
 static const std::string RUINS_SEAL = "ruins_seal";
+static const std::string FARM = "farm";
 static const double UNSET_INT = -1;
 static const std::string DEFAULT_ACTIVATION_BUTTON = "HOME";
 static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
@@ -459,6 +475,124 @@ void CreateOrLoadConfigFile()
 	}
 }
 
+void CreateNotification(CInstance* Self, CInstance* Other, std::string notification_localization_str)
+{
+	CScript* gml_script_create_notification = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CREATE_NOTIFICATION,
+		(PVOID*)&gml_script_create_notification
+	);
+
+	RValue result;
+	RValue notification = RValue(notification_localization_str);
+	RValue* notification_ptr = &notification;
+	gml_script_create_notification->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &notification_ptr }
+	);
+}
+
+void WriteModSaveFile(CInstance* Self, CInstance* Other)
+{
+	// Write the custom mod data file.
+	if (save_prefix.length() != 0 && mod_folder.length() != 0 && location_id_to_name_map.count(ari_room_id) > 0)
+	{
+		json mod_save_data = {};
+
+		// Override dungeon locations.
+		if (location_id_to_name_map[ari_room_id] == DUNGEON ||
+			location_id_to_name_map[ari_room_id] == WATER_SEAL ||
+			location_id_to_name_map[ari_room_id] == EARTH_SEAL ||
+			location_id_to_name_map[ari_room_id] == FIRE_SEAL ||
+			location_id_to_name_map[ari_room_id] == RUINS_SEAL)
+		{
+			mod_save_data[SAVE_LOCATION_KEY] = MINES_ENTRY;
+			mod_save_data[SAVE_X_POSITION_KEY] = 216;
+			mod_save_data[SAVE_Y_POSITION_KEY] = 198;
+
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are currently in the dungeon! Your location will be saved as \"mines_entry\" to avoid errors.", MOD_NAME, VERSION);
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Saving your game at the fallback location: \"mines_entry\".", MOD_NAME, VERSION);
+			CreateNotification(Self, Other, DUNGEON_SAVE_NOTIFICATION_KEY);
+		}
+		// Farm building locations.
+		else if (location_id_to_name_map[ari_room_id] == SMALL_BARN ||
+			location_id_to_name_map[ari_room_id] == MEDIUM_BARN ||
+			location_id_to_name_map[ari_room_id] == LARGE_BARN ||
+			location_id_to_name_map[ari_room_id] == SMALL_COOP ||
+			location_id_to_name_map[ari_room_id] == MEDIUM_COOP ||
+			location_id_to_name_map[ari_room_id] == LARGE_COOP ||
+			location_id_to_name_map[ari_room_id] == SMALL_GREENHOUSE ||
+			location_id_to_name_map[ari_room_id] == LARGE_GREENHOUSE)
+		{
+			mod_save_data[SAVE_LOCATION_KEY] = FARM; // TODO: Create FARM constant
+			mod_save_data[SAVE_X_POSITION_KEY] = 1032; // TODO
+			mod_save_data[SAVE_Y_POSITION_KEY] = 87; // TODO
+
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are currently in a farm building! Your location will be saved as \"farm\" to avoid errors.", MOD_NAME, VERSION);
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Saving your game at the fallback location: \"farm\".", MOD_NAME, VERSION);
+			CreateNotification(Self, Other, FARM_BUILDING_SAVE_NOTIFICATION_KEY);
+		}
+		else
+		{
+			mod_save_data[SAVE_LOCATION_KEY] = location_id_to_name_map[ari_room_id];
+			mod_save_data[SAVE_X_POSITION_KEY] = ari_x;
+			mod_save_data[SAVE_Y_POSITION_KEY] = ari_y;
+
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Saving your game at your current location: \"%s\".", MOD_NAME, VERSION, location_id_to_name_map[ari_room_id].c_str());
+			CreateNotification(Self, Other, FARM_BUILDING_SAVE_NOTIFICATION_KEY);
+		}
+
+		std::exception_ptr eptr;
+		try
+		{
+			std::ofstream out_stream(mod_folder + "\\" + save_prefix + ".json");
+			out_stream << std::setw(4) << mod_save_data << std::endl;
+			out_stream.close();
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully saved the mod file!", MOD_NAME, VERSION);
+		}
+		catch (...)
+		{
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to write the mod file! Your game was saved but the custom location was NOT. You will load in the Farmhouse.", MOD_NAME, VERSION);
+
+			eptr = std::current_exception();
+			PrintError(eptr);
+		}
+	}
+	else
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to write the mod file! Your game was saved but the custom location was NOT. You will load in the Farmhouse.", MOD_NAME, VERSION);
+	}
+}
+
+void ReadModSaveFile()
+{
+	std::exception_ptr eptr;
+	try
+	{
+		std::ifstream in_stream(mod_folder + "\\" + save_prefix + ".json");
+		if (in_stream.good())
+		{
+			json mod_save_data = json::parse(in_stream);
+			saved_room_name = mod_save_data[SAVE_LOCATION_KEY];
+			saved_x = mod_save_data[SAVE_X_POSITION_KEY];
+			saved_y = mod_save_data[SAVE_Y_POSITION_KEY];
+
+			wait_to_teleport_ari = true;
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully loaded your saved location: \"%s\".", MOD_NAME, VERSION, saved_room_name.c_str());
+		}
+	}
+	catch (...)
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred reading the mod file.", MOD_NAME, VERSION);
+
+		eptr = std::current_exception();
+		PrintError(eptr);
+	}
+}
+
 void ResetStaticFields(bool returnedToTitleScreen)
 {
 	if (returnedToTitleScreen)
@@ -480,65 +614,6 @@ void ResetStaticFields(bool returnedToTitleScreen)
 	ready_to_reposition_ari = false;
 }
 
-bool IsNumericString(std::string some_string)
-{
-	if (some_string.empty())
-		return false;
-
-	for (int i = 0; i < some_string.size(); i++)
-	{
-		if (!isdigit(some_string[i]))
-			return false;
-	}
-
-	return true;
-}
-
-void OldModFileCompatibility()
-{
-	bool save_location_is_numeric = IsNumericString(saved_room_name);
-	if (save_location_is_numeric)
-	{
-		int save_location = std::stoi(saved_room_name);
-		saved_room_name = location_id_to_name_map[save_location];
-	}
-}
-
-void WriteModFile()
-{
-	std::string file_name = mod_folder + "\\" + save_prefix + "autosave.sav";
-	std::ofstream outfile(file_name, std::ios::out);
-	if (outfile.is_open())
-	{
-		bool dungeon_location_override = false;
-		if (location_id_to_name_map.count(ari_room_id) > 0)
-		{
-			if (location_id_to_name_map[ari_room_id] == DUNGEON)
-				dungeon_location_override = true;
-			if (location_id_to_name_map[ari_room_id] == WATER_SEAL)
-				dungeon_location_override = true;
-			if (location_id_to_name_map[ari_room_id] == EARTH_SEAL)
-				dungeon_location_override = true;
-			if (location_id_to_name_map[ari_room_id] == FIRE_SEAL)
-				dungeon_location_override = true;
-			if (location_id_to_name_map[ari_room_id] == RUINS_SEAL)
-				dungeon_location_override = true;
-		}
-
-		if (dungeon_location_override)
-		{
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are currently in the dungeon! Your location will be saved as \"mines_entry\" to avoid errors.", MOD_NAME, VERSION);
-			outfile << MINES_ENTRY + " " + std::to_string(216) + " " + std::to_string(198);
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Saved your game at the fallback location: \"mines_entry\".", MOD_NAME, VERSION);
-		}
-		else {
-			outfile << location_id_to_name_map[ari_room_id] + " " + std::to_string(ari_x) + " " + std::to_string(ari_y);
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Saved your game at your current location: \"%s\".", MOD_NAME, VERSION, location_id_to_name_map[ari_room_id].c_str());
-		}
-	}
-	outfile.close();
-}
-
 void SaveGame(CInstance* Self, CInstance* Other)
 {
 	mod_save = true;
@@ -549,9 +624,9 @@ void SaveGame(CInstance* Self, CInstance* Other)
 		(PVOID*)&gml_script_save_game
 	);
 
-	std::string file_name = save_folder + "\\" + save_prefix + "autosave.sav";
+	std::string file_name = save_folder + "\\" + "game-" + save_prefix + "-autosave.sav";
 	RValue result;
-	RValue argument = file_name;
+	RValue argument = RValue(file_name);
 	RValue* argument_ptr = &argument;
 
 	gml_script_save_game->m_Functions->m_ScriptFunction(
@@ -567,15 +642,15 @@ void DisplaySaveNotification(CInstance* Self, CInstance* Other)
 {
 	CScript* gml_script_save_game_notification = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_create_save_notification",
+		GML_SCRIPT_CREATE_SAVE_NOTIFICATION,
 		(PVOID*)&gml_script_save_game_notification
 	);
 
-	RValue result2;
+	RValue result;
 	gml_script_save_game_notification->m_Functions->m_ScriptFunction(
 		Self,
 		Other,
-		result2,
+		result,
 		0,
 		nullptr
 	);
@@ -588,15 +663,15 @@ bool LoadLocationIds()
 
 	// Load locations.
 	size_t array_length;
-	RValue location_ids = global_instance->at("__location_id__");
+	RValue location_ids = *global_instance->GetRefMember("__location_id__");
 	g_ModuleInterface->GetArraySize(location_ids, array_length);
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(location_ids, i, array_element);
 
-		location_id_to_name_map[i] = array_element->AsString().data();
-		location_name_to_id_map[array_element->AsString().data()] = i;
+		location_id_to_name_map[i] = array_element->ToString();
+		location_name_to_id_map[array_element->ToString()] = i;
 	}
 
 	if (location_id_to_name_map.size() > 0 && location_name_to_id_map.size() > 0)
@@ -688,18 +763,19 @@ RValue& GmlScriptSaveGameCallback(
 			// No save prefix has been detected. This should only happen when a new game is started.
 			if (save_prefix.size() == 0)
 			{
-				// Get the save file name.
-				std::string save_file = Arguments[0]->AsString().data();
-				std::size_t index = save_file.find_last_of("/");
-				save_folder = save_file.substr(0, index);
-				std::string save_name = save_file.substr(index + 1);
+				// Get the save folder and file name.
+				std::string save_file = Arguments[0]->GetRefMember("save_path")->ToString();
+				std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
+				std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
+				save_folder = save_file.substr(0, save_file_name_delimiter_index);
 
 				// Check it's a valid value.
 				if (save_name.find("undefined") == std::string::npos)
 				{
 					// Get the save prefix.
-					index = save_name.find_last_of("-");
-					save_prefix = save_name.substr(0, index + 1);
+					std::size_t first_hyphen_index = save_name.find_first_of("-") + 1;
+					std::size_t second_hyphen_index = save_name.find_last_of("-");
+					save_prefix = save_name.substr(first_hyphen_index, (second_hyphen_index - first_hyphen_index));
 				}
 			}
 		}
@@ -731,29 +807,20 @@ RValue& GmlScriptLoadGameCallback(
 {
 	if (mod_healthy)
 	{
-		// Get the save file name.
-		std::string arg0_str = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
-		std::size_t index = arg0_str.find_last_of("/");
-		save_folder = arg0_str.substr(0, index);
-		std::string save_name = arg0_str.substr(index + 1);
+		// Get the save folder and file name.
+		std::string save_file = Arguments[0]->GetRefMember("save_path")->ToString();
+		std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
+		std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
+		save_folder = save_file.substr(0, save_file_name_delimiter_index);
 
 		// Get the save prefix.
-		index = save_name.find_last_of("-");
-		save_prefix = save_name.substr(0, index + 1);
+		std::size_t first_hyphen_index = save_name.find_first_of("-") + 1;
+		std::size_t second_hyphen_index = save_name.find_last_of("-");
+		save_prefix = save_name.substr(first_hyphen_index, (second_hyphen_index - first_hyphen_index));
 
 		if (save_name.find("autosave") != std::string::npos)
 		{
-			// Read from the save file in mod_data.
-			std::ifstream file(mod_folder + "\\" + save_name);
-			if (file.good())
-			{
-				file >> saved_room_name >> saved_x >> saved_y;
-				OldModFileCompatibility();
-
-				wait_to_teleport_ari = true;
-				g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Loaded your saved location: \"%s\".", MOD_NAME, VERSION, saved_room_name.c_str());
-			}
-			file.close();
+			ReadModSaveFile();
 		}
 	}
 
@@ -944,7 +1011,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 			{
 				if (save_prefix.size() != 0)
 				{
-					WriteModFile();
+					WriteModSaveFile(Self, Other);
 					SaveGame(Self, Other);
 					DisplaySaveNotification(Self, Other);
 				}
