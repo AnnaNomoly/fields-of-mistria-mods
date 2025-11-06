@@ -1,0 +1,286 @@
+#include <ctime>
+#include <chrono>
+#include <fstream>
+#include <iostream>
+#include <filesystem>
+#include <shlobj.h>
+#include <windows.h>
+#include <miniz/miniz.c>
+#include <nlohmann/json.hpp>
+#include <TinySha1/TinySHA1.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
+using namespace Aurie;
+using namespace YYTK;
+
+static const char* const MOD_NAME = "SaveBackup";
+static const char* const VERSION = "1.0.0";
+static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
+static const std::string FIELDS_OF_MISTRIA_FOLDER_NAME = "FieldsOfMistria";
+static const std::string SAVE_FOLDER_NAME = "saves";
+
+static YYTKInterface* g_ModuleInterface = nullptr;
+static bool load_on_start = true;
+static std::filesystem::path local_app_data_folder = "";
+static std::filesystem::path saves_folder = "";
+static std::filesystem::path mod_folder = "";
+
+void CreateOrLoadModFolder()
+{
+	// Try to find the mod_data directory.
+	std::wstring current_dir = std::filesystem::current_path().wstring();
+	std::wstring mod_data_folder = current_dir + L"\\mod_data";
+	if (!std::filesystem::exists(mod_data_folder))
+	{
+		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
+		std::filesystem::create_directory(mod_data_folder);
+	}
+
+	// Try to find the mod_data/SaveBackup directory.
+	std::wstring save_backup_folder = mod_data_folder + L"\\SaveBackup";
+	if (!std::filesystem::exists(save_backup_folder))
+	{
+		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"DIY\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, save_backup_folder.c_str());
+		std::filesystem::create_directory(save_backup_folder);
+	}
+
+	mod_folder = save_backup_folder;
+}
+
+void GetLocalAppDataFolder()
+{
+	PWSTR path = nullptr;
+	if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_LocalAppData, 0, nullptr, &path)))
+	{
+		local_app_data_folder = path;
+		CoTaskMemFree(path);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully found the LocalAppData folder: %s", MOD_NAME, VERSION, local_app_data_folder.wstring().c_str());
+		return;
+	}
+
+	g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to find LocalAppData folder!", MOD_NAME, VERSION);
+}
+
+bool CheckFoldersExist()
+{
+	// LocalAppData
+	if (!fs::exists(local_app_data_folder) || !fs::is_directory(local_app_data_folder))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to find the LocalAppData folder!", MOD_NAME, VERSION);
+		return false;
+	}
+		
+		
+	// LocalAppData/FieldsOfMistria
+	std::filesystem::path mistria_folder = local_app_data_folder / FIELDS_OF_MISTRIA_FOLDER_NAME;
+	if (!fs::exists(mistria_folder) || !fs::is_directory(mistria_folder))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to find the LocalAppData/FieldsOfMistria folder!", MOD_NAME, VERSION);
+		return false;
+	}
+
+	// LocalAppData/FieldsOfMistria/saves
+	saves_folder = mistria_folder / SAVE_FOLDER_NAME;
+	if (!fs::exists(saves_folder) || !fs::is_directory(saves_folder))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to find the LocalAppData/FieldsOfMistria/saves folder!", MOD_NAME, VERSION);
+		return false;
+	}
+
+	// Mod folder
+	if (!fs::exists(mod_folder) || !fs::is_directory(mod_folder))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to find the mod_data/SaveBackup folder!", MOD_NAME, VERSION);
+		return false;
+	}
+
+	return true;
+}
+
+std::string sha1_file(const std::string& filename) {
+	std::ifstream file(filename, std::ios::binary);
+	if (!file)
+		throw std::runtime_error("Failed to open file: " + filename);
+
+	sha1::SHA1 sha1;
+	std::vector<char> buffer(8192);
+
+	while (file.good())
+	{
+		file.read(buffer.data(), buffer.size());
+		sha1.processBytes(buffer.data(), file.gcount());
+	}
+
+	unsigned int digest[5];
+	sha1.getDigest(digest);
+
+	std::ostringstream oss;
+	oss << std::hex << std::setfill('0');
+	for (int i = 0; i < 5; ++i)
+		oss << std::setw(8) << digest[i];
+
+	return oss.str();
+}
+
+void CreateZipFile(const char* zip_filepath, const char* archived_filename, const char* input_filepath)
+{
+	// Prepare ZIP archive structure
+	mz_zip_archive zip;
+	memset(&zip, 0, sizeof(zip));
+
+	// Initialize a new archive for writing
+	if (!mz_zip_writer_init_file(&zip, zip_filepath, 0)) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to initialize ZIP file writer!", MOD_NAME, VERSION);
+		return;
+	}
+
+	// Add a file from disk into the ZIP
+	if (!mz_zip_writer_add_file(&zip, archived_filename, input_filepath, nullptr, 0, MZ_BEST_COMPRESSION)) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the ZIP file: %s", MOD_NAME, VERSION, zip_filepath);
+		mz_zip_writer_end(&zip);
+		return;
+	}
+	
+	// Finalize and close the ZIP archive
+	mz_zip_writer_finalize_archive(&zip);
+	mz_zip_writer_end(&zip);
+
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Successfully created the ZIP file: %s", MOD_NAME, VERSION, zip_filepath);
+	return;
+}
+
+std::string GetCurrentISODateTime()
+{
+	auto now = std::chrono::system_clock::now();
+	std::time_t t = std::chrono::system_clock::to_time_t(now);
+
+	std::tm utc_tm{};
+	gmtime_s(&utc_tm, &t);
+
+	char buffer[30];
+	std::strftime(buffer, sizeof(buffer), "%Y-%m-%dT%H-%M-%SZ", &utc_tm);
+	return std::string(buffer);
+}
+
+void BackupSaves()
+{
+	std::string iso_date_time = GetCurrentISODateTime();
+
+	// Iterate over every save file.
+	for (const auto& entry : fs::directory_iterator(saves_folder))
+	{
+		if (entry.is_regular_file())
+		{
+			std::string save_file_path = entry.path().string(); // check this
+			std::string original_filename = entry.path().filename().string();
+
+			if (original_filename == "steam_autocloud.vdf")
+				continue;
+			
+			try
+			{
+				std::string save_file_hash = sha1_file(save_file_path);
+				// TODO: Check if a ZIP with this hash in its name already exists.
+
+				std::string zip_filename = iso_date_time + " -- " + original_filename;
+				std::filesystem::path zip_filepath = mod_folder / zip_filename;
+
+				CreateZipFile(zip_filepath.string().c_str(), original_filename.c_str(), save_file_path.c_str());
+			}
+			catch (...)
+			{
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to backup save file: %s", MOD_NAME, VERSION, save_file_path.c_str());
+			}
+			
+		}
+	}
+}
+
+RValue& GmlScriptSetupMainScreenCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (load_on_start)
+	{
+		load_on_start = false;
+		CreateOrLoadModFolder();
+		GetLocalAppDataFolder();
+	}
+
+	if (CheckFoldersExist())
+	{
+		BackupSaves();
+	}
+	else
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - One or more necessary folders could not be found. Unable create save backups!", MOD_NAME, VERSION);
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SETUP_MAIN_SCREEN));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
+{
+	CScript* gml_script_setup_main_screen = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
+		(PVOID*)&gml_script_setup_main_screen
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SETUP_MAIN_SCREEN);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
+		gml_script_setup_main_screen->m_Functions->m_ScriptFunction,
+		GmlScriptSetupMainScreenCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SETUP_MAIN_SCREEN);
+	}
+}
+
+EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path& ModulePath) {
+	UNREFERENCED_PARAMETER(ModulePath);
+
+	AurieStatus status = AURIE_SUCCESS;
+
+	status = ObGetInterface(
+		"YYTK_Main",
+		(AurieInterfaceBase*&)(g_ModuleInterface)
+	);
+
+	if (!AurieSuccess(status))
+		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
+
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
+
+	CreateHookGmlScriptSetupMainScreen(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Plugin started!", MOD_NAME, VERSION);
+	return AURIE_SUCCESS;
+}
