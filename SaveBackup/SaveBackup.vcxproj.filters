@@ -57,4 +57,9 @@
       <Filter>Hlavičkové soubory</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <ResourceCompile Include="SaveBackup.rc">
+      <Filter>Soubory zdrojů</Filter>
+    </ResourceCompile>
+  </ItemGroup>
 </Project>
