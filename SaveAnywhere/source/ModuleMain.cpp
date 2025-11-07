@@ -542,7 +542,6 @@ void WriteModSaveFile(CInstance* Self, CInstance* Other)
 			mod_save_data[SAVE_Y_POSITION_KEY] = ari_y;
 
 			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Saving your game at your current location: \"%s\".", MOD_NAME, VERSION, location_id_to_name_map[ari_room_id].c_str());
-			CreateNotification(Self, Other, FARM_BUILDING_SAVE_NOTIFICATION_KEY);
 		}
 
 		std::exception_ptr eptr;
