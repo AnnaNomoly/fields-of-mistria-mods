@@ -1,7 +1,7 @@
 #include <map>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
@@ -9,6 +9,7 @@ using json = nlohmann::json;
 static const char* const MOD_NAME = "BugRadar";
 static const char* const VERSION = "1.0.0";
 static const char* const BUG_LIST_KEY = "bug_list";
+static const char* const MODIFY_BUG_SPAWN_LOCATION_KEY = "modify_bug_spawn_location";
 static const std::string BUG_NAME_PLACEHOLDER_TEXT = "<BUG>";
 static const char* const BUG_DETECTED_NOTIFICATION_KEY = "Notifications/Mods/Bug Radar/bug_detected";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
@@ -20,6 +21,7 @@ static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Lo
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_INVENTORY_SLOT_POP = "gml_Script_drain@InventorySlot@Inventory";
 static const std::vector<std::string> DEFAULT_BUG_LIST = {"Fairy Bee", "Flower Crown Beetle", "Snowball Beetle", "Speedy Snail", "Strobe Firefly"};
+static const bool DEFAULT_MODIFY_BUG_SPAWN_LOCATION = true;
 
 static const std::map<std::string, std::vector<std::vector<std::pair<int, int>>>> ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP = {
 	{ "western_ruins", {
@@ -253,7 +255,7 @@ static const std::map<std::string, std::vector<std::vector<std::pair<int, int>>>
 			{1504, 1760}
 		}
 	}},
-	{ "sweetwater_farm", {
+	{ "haydens_farm", {
 		{   // BBox 1
 			{560, 304},
 			{848, 304},
@@ -758,6 +760,7 @@ static bool processing_bug = false;
 static std::string bug_name = "";
 static std::string ari_current_location = "";
 static std::vector<std::string> bug_list = DEFAULT_BUG_LIST;
+static bool modify_bug_spawn_location = DEFAULT_MODIFY_BUG_SPAWN_LOCATION;
 static std::map<std::string, int> item_name_to_id_map = {};
 static std::map<int, std::string> item_id_to_name_map = {};
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
@@ -821,10 +824,22 @@ void PrintError(std::exception_ptr eptr)
 	}
 }
 
+json CreateConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ BUG_LIST_KEY, use_defaults ? DEFAULT_BUG_LIST : bug_list },
+		{ MODIFY_BUG_SPAWN_LOCATION_KEY, use_defaults ? DEFAULT_MODIFY_BUG_SPAWN_LOCATION : modify_bug_spawn_location}
+	};
+	return config_json;
+}
+
 void LogDefaultConfigValues()
 {
 	bug_list = DEFAULT_BUG_LIST;
+	modify_bug_spawn_location = DEFAULT_MODIFY_BUG_SPAWN_LOCATION;
+
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, BUG_LIST_KEY, "[\"Fairy Bee\", \"Flower Crown Beetle\", \"Snowball Beetle\", \"Speedy Snail\", \"Strobe Firefly\"]");
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, MODIFY_BUG_SPAWN_LOCATION_KEY, DEFAULT_MODIFY_BUG_SPAWN_LOCATION ? "true" : "false");
 }
 
 void CreateOrLoadConfigFile()
@@ -851,6 +866,7 @@ void CreateOrLoadConfigFile()
 		}
 
 		// Try to find the mod_data/BugRadar/BugRadar.json config file.
+		bool update_config_file = false;
 		std::string config_file = bug_radar_folder + "\\" + "BugRadar.json";
 		std::ifstream in_stream(config_file);
 		if (in_stream.good())
@@ -879,7 +895,21 @@ void CreateOrLoadConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, BUG_LIST_KEY, config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, BUG_LIST_KEY, "[\"Fairy Bee\", \"Flower Crown Beetle\", \"Snowball Beetle\", \"Speedy Snail\", \"Strobe Firefly\"]");
 					}
+
+					// Try loading the modify_bug_spawn_location value.
+					if (json_object.contains(MODIFY_BUG_SPAWN_LOCATION_KEY))
+					{
+						modify_bug_spawn_location = json_object[MODIFY_BUG_SPAWN_LOCATION_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, MODIFY_BUG_SPAWN_LOCATION_KEY, modify_bug_spawn_location ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, MODIFY_BUG_SPAWN_LOCATION_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, MODIFY_BUG_SPAWN_LOCATION_KEY, DEFAULT_MODIFY_BUG_SPAWN_LOCATION ? "true" : "false");
+					}
 				}
+
+				update_config_file = true;
 			}
 			catch (...)
 			{
@@ -898,15 +928,21 @@ void CreateOrLoadConfigFile()
 			in_stream.close();
 
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"BugRadar.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
-			json default_json = {
-				{BUG_LIST_KEY, DEFAULT_BUG_LIST}
-			};
 
+			json default_config_json = CreateConfigJson(true);
 			std::ofstream out_stream(config_file);
-			out_stream << std::setw(4) << default_json << std::endl;
+			out_stream << std::setw(4) << default_config_json << std::endl;
 			out_stream.close();
 
 			LogDefaultConfigValues();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
 		}
 	}
 	catch (...)
@@ -986,7 +1022,7 @@ void CreateNotification(std::string notification_localization_str, CInstance* Se
 	);
 
 	RValue result;
-	RValue notification = notification_localization_str;
+	RValue notification = RValue(notification_localization_str);
 	RValue* notification_ptr = &notification;
 	gml_script_create_notification->m_Functions->m_ScriptFunction(
 		Self,
@@ -1006,7 +1042,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	);
 
 	RValue result;
-	RValue input = localization_key;
+	RValue input = RValue(localization_key);
 	RValue* input_ptr = &input;
 	gml_script_get_localizer->m_Functions->m_ScriptFunction(
 		Self,
@@ -1025,7 +1061,7 @@ void LoadAllItemData()
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
 	size_t array_length;
-	RValue item_data = global_instance->at("__item_data");
+	RValue item_data = global_instance->GetMember("__item_data");
 	g_ModuleInterface->GetArraySize(item_data, array_length);
 
 	for (size_t i = 0; i < array_length; i++)
@@ -1033,14 +1069,14 @@ void LoadAllItemData()
 		RValue* item;
 		g_ModuleInterface->GetArrayEntry(item_data, i, item);
 
-		RValue name_key = item->at("name_key"); // The item's localization key
+		RValue name_key = item->GetMember("name_key"); // The item's localization key
 		if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
 		{
-			RValue item_id = item->at("item_id");
-			RValue recipe_key = item->at("recipe_key"); // The internal item name
-			item_name_to_id_map[recipe_key.AsString().data()] = RValueAsInt(item_id);
-			item_id_to_name_map[RValueAsInt(item_id)] = recipe_key.AsString().data();
-			item_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+			RValue item_id = item->GetMember("item_id");
+			RValue recipe_key = item->GetMember("recipe_key"); // The internal item name
+			item_name_to_id_map[recipe_key.ToString()] = RValueAsInt(item_id);
+			item_id_to_name_map[RValueAsInt(item_id)] = recipe_key.ToString();
+			item_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 		}
 	}
 }
@@ -1060,10 +1096,9 @@ void ObjectCallback(
 	if (!strstr(self->m_Object->m_Name, "obj_bug"))
 		return;
 
-	if (/*!processing_bug && */!StructVariableExists(self, "__bug_radar__processed_bug"))
+	if (!StructVariableExists(self, "__bug_radar__processed_bug"))
 	{
 		bug_name = "";
-		//processing_bug = true;
 
 		if (StructVariableExists(self, "item_id"))
 		{
@@ -1078,33 +1113,30 @@ void ObjectCallback(
 					bug_name = item_name_to_localized_name_map[item_name];
 					CreateNotification(BUG_DETECTED_NOTIFICATION_KEY, self, self);
 
-					RValue x;
-					g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
-
-					RValue y;
-					g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
-
-
-					if (ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP.contains(ari_current_location))
+					if (modify_bug_spawn_location)
 					{
-						std::pair<int, int> point = GenerateRandomPointInClosestBoundingBox(x.m_Real, y.m_Real, ari_current_location); // Change to x.ToInt64() and y.ToInt64() in YYTKv4
-						RValue new_x = point.first;
-						RValue new_y = point.second;
-						g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, new_x);
-						g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, new_y);
-						g_ModuleInterface->Print(CM_GREEN, "[%s %s] - Modified bug (%s) to spawn at (%d, %d).", MOD_NAME, VERSION, bug_name.c_str(), point.first, point.second);
+						RValue x;
+						g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
+
+						RValue y;
+						g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
+
+
+						if (ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP.contains(ari_current_location))
+						{
+							std::pair<int64_t, int64_t> point = GenerateRandomPointInClosestBoundingBox(x.ToInt64(), y.ToInt64(), ari_current_location); // Change to x.ToInt64() and y.ToInt64() in YYTKv4
+							RValue new_x = point.first;
+							RValue new_y = point.second;
+							g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, new_x);
+							g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, new_y);
+							g_ModuleInterface->Print(CM_GREEN, "[%s %s] - Modified bug (%s) to spawn at (%d, %d).", MOD_NAME, VERSION, bug_name.c_str(), point.first, point.second);
+						}
 					}
 				}
-				else
-					processing_bug = false;
 
 				StructVariableSet(self, "__bug_radar__processed_bug", true);
 			}
-			else
-				processing_bug = false;
 		}
-		else
-			processing_bug = false;
 	}
 }
 
@@ -1149,7 +1181,7 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 
 	if (game_is_active)
 		if (Result.m_Kind == VALUE_STRING)
-			ari_current_location = Result.AsString().data();
+			ari_current_location = Result.ToString();
 
 	return Result;
 }
@@ -1169,10 +1201,10 @@ RValue& GmlScriptGetLocalizerCallback(
 		for (auto& pair : item_name_to_localized_name_map)
 		{
 			RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-			std::string localized_name_str = localized_name.AsString().data();
+			std::string localized_name_str = localized_name.ToString();
 			pair.second = localized_name_str;
 
-			std::string lowercase_localized_name_str = localized_name.AsString().data();
+			std::string lowercase_localized_name_str = localized_name.ToString();
 			std::transform(lowercase_localized_name_str.begin(), lowercase_localized_name_str.end(), lowercase_localized_name_str.begin(), [](unsigned char c) { return std::tolower(c); });
 			lowercase_localized_name_to_item_name_map[lowercase_localized_name_str] = pair.first;
 		}
@@ -1204,17 +1236,17 @@ RValue& GmlScriptGetLocalizerCallback(
 
 	if (ArgumentCount == 1 && Arguments[0]->m_Kind == VALUE_STRING)
 	{
-		std::string localization_key = Arguments[0]->AsString().data();
+		std::string localization_key = Arguments[0]->ToString();
 		if (localization_key.compare(BUG_DETECTED_NOTIFICATION_KEY) == 0)
 		{
-			std::string result_str = Result.AsString().data();
+			std::string result_str = Result.ToString();
 
 			// Replace the <BUG> placeholder text.
 			size_t bug_placeholder_index = result_str.find(BUG_NAME_PLACEHOLDER_TEXT);
 			if (bug_placeholder_index != std::string::npos)
 				result_str.replace(bug_placeholder_index, BUG_NAME_PLACEHOLDER_TEXT.length(), bug_name);
 
-			Result = result_str;
+			Result = RValue(result_str);
 			processing_bug = false;
 		}
 	}
