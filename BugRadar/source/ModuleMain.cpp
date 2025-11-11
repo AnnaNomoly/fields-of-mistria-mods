@@ -24,79 +24,730 @@ static const std::vector<std::string> DEFAULT_BUG_LIST = {"Fairy Bee", "Flower C
 static const std::map<std::string, std::vector<std::vector<std::pair<int, int>>>> ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP = {
 	{ "western_ruins", {
 		{   // BBox 1
-			{1360 / 8, 648 / 8},
-			{1472 / 8, 648 / 8},
-			{1472 / 8, 832 / 8},
-			{1360 / 8, 832 / 8}
+			{1360, 648},
+			{1472, 648},
+			{1472, 832},
+			{1360, 832}
 		},
 		{	// BBox 2
-			{1240 / 8, 792 / 8},
-			{1592 / 8, 792 / 8},
-			{1592 / 8, 848 / 8},
-			{1240 / 8, 848 / 8}
+			{1240, 792},
+			{1592, 792},
+			{1592, 848},
+			{1240, 848}
 		},
 		{	// BBox 3
-			{1128 / 8, 912 / 8},
-			{1312 / 8, 912 / 8},
-			{1312 / 8, 1112 / 8},
-			{1128 / 8, 1112 / 8}
+			{1128, 912},
+			{1312, 912},
+			{1312, 1112},
+			{1128, 1112}
 		},
 		{	// BBox 4
-			{1368 / 8, 936 / 8},
-			{1464 / 8, 936 / 8},
-			{1464 / 8, 1112 / 8},
-			{1368 / 8, 1112 / 8}
+			{1368, 936},
+			{1464, 936},
+			{1464, 1112},
+			{1368, 1112}
 		},
 		{	// BBox 5
-			{1520 / 8, 912 / 8},
-			{1688 / 8, 912 / 8},
-			{1688 / 8, 1096 / 8},
-			{1520 / 8, 1096 / 8}
+			{1520, 912},
+			{1688, 912},
+			{1688, 1096},
+			{1520, 1096}
 		},
 		{	// BBox 6
-			{1288 / 8, 1192 / 8},
-			{1512 / 8, 1192 / 8},
-			{1512 / 8, 1248 / 8},
-			{1288 / 8, 1248 / 8}
+			{1288, 1192},
+			{1512, 1192},
+			{1512, 1248},
+			{1288, 1248}
 		},
 		{	// BBox 7
-			{1160 / 8, 1224 / 8},
-			{1304 / 8, 1224 / 8},
-			{1304 / 8, 1256 / 8},
-			{1160 / 8, 1256 / 8}
+			{1160, 1224},
+			{1304, 1224},
+			{1304, 1256},
+			{1160, 1256}
 		},
 		{	// BBox 8
-			{1160 / 8, 1336 / 8},
-			{1224 / 8, 1336 / 8},
-			{1224 / 8, 1384 / 8},
-			{1160 / 8, 1384 / 8}
+			{1160, 1336},
+			{1224, 1336},
+			{1224, 1384},
+			{1160, 1384}
 		},
 		{	// BBox 9
-			{1240 / 8, 1224 / 8},
-			{1304 / 8, 1224 / 8},
-			{1304 / 8, 1312 / 8},
-			{1240 / 8, 1312 / 8}
+			{1240, 1224},
+			{1304, 1224},
+			{1304, 1312},
+			{1240, 1312}
 		},
 		{	// BBox 10
-			{1232 / 8, 1352 / 8},
-			{1304 / 8, 1352 / 8},
-			{1304 / 8, 1384 / 8},
-			{1232 / 8, 1384 / 8}
+			{1232, 1352},
+			{1304, 1352},
+			{1304, 1384},
+			{1232, 1384}
 		},
 		{	// BBox 11
-			{1544 / 8, 1184 / 8},
-			{1632 / 8, 1184 / 8},
-			{1632 / 8, 1384 / 8},
-			{1544 / 8, 1384 / 8}
+			{1544, 1184},
+			{1632, 1184},
+			{1632, 1384},
+			{1544, 1384}
 		},
 	}},
-	//{ "western_ruins", {
-	//	{ {0, 0}, {0, 0}, {0, 0}, {0, 0} },
-	//	{ {0, 0}, {0, 0}, {0, 0}, {0, 0} },
-	//	{ {0, 0}, {0, 0}, {0, 0}, {0, 0} },
-	//	{ {0, 0}, {0, 0}, {0, 0}, {0, 0} }
-	//}},
-
+	{ "narrows", {
+		{
+			// BBox 1
+			{64, 448},
+			{400, 448},
+			{400, 544},
+			{64, 544}
+		},
+		{
+			// BBox 2
+			{208, 688},
+			{400, 688},
+			{400, 800},
+			{208, 800}
+		},
+		{
+			// BBox 3
+			{240, 832},
+			{400, 832},
+			{400, 896},
+			{240, 896}
+		},
+		{
+			// BBox 4
+			{560, 416},
+			{656, 416},
+			{656, 528},
+			{560, 528}
+		},
+		{
+			// BBox 5
+			{720, 432},
+			{832, 432},
+			{832, 528},
+			{720, 528}
+		},
+		{
+			// BBox 6
+			{880, 416},
+			{976, 416},
+			{976, 496},
+			{880, 496}
+		},
+		{
+			// BBox 7
+			{1056, 368},
+			{1136, 368},
+			{1136, 448},
+			{1056, 448}
+		},
+		{
+			// BBox 8
+			{1008, 544},
+			{1200, 544},
+			{1200, 608},
+			{1008, 608}
+		},
+		{
+			// BBox 9
+			{560, 640},
+			{656, 640},
+			{656, 896},
+			{560, 896}
+		},
+		{
+			// BBox 10
+			{672, 624},
+			{912, 624},
+			{912, 688},
+			{672, 688}
+		},
+		{
+			// BBox 11
+			{672, 784},
+			{976, 784},
+			{976, 880},
+			{672, 880}
+		},
+		{
+			// BBox 12
+			{944, 608},
+			{1040, 608},
+			{1040, 800},
+			{944, 800}
+		},
+		{
+			// BBox 13
+			{1056, 704},
+			{1392, 704},
+			{1392, 784},
+			{1056, 784}
+		},
+		{
+			// BBox 14
+			{944, 864},
+			{1216, 864},
+			{1216, 976},
+			{944, 976}
+		},
+		{
+			// BBox 15
+			{1312, 848},
+			{1664, 848},
+			{1664, 928},
+			{1312, 928}
+		},
+		{
+			// BBox 16
+			{1376, 944},
+			{1456, 944},
+			{1456, 992},
+			{1376, 992}
+		},
+		{
+			// BBox 17
+			{1232, 896},
+			{1312, 896},
+			{1312, 1072},
+			{1232, 1072}
+		},
+		{
+			// BBox 18
+			{976, 1168},
+			{1120, 1168},
+			{1120, 1232},
+			{976, 1232}
+		},
+		{
+			// BBox 19
+			{1136, 1088},
+			{1456, 1088},
+			{1456, 1232},
+			{1136, 1232}
+		},
+		{
+			// BBox 20
+			{688, 1600},
+			{800, 1600},
+			{800, 1760},
+			{688, 1760}
+		},
+		{
+			// BBox 21
+			{848, 1456},
+			{1408, 1456},
+			{1408, 1648},
+			{848, 1648}
+		},
+		{
+			// BBox 22
+			{1296, 1632},
+			{1488, 1632},
+			{1488, 1712},
+			{1296, 1712}
+		},
+		{
+			// BBox 23
+			{1504, 1680},
+			{1680, 1680},
+			{1680, 1760},
+			{1504, 1760}
+		}
+	}},
+	{ "sweetwater_farm", {
+		{   // BBox 1
+			{560, 304},
+			{848, 304},
+			{848, 448},
+			{560, 448}
+		},
+		{	// BBox 2
+			{352, 528},
+			{864, 528},
+			{864, 896},
+			{352, 896}
+		},
+		{	// BBox 3
+			{880, 640},
+			{1040, 640},
+			{1040, 896},
+			{880, 896}
+		},
+		{	// BBox 4
+			{992, 272},
+			{1072, 272},
+			{1072, 400},
+			{992, 400}
+		},
+		{	// BBox 5
+			{1088, 352},
+			{1248, 352},
+			{1248, 544},
+			{1088, 544}
+		},
+		{	// BBox 6
+			{1264, 304},
+			{1392, 304},
+			{1392, 544},
+			{1264, 544}
+		},
+		{	// BBox 7
+			{1056, 624},
+			{1328, 624},
+			{1328, 768},
+			{1056, 768}
+		},
+		{	// BBox 8
+			{1344, 624},
+			{1696, 624},
+			{1696, 752},
+			{1344, 752}
+		},
+		{	// BBox 9
+			{1504, 560},
+			{1712, 560},
+			{1712, 624},
+			{1504, 624}
+		},
+		{	// BBox 10
+			{1632, 480},
+			{1728, 480},
+			{1728, 560},
+			{1632, 560}
+		},
+		{	// BBox 11
+			{1600, 752},
+			{1680, 752},
+			{1680, 832},
+			{1600, 832}
+		},
+		{	// BBox 12
+			{1312, 848},
+			{1664, 848},
+			{1664, 944},
+			{1312, 944}
+		},
+	}},
+	{ "beach", {
+		{
+			// BBox 1
+			{1216, 320},
+			{1360, 320},
+			{1360, 400},
+			{1216, 400},
+		},
+		{
+			// BBox 2
+			{1440, 304},
+			{1520, 304},
+			{1520, 400},
+			{1440, 400},
+		},
+		{
+			// BBox 3
+			{1536, 256},
+			{1648, 256},
+			{1648, 368},
+			{1536, 368} // TODO: test spawning a bug directly on this spot
+		},
+		{
+			// BBox 4
+			{1696, 152},
+			{1776, 152},
+			{1776, 384},
+			{1696, 384},
+		},
+		{
+			// BBox 5
+			{1824, 248},
+			{2352, 248},
+			{2352, 352},
+			{1824, 352},
+		},
+		{
+			// BBox 6
+			{2480, 232},
+			{2560, 232},
+			{2560, 480},
+			{2480, 480},
+		},
+		{
+			// BBox 7
+			{2280, 368},
+			{2360, 368},
+			{2360, 472},
+			{2280, 472},
+		},
+		{
+			// BBox 8
+			{2280, 488},
+			{2552, 488},
+			{2552, 576},
+			{2280, 576},
+		},
+		{
+			// BBox 9
+			{2360, 584},
+			{2496, 592},
+			{2496, 688},
+			{2360, 688},
+		},
+		{
+			// BBox 10
+			{1328, 528},
+			{1544, 528},
+			{1544, 688},
+			{1328, 688},
+		},
+		{
+			// BBox 11
+			{1560, 472},
+			{2056, 472},
+			{2056, 576},
+			{1560, 576},
+		},
+		{
+			// BBox 12
+			{1984, 552},
+			{2224, 552},
+			{2224, 648},
+			{1984, 648},
+		}
+	}},
+	{ "town", {
+		{
+			// BBox 1
+			{184, 808},
+			{408, 808},
+			{408, 944},
+			{184, 936}
+		},
+		{
+			// BBox 2
+			{200, 1032},
+			{424, 1032},
+			{424, 1344},
+			{200, 1344}
+		},
+		{
+			// BBox 3
+			{176, 1600},
+			{432, 1600},
+			{432, 1774},
+			{176, 1774}
+		},
+		{
+			// BBox 4
+			{184, 2024},
+			{480, 2024},
+			{480, 2208},
+			{184, 2208}
+		},
+		{
+			// BBox 5
+			{488, 2168},
+			{664, 2168},
+			{664, 2288},
+			{488, 2288}
+		},
+		{
+			// BBox 6
+			{488, 1992},
+			{728, 1992},
+			{728, 2080},
+			{488, 2080}
+		},
+		{
+			// BBox 7
+			{752, 2032},
+			{1048, 2032},
+			{1048, 2160},
+			{752, 2160}
+		},
+		{
+			// BBox 8
+			{552, 2408},
+			{680, 2408},
+			{680, 2488},
+			{552, 2488}
+		},
+		{
+			// BBox 9
+			{696, 2288},
+			{1040, 2288},
+			{1040, 2424},
+			{696, 2424}
+		},
+		{
+			// BBox 10
+			{648, 2608},
+			{960, 2608},
+			{960, 2704},
+			{648, 2704}
+		},
+		{
+			// BBox 11
+			{1208, 2168},
+			{1416, 2168},
+			{1416, 2272},
+			{1208, 2272}
+		},
+		{
+			// BBox 12
+			{1224, 2376},
+			{1424, 2376},
+			{1424, 2448},
+			{1224, 2448}
+		},
+		{
+			// BBox 13
+			{976, 2568},
+			{1248, 2568},
+			{1248, 2744},
+			{976, 2744}
+		},
+		{
+			// BBox 14
+			{1256, 2608},
+			{1504, 2608},
+			{1504, 2752},
+			{1256, 2752}
+		},
+		{
+			// BBox 15
+			{1496, 1992},
+			{1640, 1992},
+			{1648, 2128},
+			{1496, 2128}
+		},
+		{
+			// BBox 16
+			{1440, 2216},
+			{1640, 2216},
+			{1640, 2416},
+			{1440, 2416}
+		},
+		{
+			// BBox 17
+			{1760, 2280},
+			{1976, 2280},
+			{1984, 2448},
+			{1760, 2448}
+		},
+		{
+			// BBox 18
+			{1776, 1040},
+			{2016, 1040},
+			{2016, 1144},
+			{1776, 1144}
+		}
+	}},
+	{ "eastern_road", {
+		{
+			// BBox 1
+			{88, 688},
+			{256, 688},
+			{256, 784},
+			{88, 784}
+		},
+		{
+			// BBox 2
+			{432, 520},
+			{560, 520},
+			{560, 584},
+			{432, 584}
+		},
+		{
+			// BBox 3
+			{264, 664},
+			{528, 664},
+			{528, 864},
+			{264, 864}
+		},
+		{
+			// BBox 4
+			{200, 952},
+			{328, 952},
+			{328, 1080},
+			{200, 1080}
+		},
+		{
+			// BBox 5
+			{336, 840},
+			{896, 840},
+			{896, 1024},
+			{336, 1024}
+		},
+		{
+			// BBox 6
+			{632, 600},
+			{944, 600},
+			{944, 752},
+			{632, 752}
+		},
+		{
+			// BBox 7
+			{824, 440},
+			{968, 440},
+			{968, 576},
+			{824, 576}
+		},
+		{
+			// BBox 8
+			{976, 488},
+			{1192, 488},
+			{1192, 560},
+			{976, 568}
+		},
+		{
+			// BBox 9
+			{936, 696},
+			{1096, 696},
+			{1096, 832},
+			{936, 832}
+		},
+		{
+			// BBox 10
+			{1368, 704},
+			{1504, 704},
+			{1504, 808},
+			{1368, 808}
+		},
+		{
+			// BBox 11
+			{896, 912},
+			{1152, 912},
+			{1152, 1008},
+			{896, 1008}
+		},
+		{
+			// BBox 12
+			{1032, 1096},
+			{1184, 1096},
+			{1184, 1216},
+			{1032, 1216}
+		},
+		{
+			// BBox 13
+			{832, 1264},
+			{1144, 1264},
+			{1144, 1384},
+			{832, 1384}
+		},
+		{
+			// BBox 14
+			{648, 1384},
+			{944, 1384},
+			{936, 1584},
+			{648, 1584}
+		},
+		{
+			// BBox 15
+			{264, 1448},
+			{600, 1448},
+			{592, 1552},
+			{264, 1552}
+		},
+		{
+			// BBox 16
+			{728, 1656},
+			{888, 1656},
+			{888, 1808},
+			{728, 1808}
+		},
+		{
+			// BBox 17
+			{624, 1864},
+			{904, 1864},
+			{904, 2000},
+			{624, 2000}
+		},
+		{
+			// BBox 18
+			{128, 1944},
+			{352, 1944},
+			{352, 2080},
+			{128, 2080}
+		}
+	}},
+	{ "deep_woods", {
+		{
+			// BBox 1
+			{1232, 1248},
+			{1440, 1248},
+			{1440, 1392},
+			{1232, 1392}
+		},
+		{
+			// BBox 2
+			{616, 1056},
+			{1176, 1056},
+			{1176, 1328},
+			{616, 1328}
+		},
+		{
+			// BBox 3
+			{632, 920},
+			{992, 920},
+			{992, 1040},
+			{632, 1040}
+		},
+		{
+			// BBox 4
+			{840, 554},
+			{936, 554},
+			{936, 912},
+			{840, 912}
+		},
+		{
+			// BBox 5
+			{1808, 1224},
+			{1912, 1224},
+			{1912, 1392},
+			{1808, 1392}
+		},
+		{
+			// BBox 6
+			{1928, 1288},
+			{2184, 1288},
+			{2184, 1424},
+			{1928, 1424}
+		},
+		{
+			// BBox 7
+			{2200, 1208},
+			{2296, 1208},
+			{2296, 1368},
+			{2200, 1368}
+		},
+		{
+			// BBox 8
+			{2000, 1176},
+			{2112, 1176},
+			{2112, 1280},
+			{2000, 1280}
+		},
+		{
+			// BBox 9
+			{1832, 1024},
+			{1952, 1024},
+			{1952, 1128},
+			{1832, 1128}
+		},
+		{
+			// BBox 10
+			{2000, 920},
+			{2112, 920},
+			{2112, 1120},
+			{2000, 1120}
+		},
+		{
+			// BBox 11
+			{2160, 1024},
+			{2264, 1024},
+			{2264, 1120},
+			{2160, 1120}
+		}
+	}}
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
@@ -112,30 +763,6 @@ static std::map<int, std::string> item_id_to_name_map = {};
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
 static std::map<std::string, std::string> lowercase_localized_name_to_item_name_map = {};
 static std::map<std::string, std::vector<std::pair<int, int>>> ROOM_BUG_SPAWN_BOUNDING_BOX_CENTER_MAP = {};
-
-// DEBUG --------------------------------------------------------------------
-static std::vector<std::string> bugs_detected = {};
-static std::vector<std::string> struct_field_names = {};
-
-bool GetStructFieldNames(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	struct_field_names.push_back(MemberName);
-	return false;
-}
-
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
-}
-//---------------------------------------------------------------------------
-
 
 int RValueAsInt(RValue value)
 {
@@ -444,13 +1071,29 @@ void ObjectCallback(
 			if (item_id.m_Kind != VALUE_UNSET && item_id.m_Kind != VALUE_UNDEFINED && item_id.m_Kind != VALUE_NULL)
 			{
 				std::string item_name = item_id_to_name_map[RValueAsInt(item_id)]; // internal item name
-				bugs_detected.push_back(item_name); // DEBUG
 
 				auto it = std::find(bug_list.begin(), bug_list.end(), item_name);
 				if (it != bug_list.end())
 				{
 					bug_name = item_name_to_localized_name_map[item_name];
 					CreateNotification(BUG_DETECTED_NOTIFICATION_KEY, self, self);
+
+					RValue x;
+					g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
+
+					RValue y;
+					g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
+
+
+					if (ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP.contains(ari_current_location))
+					{
+						std::pair<int, int> point = GenerateRandomPointInClosestBoundingBox(x.m_Real, y.m_Real, ari_current_location); // Change to x.ToInt64() and y.ToInt64() in YYTKv4
+						RValue new_x = point.first;
+						RValue new_y = point.second;
+						g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, new_x);
+						g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, new_y);
+						g_ModuleInterface->Print(CM_GREEN, "[%s %s] - Modified bug (%s) to spawn at (%d, %d).", MOD_NAME, VERSION, bug_name.c_str(), point.first, point.second);
+					}
 				}
 				else
 					processing_bug = false;
@@ -507,68 +1150,6 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 	if (game_is_active)
 		if (Result.m_Kind == VALUE_STRING)
 			ari_current_location = Result.AsString().data();
-
-	return Result;
-}
-
-RValue& GmlScriptSpawnBugCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	int x_coord = RValueAsInt(*Arguments[0]);
-	int y_coord = RValueAsInt(*Arguments[1]);
-	g_ModuleInterface->Print(CM_WHITE, "[%s %s] - A bug is being spawned at (%d, %d)...", MOD_NAME, VERSION, x_coord, y_coord);
-
-	if (ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP.contains(ari_current_location))
-	{
-		std::pair<int, int> point = GenerateRandomPointInClosestBoundingBox(x_coord, y_coord, ari_current_location);
-		*Arguments[0] = point.first;
-		*Arguments[1] = point.second;
-		g_ModuleInterface->Print(CM_WHITE, "[%s %s] - Modified bug spawn to (%d, %d)...", MOD_NAME, VERSION, point.first, point.second);
-	}
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SPAWN_BUG));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
-}
-
-RValue& GmlScriptCreateBugCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	int item_id = RValueAsInt(*Arguments[0]);
-	std::string item_name = item_id_to_name_map[RValueAsInt(item_id)];
-	auto it = std::find(bug_list.begin(), bug_list.end(), item_name);
-	if (it != bug_list.end())
-	{
-		bug_name = item_name_to_localized_name_map[item_name];
-		g_ModuleInterface->Print(CM_WHITE, "[%s %s] - A (%s) bug is being spawned...", MOD_NAME, VERSION, bug_name.c_str());
-		CreateNotification(BUG_DETECTED_NOTIFICATION_KEY, Self, Other);
-	}
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CREATE_BUG));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
 
 	return Result;
 }
@@ -678,267 +1259,6 @@ RValue& GmlScriptSetupMainScreenCallback(
 	return Result;
 }
 
-// TODO: Remove this.
-RValue& GmlScriptMenuPlaySoundCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	g_ModuleInterface->Print(CM_WHITE, "ENTER: %s. ArgCount: %d", GML_SCRIPT_INVENTORY_SLOT_POP, ArgumentCount);
-	for (int i = 0; i < ArgumentCount; i++)
-	{
-		if (Arguments[i]->m_Kind == VALUE_INT32)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: INT32 ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: %d", Arguments[i]->m_i32);
-		}
-		else if (Arguments[i]->m_Kind == VALUE_INT64)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: INT64 ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: %d", Arguments[i]->m_i64);
-		}
-		else if (Arguments[i]->m_Kind == VALUE_REAL)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: REAL ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: %f", Arguments[i]->m_Real);
-		}
-		else if (Arguments[i]->m_Kind == VALUE_BOOL)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: BOOL ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: %s", Arguments[i]->m_Real == 1 ? "true" : "false");
-		}
-		else if (Arguments[i]->m_Kind == VALUE_ARRAY)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: ARRAY ==========", i);
-			size_t size;
-			g_ModuleInterface->GetArraySize(*Arguments[i], size);
-			g_ModuleInterface->Print(CM_WHITE, "Size: %d", static_cast<int>(size));
-		}
-		else if (Arguments[i]->m_Kind == VALUE_REF)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: REFEFERENCE ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: ???");
-		}
-		else if (Arguments[i]->m_Kind == VALUE_PTR)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: POUNTER ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: ???");
-		}
-		else if (Arguments[i]->m_Kind == VALUE_STRING)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: STRING ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: %s", Arguments[i]->AsString().data());
-		}
-		else if (Arguments[i]->m_Kind == VALUE_OBJECT)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: OBJECT ==========", i);
-
-			struct_field_names = {};
-			g_ModuleInterface->EnumInstanceMembers(Arguments[i]->m_Object, GetStructFieldNames);
-			for (int j = 0; j < struct_field_names.size(); j++)
-			{
-				std::string field_name = struct_field_names[j];
-				RValue field = Arguments[i]->m_Object->at(field_name);
-				if (field.m_Kind == VALUE_OBJECT)
-				{
-					g_ModuleInterface->Print(CM_AQUA, "%s: OBJECT", field_name.c_str());
-					g_ModuleInterface->EnumInstanceMembers(field, EnumFunction);
-					g_ModuleInterface->Print(CM_WHITE, "------------------------------");
-				}
-				else if (field.m_Kind == VALUE_ARRAY)
-				{
-					RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { field });
-					g_ModuleInterface->Print(CM_AQUA, "%s: ARRAY (length == %d)", field_name.c_str(), static_cast<int>(array_length.m_Real));
-					for (int k = 0; k < array_length.m_Real; k++)
-					{
-						RValue array_element = g_ModuleInterface->CallBuiltin("array_get", { field, k });
-						int temp = 5;
-					}
-				}
-				else if (field.m_Kind == VALUE_INT32)
-					g_ModuleInterface->Print(CM_AQUA, "%s: INT32 == %d", field_name.c_str(), field.m_i32);
-				else if (field.m_Kind == VALUE_INT64)
-					g_ModuleInterface->Print(CM_AQUA, "%s: INT64 == %d", field_name.c_str(), field.m_i64);
-				else if (field.m_Kind == VALUE_REAL)
-					g_ModuleInterface->Print(CM_AQUA, "%s: REAL == %f", field_name.c_str(), field.m_Real);
-				else if (field.m_Kind == VALUE_BOOL)
-					g_ModuleInterface->Print(CM_AQUA, "%s: BOOL == %s", field_name.c_str(), field.m_Real == 0 ? "false" : "true");
-				else if (field.m_Kind == VALUE_STRING)
-					g_ModuleInterface->Print(CM_AQUA, "%s: STRING == %s", field_name.c_str(), field.AsString().data());
-				else
-					g_ModuleInterface->Print(CM_AQUA, "%s: OTHER", field_name.c_str());
-			}
-		}
-		else if (Arguments[i]->m_Kind == VALUE_UNDEFINED)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: UNDEFINED ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: UNDEFINED");
-		}
-		else if (Arguments[i]->m_Kind == VALUE_UNSET)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: UNSET ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: UNSET");
-		}
-		else if (Arguments[i]->m_Kind == VALUE_NULL)
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: NULL ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: NULL");
-		}
-		else
-		{
-			g_ModuleInterface->Print(CM_WHITE, "========== Argument[%d]: OTHER ==========", i);
-			g_ModuleInterface->Print(CM_WHITE, "Value: ???");
-		}
-	}
-
-	RValue trash_item_sound = g_ModuleInterface->CallBuiltin(
-		"asset_get_index",
-		{ "snd_UITrashItem" }
-	);
-
-	RValue sound_is_playing = g_ModuleInterface->CallBuiltin(
-		"audio_is_playing",
-		{ trash_item_sound }
-	);
-
-	if (RValueAsBool(sound_is_playing))
-	{
-		g_ModuleInterface->Print(CM_WHITE, "!");
-	}
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_INVENTORY_SLOT_POP));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	if (Result.m_Kind == VALUE_INT32)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: INT32 ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: %d", Result.m_i32);
-	}
-	else if (Result.m_Kind == VALUE_INT64)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: INT64 ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: %d", Result.m_i64);
-	}
-	else if (Result.m_Kind == VALUE_REAL)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: REAL ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: %f", Result.m_Real);
-	}
-	else if (Result.m_Kind == VALUE_BOOL)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: BOOL ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: %s", Result.m_Real == 1 ? "true" : "false");
-	}
-	else if (Result.m_Kind == VALUE_ARRAY)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: ARRAY ==========");
-		size_t size;
-		g_ModuleInterface->GetArraySize(Result, size);
-		g_ModuleInterface->Print(CM_WHITE, "Size: %d", static_cast<int>(size));
-	}
-	else if (Result.m_Kind == VALUE_REF)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: REFEFERENCE ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: ???");
-	}
-	else if (Result.m_Kind == VALUE_PTR)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: POUNTER ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: ???");
-	}
-	else if (Result.m_Kind == VALUE_STRING)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: STRING ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: %s", Result.AsString().data());
-	}
-	else if (Result.m_Kind == VALUE_OBJECT)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: OBJECT ==========");
-
-		struct_field_names = {};
-		g_ModuleInterface->EnumInstanceMembers(Result.m_Object, GetStructFieldNames);
-		for (int j = 0; j < struct_field_names.size(); j++)
-		{
-			std::string field_name = struct_field_names[j];
-			RValue field = Result.m_Object->at(field_name);
-			if (field.m_Kind == VALUE_OBJECT)
-			{
-				g_ModuleInterface->Print(CM_AQUA, "%s: OBJECT", field_name.c_str());
-				g_ModuleInterface->EnumInstanceMembers(field, EnumFunction);
-				g_ModuleInterface->Print(CM_WHITE, "------------------------------");
-			}
-			else if (field.m_Kind == VALUE_ARRAY)
-			{
-				RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { field });
-				g_ModuleInterface->Print(CM_AQUA, "%s: ARRAY (length == %d)", field_name.c_str(), static_cast<int>(array_length.m_Real));
-				for (int k = 0; k < array_length.m_Real; k++)
-				{
-					RValue array_element = g_ModuleInterface->CallBuiltin("array_get", { field, k });
-					int temp = 5;
-				}
-			}
-			else if (field.m_Kind == VALUE_INT32)
-				g_ModuleInterface->Print(CM_AQUA, "%s: INT32 == %d", field_name.c_str(), field.m_i32);
-			else if (field.m_Kind == VALUE_INT64)
-				g_ModuleInterface->Print(CM_AQUA, "%s: INT64 == %d", field_name.c_str(), field.m_i64);
-			else if (field.m_Kind == VALUE_REAL)
-				g_ModuleInterface->Print(CM_AQUA, "%s: REAL == %f", field_name.c_str(), field.m_Real);
-			else if (field.m_Kind == VALUE_BOOL)
-				g_ModuleInterface->Print(CM_AQUA, "%s: BOOL == %s", field_name.c_str(), field.m_Real == 0 ? "false" : "true");
-			else if (field.m_Kind == VALUE_STRING)
-				g_ModuleInterface->Print(CM_AQUA, "%s: STRING == %s", field_name.c_str(), field.AsString().data());
-			else
-				g_ModuleInterface->Print(CM_AQUA, "%s: OTHER", field_name.c_str());
-		}
-	}
-	else if (Result.m_Kind == VALUE_UNDEFINED)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: UNDEFINED ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: UNDEFINED");
-	}
-	else if (Result.m_Kind == VALUE_UNSET)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: UNSET ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: UNSET");
-	}
-	else if (Result.m_Kind == VALUE_NULL)
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: NULL ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: NULL");
-	}
-	else
-	{
-		g_ModuleInterface->Print(CM_WHITE, "========== Result: OTHER ==========");
-		g_ModuleInterface->Print(CM_WHITE, "Value: ???");
-	}
-
-	trash_item_sound = g_ModuleInterface->CallBuiltin(
-		"asset_get_index", 
-		{ "snd_UITrashItem" }
-	);
-
-	sound_is_playing = g_ModuleInterface->CallBuiltin(
-		"audio_is_playing",
-		{ trash_item_sound }
-	);
-
-	if (RValueAsBool(sound_is_playing))
-	{
-		g_ModuleInterface->Print(CM_WHITE, "!");
-	}
-
-	return Result;
-}
-
 void CreateObjectCallback(AurieStatus& status)
 {
 	status = g_ModuleInterface->CreateCallback(
@@ -1008,60 +1328,6 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptSpawnBug(AurieStatus& status)
-{
-	CScript* gml_script_create_bug = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_SPAWN_BUG,
-		(PVOID*)&gml_script_create_bug
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SPAWN_BUG);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		GML_SCRIPT_SPAWN_BUG,
-		gml_script_create_bug->m_Functions->m_ScriptFunction,
-		GmlScriptSpawnBugCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SPAWN_BUG);
-	}
-}
-
-void CreateHookGmlScriptCreateBug(AurieStatus& status)
-{
-	CScript* gml_script_create_bug = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_CREATE_BUG,
-		(PVOID*)&gml_script_create_bug
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CREATE_BUG);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		GML_SCRIPT_CREATE_BUG,
-		gml_script_create_bug->m_Functions->m_ScriptFunction,
-		GmlScriptCreateBugCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CREATE_BUG);
-	}
-}
-
 void CreateHookGmlScriptGetLocalizer(AurieStatus& status)
 {
 	CScript* gml_script_get_localizer = nullptr;
@@ -1118,34 +1384,6 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptMenuPlaySound(AurieStatus& status)
-{
-	CScript* gml_script_setup_main_screen = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_INVENTORY_SLOT_POP,
-		(PVOID*)&gml_script_setup_main_screen
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_INVENTORY_SLOT_POP);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		GML_SCRIPT_INVENTORY_SLOT_POP,
-		gml_script_setup_main_screen->m_Functions->m_ScriptFunction,
-		GmlScriptMenuPlaySoundCallback,
-		nullptr
-	);
-
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_INVENTORY_SLOT_POP);
-	}
-}
-
 EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path& ModulePath) {
 	UNREFERENCED_PARAMETER(ModulePath);
 
@@ -1161,12 +1399,12 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 
 	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
 
-	//CreateObjectCallback(status);
-	//if (!AurieSuccess(status))
-	//{
-	//	g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-	//	return status;
-	//}
+	CreateObjectCallback(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
 
 	CreateHookGmlScriptGetWeather(status);
 	if (!AurieSuccess(status))
@@ -1182,20 +1420,6 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		return status;
 	}
 
-	CreateHookGmlScriptSpawnBug(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-		return status;
-	}
-
-	CreateHookGmlScriptCreateBug(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-		return status;
-	}
-
 	CreateHookGmlScriptGetLocalizer(status);
 	if (!AurieSuccess(status))
 	{
@@ -1204,13 +1428,6 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-		return status;
-	}
-
-	CreateHookGmlScriptMenuPlaySound(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
