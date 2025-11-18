@@ -979,7 +979,7 @@ double CalculateDistance(int x1, int y1, int x2, int y2) {
 	return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2));
 }
 
-std::pair<int, int> GenerateRandomPointInClosestBoundingBox(int X, int Y, const std::string& room_name) {
+std::tuple<int, int, int> GenerateRandomPointInClosestBoundingBox(int X, int Y, const std::string& room_name) {
 	double min_distance = DBL_MAX;
 	size_t closest_index = 0;
 
@@ -1010,7 +1010,7 @@ std::pair<int, int> GenerateRandomPointInClosestBoundingBox(int X, int Y, const 
 	int random_x = min_x + rand() % (max_x - min_x + 1);
 	int random_y = min_y + rand() % (max_y - min_y + 1);
 
-	return { random_x, random_y };
+	return { random_x, random_y, closest_index + 1 };
 }
 
 void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
@@ -1124,12 +1124,13 @@ void ObjectCallback(
 
 						if (ROOM_BUG_SPAWN_BOUNDING_BOXES_MAP.contains(ari_current_location))
 						{
-							std::pair<int64_t, int64_t> point = GenerateRandomPointInClosestBoundingBox(x.ToInt64(), y.ToInt64(), ari_current_location); // Change to x.ToInt64() and y.ToInt64() in YYTKv4
-							RValue new_x = point.first;
-							RValue new_y = point.second;
+							std::tuple<int64_t, int64_t, int64_t> tuple = GenerateRandomPointInClosestBoundingBox(x.ToInt64(), y.ToInt64(), ari_current_location);
+							RValue new_x = std::get<0>(tuple);
+							RValue new_y = std::get<1>(tuple);
+							int64_t bounding_box_number = std::get<2>(tuple);
 							g_ModuleInterface->SetBuiltin("x", self, NULL_INDEX, new_x);
 							g_ModuleInterface->SetBuiltin("y", self, NULL_INDEX, new_y);
-							g_ModuleInterface->Print(CM_GREEN, "[%s %s] - Modified bug (%s) to spawn at (%d, %d).", MOD_NAME, VERSION, bug_name.c_str(), point.first, point.second);
+							g_ModuleInterface->Print(CM_GREEN, "[%s %s] - Modified bug (%s) to spawn at position (%d, %d) in Bounding Box (%d).", MOD_NAME, VERSION, bug_name.c_str(), new_x.ToInt64(), new_y.ToInt64(), bounding_box_number);
 						}
 					}
 				}
