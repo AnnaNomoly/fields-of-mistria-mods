@@ -3,13 +3,13 @@
 #include <random>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp>
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "StatueOfBoons";
-static const char* const VERSION = "1.0.6";
+static const char* const VERSION = "1.1.0";
 static const char* const MANA_COST_KEY = "mana_cost"; // Used in mod config file
 static const char* const ESSENCE_COST_KEY = "essence_cost"; // Used in mod config file
 static const char* const PREVIOUS_BOONS_LIMIT_KEY = "previous_boons_limit"; // Used in mod config file
@@ -33,18 +33,22 @@ static const char* const GML_SCRIPT_GET_MOVE_SPEED = "gml_Script_get_move_speed@
 static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_SHOW_ROOM_TITLE = "gml_Script_show_room_title";
+static const char* const GML_SCRIPT_ON_ROOM_START = "gml_Script_on_room_start@WeatherManager@Weather";
 static const char* const GML_SCRIPT_CREATE_BUG = "gml_Script_setup@gml_Object_obj_bug_Create_0";
 static const char* const GML_SCRIPT_ADD_HEART_POINTS = "gml_Script_add_heart_points@Npc@Npc";
 static const char* const GML_SCRIPT_MODIFY_STAMINA = "gml_Script_modify_stamina@Ari@Ari";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
 static const char* const GML_SCRIPT_END_DAY = "gml_Script_end_day";
+static const char* const GML_SCRIPT_WRITE_FURNITURE_TO_LOCATION = "gml_Script_write_furniture_to_location";
+static const char* const GML_SCRIPT_ERASE_OBJECT_RENDERER = "gml_Script_erase_object_renderer";
+static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
 static const char* const GML_SCRIPT_LOAD_GAME = "gml_Script_load_game";
 static const std::string NONE = "none";
-static const std::string LOCATION_FARM = "farm";
+static const std::string FARM_LOCATION_NAME = "farm";
 static const std::string OBJECT_CATEGORY_BUSH = "bush";
 static const std::string OBJECT_CATEGORY_CROP = "crop";
 static const std::string OBJECT_CATEGORY_ROCK = "rock";
@@ -65,6 +69,7 @@ static const std::string EASTERN_ROAD = "eastern_road";
 static const std::string NARROWS = "narrows";
 static const std::string HAYDENS_FARM = "haydens_farm";
 static const std::string BEACH = "beach";
+static const std::string STATUE_OF_BOONS_INTERACT_KEY = "misc_local/Mods/Statue of Boons/interact";
 static const std::string STATUE_OF_BOONS_CONVERSATION_KEY = "Conversations/Mods/Statue of Boons/statue_of_boons";
 static const std::string STATUE_OF_BOONS_PLACEHOLDER_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/placeholder";
 static const std::string STATUE_OF_BOONS_INSUFFICIENT_MANA_DIALOGUE_KEY = "Conversations/Mods/Statue of Boons/insufficient_mana";
@@ -98,8 +103,10 @@ static const int DEFAULT_ESSENCE_COST = 5;
 static const int DEFAULT_PREVIOUS_BOONS_LIMIT = 7;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
+static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
 static bool game_is_active = false;
+static bool once_per_save_load = true;
 static bool custom_object_used = false;
 static int mana_cost = DEFAULT_MANA_COST;
 static int essence_cost = DEFAULT_ESSENCE_COST;
@@ -108,6 +115,8 @@ static int ari_current_mana = -1;
 static int ari_current_essence = -1;
 static bool reduce_ari_mana = false;
 static bool reduce_ari_essence = false;
+static double ari_x = 0;
+static double ari_y = 0;
 static std::string ari_current_location = NONE;
 static RValue custom_conversation_value;
 static RValue* custom_conversation_value_ptr = nullptr;
@@ -132,55 +141,13 @@ static std::map<int, int> spell_id_to_default_cost_map = {};
 static std::map<std::string, int> object_category_to_id_map = {};
 static std::vector<int> forage_boon_objects = {};
 static std::map<int, std::string> object_id_to_name_map = {};
+static std::set<std::pair<int, int>> statue_of_boons_positions = {};
 static std::random_device rd;
 static std::mt19937 gen(rd());
 static std::string save_prefix = "";
 static std::string mod_folder = "";
-
-int RValueAsInt(RValue value)
-{
-	if (value.m_Kind == VALUE_REAL)
-		return static_cast<int>(value.m_Real);
-	if (value.m_Kind == VALUE_INT64)
-		return static_cast<int>(value.m_i64);
-	if (value.m_Kind == VALUE_INT32)
-		return static_cast<int>(value.m_i32);
-}
-
-bool RValueAsBool(RValue value)
-{
-	if (value.m_Kind == VALUE_REAL && value.m_Real == 1)
-		return true;
-	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
-		return true;
-	return false;
-}
-
-bool StructVariableExists(RValue the_struct, const char* variable_name)
-{
-	RValue struct_exists = g_ModuleInterface->CallBuiltin(
-		"struct_exists",
-		{ the_struct, variable_name }
-	);
-
-	return RValueAsBool(struct_exists);
-}
-
-RValue StructVariableGet(RValue the_struct, const char* variable_name)
-{
-	return g_ModuleInterface->CallBuiltin(
-		"struct_get",
-		{ the_struct, variable_name }
-	);
-}
-
-RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue value)
-{
-	return g_ModuleInterface->CallBuiltin(
-		"struct_set",
-		{ the_struct, variable_name, value }
-	);
-}
+static RValue custom_interact_key;
+static RValue* custom_interact_key_ptr = nullptr;
 
 RValue TryStringToItemId(CInstance* Self, CInstance* Other, std::string item_name_str)
 {
@@ -191,7 +158,7 @@ RValue TryStringToItemId(CInstance* Self, CInstance* Other, std::string item_nam
 	);
 
 	RValue item_id;
-	RValue item_name = item_name_str;
+	RValue item_name = RValue(item_name_str);
 	RValue* item_name_ptr = &item_name;
 
 	gml_script_try_string_to_item_id->m_Functions->m_ScriptFunction(
@@ -230,13 +197,10 @@ RValue RenownLevelToIndividualCost(CInstance* Self, CInstance* Other, double val
 
 bool ItemHasBeenAcquired(int item_id)
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
-	RValue __ari = global_instance->at("__ari");
-	RValue items_acquired = __ari.at("items_acquired");
+	RValue __ari = global_instance->GetMember("__ari");
+	RValue items_acquired = __ari.GetMember("items_acquired");
 	RValue item_acquired = g_ModuleInterface->CallBuiltin("array_get", { items_acquired, item_id });
-	return RValueAsBool(item_acquired);
+	return item_acquired.ToBoolean();
 }
 
 void LoadRenownData(CInstance* Self, CInstance* Other)
@@ -250,17 +214,14 @@ void LoadRenownData(CInstance* Self, CInstance* Other)
 
 void ModifyDragonFairyPrice()
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
 	// Get the current renown level.
 	int current_renown_level = 1;
-	RValue __ari = global_instance->at("__ari");
-	RValue renown = __ari.at("renown");
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue renown = *__ari.GetRefMember("renown");
 	for (int i = 100; i > 0; i--)
 	{
 		int cumulative_renown_required = renown_level_to_cumulative_required_points_map[i];
-		if (RValueAsInt(renown) >= cumulative_renown_required)
+		if (renown.ToInt64() >= cumulative_renown_required)
 		{
 			current_renown_level = i;
 			break;
@@ -269,67 +230,55 @@ void ModifyDragonFairyPrice()
 
 	// Dragon Fairy item.
 	RValue* dragon_fairy_item;
-	RValue __item_data = global_instance->at("__item_data");
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
 	g_ModuleInterface->GetArrayEntry(__item_data, dragon_fairy_item_id, dragon_fairy_item);
 
 	// Modify the item's value.
-	RValue value = dragon_fairy_item->at("value");
-	StructVariableSet(value, "bin", current_renown_level * 500);
+	*dragon_fairy_item->GetRefMember("value")->GetRefMember("bin") = current_renown_level * 500;
 }
 
 void LoadSpells()
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
 	size_t array_length = 0;
-	RValue spells = global_instance->at("__spells");
-	//RValue spells = global_instance->GetMember("__spells");
+	RValue spells = global_instance->GetMember("__spells");
 	g_ModuleInterface->GetArraySize(spells, array_length);
+
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(spells, i, array_element);
 
-		RValue cost = array_element->at("cost");
-		spell_id_to_default_cost_map[i] = RValueAsInt(cost);
-		//spell_id_to_default_cost_map[i] = array_element->GetMember("cost").ToInt64();
+		spell_id_to_default_cost_map[i] = array_element->GetMember("cost").ToInt64();
 	}
 }
 
 void ModifySpellCosts(bool boon_of_mana) {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
 	size_t array_length = 0;
-	RValue spells = global_instance->at("__spells");
-	//RValue spells = global_instance->GetMember("__spells");
+	RValue spells = *global_instance->GetRefMember("__spells");
 	g_ModuleInterface->GetArraySize(spells, array_length);
+
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(spells, i, array_element);
 
 		int cost = boon_of_mana ? 0 : spell_id_to_default_cost_map[i];
-		StructVariableSet(*array_element, "cost", cost);
-		//*array_element->GetRefMember("cost") = cost;
+		*array_element->GetRefMember("cost") = cost;
 	}
 }
 
 void LoadObjectCategories()
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
 	size_t array_length = 0;
-	RValue object_categories = global_instance->at("__object_category__");
+	RValue object_categories = global_instance->GetMember("__object_category__");
 	g_ModuleInterface->GetArraySize(object_categories, array_length);
+
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* object_category;
 		g_ModuleInterface->GetArrayEntry(object_categories, i, object_category);
 
-		std::string object_category_str = object_category->AsString().data();
+		std::string object_category_str = object_category->ToString();
 		object_category_to_id_map[object_category_str] = i;
 	}
 }
@@ -356,7 +305,7 @@ void LoadObjectIds(CInstance* Self, CInstance* Other)
 		);
 
 		if (result.m_Kind == VALUE_STRING)
-			object_id_to_name_map[i] = result.AsString().data();
+			object_id_to_name_map[i] = result.ToString();
 	}
 
 	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Loaded %d objects!", MOD_NAME, VERSION, static_cast<int>(object_id_to_name_map.size()));
@@ -364,11 +313,8 @@ void LoadObjectIds(CInstance* Self, CInstance* Other)
 
 void LoadObjectItemData()
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
 	size_t array_length = 0;
-	RValue node_prototypes = global_instance->at("__node_prototypes");
+	RValue node_prototypes = global_instance->GetMember("__node_prototypes");
 	g_ModuleInterface->GetArraySize(node_prototypes, array_length);
 	for (size_t i = 0; i < array_length; i++)
 	{
@@ -376,8 +322,8 @@ void LoadObjectItemData()
 		g_ModuleInterface->GetArrayEntry(node_prototypes, i, node_prototype);
 
 		bool object_is_eligible = false;
-		int object_id = RValueAsInt(StructVariableGet(*node_prototype, "object_id"));
-		int category_id = RValueAsInt(StructVariableGet(*node_prototype, "category_id"));
+		int object_id = node_prototype->GetMember("object_id").ToInt64(); //RValueAsInt(StructVariableGet(*node_prototype, "object_id"));
+		int category_id = node_prototype->GetMember("category_id").ToInt64(); //RValueAsInt(StructVariableGet(*node_prototype, "category_id"));
 
 		if (category_id == object_category_to_id_map[OBJECT_CATEGORY_BUSH] || category_id == object_category_to_id_map[OBJECT_CATEGORY_CROP])		
 			object_is_eligible = true;
@@ -402,7 +348,7 @@ void CreateNotification(std::string notification_localization_str, CInstance* Se
 	);
 
 	RValue result;
-	RValue notification = notification_localization_str;
+	RValue notification = RValue(notification_localization_str);
 	RValue* notification_ptr = &notification;
 	gml_script_create_notification->m_Functions->m_ScriptFunction(
 		Self,
@@ -815,20 +761,66 @@ void CreateOrLoadModConfigFile()
 	}
 }
 
+double CalculateDistance(int x1, int y1, int x2, int y2) {
+	return std::sqrt(std::pow(x2 - x1, 2) + std::pow(y2 - y1, 2));
+}
+
+void FindStatueOfBoonsPositions()
+{
+	CRoom* current_room = nullptr;
+	if (!AurieSuccess(g_ModuleInterface->GetCurrentRoomData(current_room)))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get data for the current room!", MOD_NAME, VERSION);
+		return;
+	}
+
+	for (CInstance* inst = current_room->GetMembers().m_ActiveInstances.m_First; inst != nullptr; inst = inst->GetMembers().m_Flink)
+	{
+		auto map = inst->ToRValue().ToRefMap();
+		if (!map.contains("node")) continue;
+
+		RValue* nodeValue = map["node"];
+		if (!nodeValue || nodeValue->GetKindName() != "struct") continue;
+
+		auto nodeRefMap = nodeValue->ToRefMap();
+		if (!nodeRefMap.contains("prototype")) continue;
+
+		RValue* protoVal = nodeRefMap["prototype"];
+		if (!protoVal || protoVal->GetKindName() != "struct") continue;
+
+		auto protoMap = protoVal->ToRefMap();
+		if (!protoMap.contains("object_id")) continue;
+
+		int object_id = protoMap["object_id"]->ToInt64();
+		if (object_id_to_name_map[object_id] == CUSTOM_OBJECT_NAME)
+		{
+			int x = nodeRefMap["top_left_x"]->ToInt64();
+			int y = nodeRefMap["top_left_y"]->ToInt64();
+			statue_of_boons_positions.emplace(x, y);
+		}
+	}
+}
+
 void ResetStaticFields(bool returned_to_title_screen)
 {
 	if (returned_to_title_screen)
 	{
 		game_is_active = false;
+		once_per_save_load = true;
 		ari_current_mana = -1;
 		ari_current_essence = -1;
+		ari_x = 0;
+		ari_y = 0;
 		ari_current_location = NONE;
 		custom_conversation_value = RValue();
 		custom_conversation_value_ptr = nullptr;
 		custom_dialogue_value = RValue();
 		custom_dialogue_value_ptr = nullptr;
 		previous_boons = {};
+		statue_of_boons_positions = {};
 		save_prefix = "";
+		custom_interact_key = "";
+		custom_interact_key_ptr = nullptr;
 	}
 
 	custom_object_used = false;
@@ -862,23 +854,28 @@ void ObjectCallback(
 
 	if (strstr(self->m_Object->m_Name, "obj_ari"))
 	{
-		CInstance* global_instance = nullptr;
-		g_ModuleInterface->GetGlobalInstance(&global_instance);
+		RValue x;
+		g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
+		ari_x = x.ToDouble();
+
+		RValue y;
+		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
+		ari_y = y.ToDouble();
 
 		if (reduce_ari_mana)
 		{
 			reduce_ari_mana = false;
-			ModifyMana(global_instance->at("__ari").m_Object, self, static_cast<double>(-1 * mana_cost));
+			ModifyMana(global_instance->GetRefMember("__ari")->ToInstance(), self, static_cast<double>(-1 * mana_cost));
 		}
 			
 		if (reduce_ari_essence)
 		{
 			reduce_ari_essence = false;
-			ModifyEssence(global_instance->at("__ari").m_Object, self, static_cast<double>(-1 * essence_cost));
+			ModifyEssence(global_instance->GetRefMember("__ari")->ToInstance(), self, static_cast<double>(-1 * essence_cost));
 		}
 
-		ari_current_mana = RValueAsInt(GetCurrentMana(global_instance->at("__ari").m_Object, self));
-		ari_current_essence = RValueAsInt(GetCurrentEssence(global_instance->at("__ari").m_Object, self));
+		ari_current_mana = GetCurrentMana(global_instance->GetRefMember("__ari")->ToInstance(), self).ToInt64();
+		ari_current_essence = GetCurrentEssence(global_instance->GetRefMember("__ari")->ToInstance(), self).ToInt64();
 	}
 }
 
@@ -939,7 +936,7 @@ RValue& GmlScriptGiveItemCallback(
 	if (boon_of_butterfly && !dragon_fairy_caught && ari_current_location == dragon_fairy_location)
 	{
 		RValue item = Arguments[0]->m_Object;
-		int item_id = RValueAsInt(item.at("item_id"));
+		int item_id = item.GetMember("item_id").ToInt64();
 
 		if(item_id == dragon_fairy_item_id)
 			dragon_fairy_caught = true;
@@ -948,10 +945,10 @@ RValue& GmlScriptGiveItemCallback(
 	if (modify_items_added)
 	{
 		modify_items_added = false;
-		if (ari_current_location != LOCATION_FARM)
+		if (ari_current_location != FARM_LOCATION_NAME)
 		{
 			RValue item = Arguments[0]->m_Object;
-			int item_id = RValueAsInt(item.at("item_id"));
+			int item_id = item.GetMember("item_id").ToInt64();
 
 			// Prevent giving more than one of an unidentified artifact or unacquired item.
 			if (item_id != unidentified_artifact_item_id && ItemHasBeenAcquired(item_id))
@@ -1012,7 +1009,7 @@ RValue& GmlScriptInteractCallback(
 )
 {
 	RValue object = Arguments[0]->m_Object;
-	int object_id = RValueAsInt(object.at("object_id"));
+	int object_id = object.GetMember("object_id").ToInt64();
 	std::string object_name = object_id_to_name_map[object_id];
 
 	// Statue of Boons
@@ -1092,6 +1089,32 @@ RValue& GmlScriptShowRoomTitleCallback(
 			CreateNotification(BOON_OF_BUTTERFLY_DETECTED_DIALOGUE_KEY, Self, Other);
 		}
 	}
+
+	return Result;
+}
+
+RValue& GmlScriptOnRoomStartCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (game_is_active && once_per_save_load && ari_current_location == FARM_LOCATION_NAME)
+	{
+		once_per_save_load = false;
+		FindStatueOfBoonsPositions();
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_ROOM_START));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
 
 	return Result;
 }
@@ -1186,7 +1209,7 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 	);
 
 	if (game_is_active && Result.m_Kind == VALUE_STRING)
-		ari_current_location = Result.AsString().data();
+		ari_current_location = Result.ToString();
 
 	return Result;
 }
@@ -1217,6 +1240,121 @@ RValue& GmlScriptEndDayCallback(
 	return Result;
 }
 
+RValue& GmlScriptWriteFurnitureToLocationCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_WRITE_FURNITURE_TO_LOCATION));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (game_is_active)
+	{
+		if (Result.m_Kind != VALUE_UNDEFINED && Result.m_Kind != VALUE_UNSET && Result.m_Kind != VALUE_NULL)
+		{
+			RValue object_id = Result.GetMember("object_id");
+			if (object_id_to_name_map[object_id.ToInt64()] == CUSTOM_OBJECT_NAME)
+			{
+				RValue top_left_x = Result.GetMember("top_left_x");
+				RValue top_left_y = Result.GetMember("top_left_y");
+
+				RValue write_size_x = Result.GetMember("write_size_x");
+				RValue write_size_y = Result.GetMember("write_size_y");
+
+				std::pair<int64_t, int64_t> position = { top_left_x.ToInt64(), top_left_y.ToInt64() };
+				statue_of_boons_positions.insert(position);
+			}
+		}
+	}
+
+	return Result;
+}
+
+RValue& GmlScriptEraseObjectRendererCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ERASE_OBJECT_RENDERER));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (game_is_active && ari_current_location == FARM_LOCATION_NAME)
+	{
+		int object_id = Arguments[0]->GetMember("object_id").ToInt64();
+		if (object_id_to_name_map[object_id] == CUSTOM_OBJECT_NAME)
+		{
+			int x = Arguments[0]->GetMember("top_left_x").ToInt64();
+			int y = Arguments[0]->GetMember("top_left_y").ToInt64();
+
+			auto it = std::find_if(statue_of_boons_positions.begin(), statue_of_boons_positions.end(),
+				[x, y](const std::pair<int, int>& p) {
+					return p.first == x && p.second == y;
+				});
+
+			if (it != statue_of_boons_positions.end()) {
+				statue_of_boons_positions.erase(it);
+			}
+		}
+	}
+
+	return Result;
+}
+
+RValue& GmlScriptGetLocalizerCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (game_is_active)
+	{
+		if (ari_current_location == FARM_LOCATION_NAME && Arguments[0]->ToString() == "misc_local/crystal_ball")
+		{
+			for (auto it : statue_of_boons_positions)
+			{
+				int temp = CalculateDistance(ari_x, ari_y, it.first * 8 + 8, it.second * 8 + 8);
+				if (CalculateDistance(ari_x, ari_y, it.first * 8 + 8, it.second * 8 + 8) <= 44)
+				{
+					custom_interact_key = RValue(STATUE_OF_BOONS_INTERACT_KEY);
+					custom_interact_key_ptr = &custom_interact_key;
+					Arguments[0] = custom_interact_key_ptr;
+				}
+			}
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_LOCALIZER));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
 RValue& GmlScriptPlayTextCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -1225,26 +1363,26 @@ RValue& GmlScriptPlayTextCallback(
 	IN RValue** Arguments
 )
 {
-	std::string conversation_name = Arguments[0]->AsString().data();
+	std::string conversation_name = Arguments[0]->ToString();
 	if (conversation_name.find(STATUE_OF_BOONS_PLACEHOLDER_DIALOGUE_KEY) != std::string::npos)
 	{
 		// Check if a boon is already active.
 		if (AnyBoonIsActive())
 		{
 			if (boon_of_speed)
-				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_SPEED_ACTIVE_DIALOGUE_KEY;
+				custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_SPEED_ACTIVE_DIALOGUE_KEY);
 			if (boon_of_forage)
-				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FORAGE_ACTIVE_DIALOGUE_KEY;
+				custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_FORAGE_ACTIVE_DIALOGUE_KEY);
 			if (boon_of_fishing)
-				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FISHING_ACTIVE_DIALOGUE_KEY;
+				custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_FISHING_ACTIVE_DIALOGUE_KEY);
 			if (boon_of_butterfly)
-				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_BUTTERFLY_ACTIVE_DIALOGUE_KEY;
+				custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_BUTTERFLY_ACTIVE_DIALOGUE_KEY);
 			if (boon_of_friendship)
-				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FRIENDSHIP_ACTIVE_DIALOGUE_KEY;
+				custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_FRIENDSHIP_ACTIVE_DIALOGUE_KEY);
 			if (boon_of_stamina)
-				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_STAMINA_ACTIVE_DIALOGUE_KEY;
+				custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_STAMINA_ACTIVE_DIALOGUE_KEY);
 			if (boon_of_mana)
-				custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_MANA_ACTIVE_DIALOGUE_KEY;
+				custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_MANA_ACTIVE_DIALOGUE_KEY);
 		}
 		else
 		{
@@ -1253,12 +1391,12 @@ RValue& GmlScriptPlayTextCallback(
 			if (ari_current_mana < mana_cost)
 			{
 				statue_activation_requirements_met = false;
-				custom_dialogue_value = STATUE_OF_BOONS_INSUFFICIENT_MANA_DIALOGUE_KEY;
+				custom_dialogue_value = RValue(STATUE_OF_BOONS_INSUFFICIENT_MANA_DIALOGUE_KEY);
 			}
 			if (ari_current_essence < essence_cost)
 			{
 				statue_activation_requirements_met = false;
-				custom_dialogue_value = STATUE_OF_BOONS_INSUFFICIENT_ESSENCE_DIALOGUE_KEY;
+				custom_dialogue_value = RValue(STATUE_OF_BOONS_INSUFFICIENT_ESSENCE_DIALOGUE_KEY);
 			}
 
 			if (statue_activation_requirements_met)
@@ -1268,7 +1406,7 @@ RValue& GmlScriptPlayTextCallback(
 				if (essence_cost > 0)
 					reduce_ari_essence = true;
 
-				if (previous_boons.size() >= previous_boons_limit)
+				if (previous_boons.size() > previous_boons_limit || previous_boons.size() == LIST_OF_BOONS.size())
 					previous_boons = {};
 
 				std::string random_boon = NONE;
@@ -1280,7 +1418,7 @@ RValue& GmlScriptPlayTextCallback(
 				}
 				else
 				{
-					// Choose a random boon excluding the previous one.
+					// Choose a random boon excluding the previous ones.
 					std::vector<std::string> modified_boon_list = LIST_OF_BOONS;
 					for(std::string previous_boon : previous_boons)
 						modified_boon_list.erase(std::remove(modified_boon_list.begin(), modified_boon_list.end(), previous_boon), modified_boon_list.end());
@@ -1292,24 +1430,24 @@ RValue& GmlScriptPlayTextCallback(
 				if (random_boon == BOON_OF_SPEED)
 				{
 					boon_of_speed = true;
-					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_SPEED_GRANTED_DIALOGUE_KEY;
+					custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_SPEED_GRANTED_DIALOGUE_KEY);
 				}
 				if (random_boon == BOON_OF_FORAGE)
 				{
 					boon_of_forage = true;
-					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FORAGE_GRANTED_DIALOGUE_KEY;
+					custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_FORAGE_GRANTED_DIALOGUE_KEY);
 				}
 				if (random_boon == BOON_OF_FISHING)
 				{
 					boon_of_fishing = true;
-					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FISHING_GRANTED_DIALOGUE_KEY;
+					custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_FISHING_GRANTED_DIALOGUE_KEY);
 				}
 				if (random_boon == BOON_OF_BUTTERFLY)
 				{
 					boon_of_butterfly = true;
 					dragon_fairy_caught = false;
 					spawning_dragon_fairy = false;
-					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_BUTTERFLY_GRANTED_DIALOGUE_KEY;
+					custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_BUTTERFLY_GRANTED_DIALOGUE_KEY);
 
 					std::uniform_int_distribution<> choose_random_location(0, static_cast<int>(LIST_OF_LOCATIONS.size() - 1));
 					dragon_fairy_location = LIST_OF_LOCATIONS[choose_random_location(gen)];
@@ -1317,17 +1455,17 @@ RValue& GmlScriptPlayTextCallback(
 				if (random_boon == BOON_OF_FRIENDSHIP)
 				{
 					boon_of_friendship = true;
-					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_FRIENDSHIP_GRANTED_DIALOGUE_KEY;
+					custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_FRIENDSHIP_GRANTED_DIALOGUE_KEY);
 				}
 				if (random_boon == BOON_OF_STAMINA)
 				{
 					boon_of_stamina = true;
-					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_STAMINA_GRANTED_DIALOGUE_KEY;
+					custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_STAMINA_GRANTED_DIALOGUE_KEY);
 				}
 				if (random_boon == BOON_OF_MANA)
 				{
 					boon_of_mana = true;
-					custom_dialogue_value = STATUE_OF_BOONS_BOON_OF_MANA_GRANTED_DIALOGUE_KEY;
+					custom_dialogue_value = RValue(STATUE_OF_BOONS_BOON_OF_MANA_GRANTED_DIALOGUE_KEY);
 
 					ModifySpellCosts(boon_of_mana);
 				}
@@ -1361,7 +1499,7 @@ RValue& GmlScriptPlayConversationCallback(
 	if (custom_object_used)
 	{
 		custom_object_used = false;
-		custom_conversation_value = STATUE_OF_BOONS_CONVERSATION_KEY;
+		custom_conversation_value = RValue(STATUE_OF_BOONS_CONVERSATION_KEY);
 		custom_conversation_value_ptr = &custom_conversation_value;
 		Arguments[1] = custom_conversation_value_ptr;
 	}
@@ -1389,8 +1527,9 @@ RValue& GmlScriptSetupMainScreenCallback(
 	if (load_on_start)
 	{
 		load_on_start = false;
-		dragon_fairy_item_id = RValueAsInt(TryStringToItemId(Self, Other, CUSTOM_ITEM_NAME));
-		unidentified_artifact_item_id = RValueAsInt(TryStringToItemId(Self, Other, UNIDENTIFIED_ARTIFACT_ITEM_NAME));
+		g_ModuleInterface->GetGlobalInstance(&global_instance);
+		dragon_fairy_item_id = TryStringToItemId(Self, Other, CUSTOM_ITEM_NAME).ToInt64();
+		unidentified_artifact_item_id = TryStringToItemId(Self, Other, UNIDENTIFIED_ARTIFACT_ITEM_NAME).ToInt64();
 		LoadObjectCategories();
 		LoadObjectIds(Self, Other);
 		LoadObjectItemData();
@@ -1425,7 +1564,7 @@ RValue& GmlScriptSaveGameCallback(
 	if (save_prefix.size() == 0)
 	{
 		// Get the save file name.
-		std::string save_file = Arguments[0]->AsString().data();
+		std::string save_file = Arguments[0]->ToString();
 		std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
 		std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
 
@@ -1463,7 +1602,7 @@ RValue& GmlScriptLoadGameCallback(
 )
 {
 	// Get the save file name.
-	std::string save_file = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
+	std::string save_file = Arguments[0]->ToInstance()->GetMember("save_path").ToString();
 	std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
 	std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
 
@@ -1694,6 +1833,33 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptOnRoomStart(AurieStatus& status)
+{
+	CScript* gml_script_on_room_start = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_ON_ROOM_START,
+		(PVOID*)&gml_script_on_room_start
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ON_ROOM_START);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_ON_ROOM_START,
+		gml_script_on_room_start->m_Functions->m_ScriptFunction,
+		GmlScriptOnRoomStartCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ON_ROOM_START);
+	}
+}
+
 void CreateHookGmlScriptCreateBug(AurieStatus& status)
 {
 	CScript* gml_script_create_bug = nullptr;
@@ -1826,6 +1992,87 @@ void CreateHookGmlScriptEndDay(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_END_DAY);
+	}
+}
+
+void CreateHookGmlScriptWriteFurnitureToLocation(AurieStatus& status)
+{
+	CScript* gml_script_write_furniture_to_location = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_WRITE_FURNITURE_TO_LOCATION,
+		(PVOID*)&gml_script_write_furniture_to_location
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_WRITE_FURNITURE_TO_LOCATION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_WRITE_FURNITURE_TO_LOCATION,
+		gml_script_write_furniture_to_location->m_Functions->m_ScriptFunction,
+		GmlScriptWriteFurnitureToLocationCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_WRITE_FURNITURE_TO_LOCATION);
+	}
+}
+
+void CreateHookGmlScriptEraseObjectRenderer(AurieStatus& status)
+{
+	CScript* gml_script_erase_object_renderer = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_ERASE_OBJECT_RENDERER,
+		(PVOID*)&gml_script_erase_object_renderer
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ERASE_OBJECT_RENDERER);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_ERASE_OBJECT_RENDERER,
+		gml_script_erase_object_renderer->m_Functions->m_ScriptFunction,
+		GmlScriptEraseObjectRendererCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ERASE_OBJECT_RENDERER);
+	}
+}
+
+void CreateHookGmlScriptGetLocalizer(AurieStatus& status)
+{
+	CScript* gml_script_get_localizer = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_LOCALIZER,
+		(PVOID*)&gml_script_get_localizer
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_LOCALIZER);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GET_LOCALIZER,
+		gml_script_get_localizer->m_Functions->m_ScriptFunction,
+		GmlScriptGetLocalizerCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_LOCALIZER);
 	}
 }
 
@@ -2041,6 +2288,13 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
+	CreateHookGmlScriptOnRoomStart(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
 	CreateHookGmlScriptCreateBug(status);
 	if (!AurieSuccess(status))
 	{
@@ -2070,6 +2324,27 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptEndDay(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptWriteFurnitureToLocation(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptEraseObjectRenderer(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptGetLocalizer(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
