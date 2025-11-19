@@ -12,7 +12,7 @@ The table below will be updated with mod development to indicate the status of a
 | Name | Mod Version | Status | Nexus Link |
 | ---- | ----------- | ------------------- | ---------- |
 | Animal Friends | 1.4.3 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/241 |
-| Bug Radar | 1.0.0 | ✅ | N/A |
+| Bug Radar | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/510 |
 | Charm Spell | 1.0.0 | ❌ | N/A |
 | Chutes and Ladders | 1.2.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/153 |
 | Cookbook | 1.1.5 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/162 |
@@ -33,7 +33,7 @@ The table below will be updated with mod development to indicate the status of a
 | Save Backup | 1.0.0 | ✅ | N/A |
 | Secret Santa | 1.1.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/343 |
 | Ship It | 1.1.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/342 |
-| Statue of Boons | 1.0.6 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/368 |
+| Statue of Boons | 1.1.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/368 |
 | Stop Time Indoors | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/507 |
 | Summoning Circle | 1.0.2 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/451 |
 | Telepop | 2.1.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/108 |
