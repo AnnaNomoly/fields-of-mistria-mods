@@ -27,6 +27,7 @@ static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_
 static const char* const GML_SCRIPT_END_DAY = "gml_Script_end_day";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
+static const std::string NEW_GAME_NOTIFICATION_KEY = "Notifications/Mods/SaveAnywhere/new_game_warning";
 static const std::string DUNGEON_SAVE_NOTIFICATION_KEY = "Notifications/Mods/SaveAnywhere/location/dungeon";
 static const std::string FARM_BUILDING_SAVE_NOTIFICATION_KEY = "Notifications/Mods/SaveAnywhere/location/farm_building";
 static const std::string SMALL_BARN = "small_barn";
@@ -527,9 +528,9 @@ void WriteModSaveFile(CInstance* Self, CInstance* Other)
 			location_id_to_name_map[ari_room_id] == SMALL_GREENHOUSE ||
 			location_id_to_name_map[ari_room_id] == LARGE_GREENHOUSE)
 		{
-			mod_save_data[SAVE_LOCATION_KEY] = FARM; // TODO: Create FARM constant
-			mod_save_data[SAVE_X_POSITION_KEY] = 1032; // TODO
-			mod_save_data[SAVE_Y_POSITION_KEY] = 87; // TODO
+			mod_save_data[SAVE_LOCATION_KEY] = FARM;
+			mod_save_data[SAVE_X_POSITION_KEY] = 1032;
+			mod_save_data[SAVE_Y_POSITION_KEY] = 87;
 
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are currently in a farm building! Your location will be saved as \"farm\" to avoid errors.", MOD_NAME, VERSION);
 			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Saving your game at the fallback location: \"farm\".", MOD_NAME, VERSION);
@@ -1017,6 +1018,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 				else
 				{
 					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Game was NOT saved! An autosave file has not been created. If this is a new file you must save at the bed at least once.", MOD_NAME, VERSION);
+					CreateNotification(Self, Other, NEW_GAME_NOTIFICATION_KEY);
 				}
 			}
 
