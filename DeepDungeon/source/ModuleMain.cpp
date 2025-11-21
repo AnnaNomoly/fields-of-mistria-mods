@@ -1,7 +1,8 @@
-#include <random>Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init
+#include <random>
 #include <fstream>
 #include <iostream>
 #include <filesystem>
+#include <unordered_set>
 #include <nlohmann/json.hpp>
 #include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
@@ -18,7 +19,11 @@ static const char* const GML_SCRIPT_GET_HEALTH = "gml_Script_get_health@Ari@Ari"
 static const char* const GML_SCRIPT_SET_HEALTH = "gml_Script_set_health@Ari@Ari";
 static const char* const GML_SCRIPT_MODIFY_HEALTH = "gml_Script_modify_health@Ari@Ari";
 static const char* const GML_SCRIPT_MODIFY_STAMINA = "gml_Script_modify_stamina@Ari@Ari";
+static const char* const GML_SCRIPT_CAN_CAST_SPELL = "gml_Script_can_cast_spell";
 static const char* const GML_SCRIPT_GET_MOVE_SPEED = "gml_Script_get_move_speed@Ari@Ari";
+static const char* const GML_SCRIPT_DAMAGE = "gml_Script_damage@gml_Object_obj_damage_receiver_Create_0";
+static const char* const GML_SCRIPT_USE_ITEM = "gml_Script_use_item";
+static const char* const GML_SCRIPT_HELD_ITEM = "gml_Script_held_item@Ari@Ari";
 static const char* const GML_SCRIPT_GET_MINUTES = "gml_Script_get_minutes";
 static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
@@ -26,6 +31,7 @@ static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_
 static const char* const GML_SCRIPT_ON_DUNGEON_ROOM_START = "gml_Script_on_room_start@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
+static const std::string ITEM_PENALTY_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_penalty";
 static const std::string FLOOR_ENCHANTMENT_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/floor_enchantments";
 static const std::string DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
@@ -154,15 +160,44 @@ static bool localize_mod_text = false;
 static bool game_is_active = false;
 static bool is_restoration_tracked_interval = false;
 static bool is_second_wind_tracked_interval = false;
-static int current_time_in_seconds = 0;
-static int time_of_last_restoration_tick = 0;
-static int time_of_last_second_wind_tick = 0;
+static int current_time_in_seconds = -1;
+static int time_of_last_restoration_tick = -1;
+static int time_of_last_second_wind_tick = -1;
+static int held_item_id = -1;
+static std::unordered_set<int> consumable_items = {};
+static std::map<Sigils, int> sigil_to_item_id_map = {};
+static std::map<Sigils, bool> sigil_is_being_used_map = {};
 static std::vector<FloorEnchantments> active_floor_enchantments = {};
 static std::map<FloorEnchantments, std::string> floor_enchantments_to_localized_string_map = {};
 static std::string ari_current_location = "";
 static std::string ari_current_gm_room = "";
-static std::random_device random_device;
-static std::mt19937 random_generator(random_device());
+
+void LoadConsumableItems()
+{
+	size_t array_length;
+	RValue item_data = global_instance->GetMember("__item_data");
+	g_ModuleInterface->GetArraySize(item_data, array_length);
+
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* item;
+		
+		g_ModuleInterface->GetArrayEntry(item_data, i, item);
+
+		RValue name_key = item->GetMember("name_key");
+		if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
+		{
+			if (name_key.ToString().contains("cooked_dishes"))
+				consumable_items.insert(item->GetMember("item_id").ToInt64());
+			else
+			{
+				RValue edible = item->GetMember("edible");
+				if (edible.m_Kind == VALUE_BOOL && edible.m_Real == 1.0)
+					consumable_items.insert(item->GetMember("item_id").ToInt64());
+			}
+		}
+	}
+}
 
 RValue LocalizeString(CInstance* Self, CInstance* Other, std::string localization_key)
 {
@@ -236,8 +271,10 @@ void PlayConversation(std::string conversation_localization_str, CInstance* Self
 
 std::vector<FloorEnchantments> RandomFloorEnchantments(bool is_first_floor, DungeonBiomes dungeon_biome)
 {
-	std::vector<FloorEnchantments> random_floor_enchantments = {};
+	static thread_local std::mt19937 random_generator(std::random_device{}());
 	std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
+
+	std::vector<FloorEnchantments> random_floor_enchantments = {};
 
 	if (is_first_floor)
 	{
@@ -535,6 +572,11 @@ void ObjectCallback(
 				SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, adjusted_max_health);
 		}
 	}
+
+	if (strstr(self->m_Object->m_Name, "obj_monster_clod"))
+	{
+
+	}
 }
 
 RValue& GmlScriptModifyStaminaCallback(
@@ -564,6 +606,33 @@ RValue& GmlScriptModifyStaminaCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	return Result;
+}
+
+RValue& GmlScriptCanCastSpellCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CAN_CAST_SPELL));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	// Amnesia
+	auto amnesia = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::AMNESIA);
+	if (amnesia != active_floor_enchantments.end())
+	{
+		Result = 0.0;
+	}
 
 	return Result;
 }
@@ -600,6 +669,127 @@ RValue& GmlScriptGetMoveSpeedCallback(
 	}
 	
 	return Result; // 2.0 is default run speed
+}
+
+RValue& GmlScriptDamageCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	static thread_local std::mt19937 random_generator(std::random_device{}());
+	std::uniform_int_distribution<size_t> zero_to_one_distribution(0, 1);
+
+	// Blind
+	auto blind = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::BLIND);
+	if (blind != active_floor_enchantments.end())
+	{
+		RValue target = Arguments[0]->GetMember("target");
+		if (target.ToInt64() != 1) // Everything not Ari
+		{
+			*Arguments[0]->GetRefMember("damage") = 0.0;
+			*Arguments[0]->GetRefMember("critical") = false;
+			*Arguments[0]->GetRefMember("knockback") = false;
+			//*Arguments[0]->GetRefMember("frozen") = true; // Frozen debuff
+			//*Arguments[0]->GetRefMember("venomous") = true; // Poison debuff
+			//*Arguments[0]->GetRefMember("electrocute_kind") = 0; // Paralysis debuff (doesn't seem to affect monsters)
+			//*Arguments[0]->GetRefMember("can_pick_grid_objects") = true; // Pick node objects
+			//*Arguments[0]->GetRefMember("can_chop_grid_objects") = true; // Chop node objects
+		}
+	}
+
+	// Damage Down
+	auto damage_down = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::DAMAGE_DOWN);
+	if (damage_down != active_floor_enchantments.end())
+	{
+		RValue target = Arguments[0]->GetMember("target");
+		if (target.ToInt64() != 1) // Everything not Ari
+		{
+			bool miss = zero_to_one_distribution(random_generator);
+			if (miss)
+			{
+				double damage = Arguments[0]->GetMember("damage").ToDouble();
+				int penalty = std::floor(damage * 0.30); // 30% reduced damage dealt
+				*Arguments[0]->GetRefMember("damage") = damage - penalty;
+			}
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_DAMAGE));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptUseItemCallback(
+	IN CInstance* Self, // Changes depending on the invocation context. For world interactables like a fountain, Self->m_Object->m_Name == "obj_world_fountain". For Ari using an item, Self->m_Object == NULL.
+	IN CInstance* Other, // Changes depending on the invocation context. For world interactables like a fountain, Other->m_Object->m_Name == "Game". For Ari using an item, Other->m_Object->m_Name == "obj_ari".
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	auto item_penalty = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::ITEM_PENALTY);
+	if (item_penalty != active_floor_enchantments.end())
+	{
+		if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari"))
+		{
+			if (held_item_id != sigil_to_item_id_map[Sigils::SERENITY] && consumable_items.contains(held_item_id))
+			{
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use items due to the Item Penalty floor enchantment!", MOD_NAME, VERSION);
+				CreateNotification(ITEM_PENALTY_NOTIFICATION_KEY, Self, Other);
+				return Result;
+			}
+			else
+				sigil_is_being_used_map[Sigils::SERENITY] = true;
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_USE_ITEM));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptHeldItemCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_HELD_ITEM));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (Result.m_Kind != VALUE_UNDEFINED)
+	{
+		int item_id = Result.GetMember("item_id").ToInt64();
+		if (held_item_id != item_id)
+			held_item_id = item_id;
+	}
+
+	return Result;
 }
 
 RValue& GmlScriptGetMinutesCallback(
@@ -883,6 +1073,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		localize_mod_text = true;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 		// TODO: Load other stuff
+		LoadConsumableItems();
 	}
 	//else
 	//	ResetStaticFields(true);
@@ -941,6 +1132,33 @@ void CreateHookGmlScriptModifyStamina(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptCanCastSpell(AurieStatus& status)
+{
+	CScript* gml_script_can_cast_spell = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CAN_CAST_SPELL,
+		(PVOID*)&gml_script_can_cast_spell
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CAN_CAST_SPELL);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CAN_CAST_SPELL,
+		gml_script_can_cast_spell->m_Functions->m_ScriptFunction,
+		GmlScriptCanCastSpellCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CAN_CAST_SPELL);
+	}
+}
+
 void CreateHookGmlScriptGetMoveSpeed(AurieStatus& status)
 {
 	CScript* gml_script_get_move_speed = nullptr;
@@ -965,6 +1183,89 @@ void CreateHookGmlScriptGetMoveSpeed(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_MOVE_SPEED);
+	}
+}
+
+void CreateHookGmlScriptDamage(AurieStatus& status)
+{
+	CScript* gml_script_damage = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_DAMAGE,
+		(PVOID*)&gml_script_damage
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DAMAGE);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_DAMAGE,
+		gml_script_damage->m_Functions->m_ScriptFunction,
+		GmlScriptDamageCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DAMAGE);
+	}
+}
+
+void CreateHookGmlScriptHeldItem(AurieStatus& status)
+{
+	CScript* gml_script_held_item = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_HELD_ITEM,
+		(PVOID*)&gml_script_held_item
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_HELD_ITEM);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_HELD_ITEM,
+		gml_script_held_item->m_Functions->m_ScriptFunction,
+		GmlScriptHeldItemCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_HELD_ITEM);
+	}
+}
+
+void CreateHookGmlScriptUseItem(AurieStatus& status)
+{
+	CScript* gml_script_use_item = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_USE_ITEM,
+		(PVOID*)&gml_script_use_item
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_USE_ITEM);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_USE_ITEM,
+		gml_script_use_item->m_Functions->m_ScriptFunction,
+		GmlScriptUseItemCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_USE_ITEM);
 	}
 }
 
@@ -1192,7 +1493,35 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
+	CreateHookGmlScriptCanCastSpell(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
 	CreateHookGmlScriptGetMoveSpeed(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptDamage(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptHeldItem(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptUseItem(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
