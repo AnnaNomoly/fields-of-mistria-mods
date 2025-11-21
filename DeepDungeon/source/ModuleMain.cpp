@@ -13,6 +13,13 @@ static const char* const VERSION = "0.0.1";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
+static const char* const GML_SCRIPT_GET_MAX_HEALTH = "gml_Script_get_max_health@Ari@Ari";
+static const char* const GML_SCRIPT_GET_HEALTH = "gml_Script_get_health@Ari@Ari";
+static const char* const GML_SCRIPT_SET_HEALTH = "gml_Script_set_health@Ari@Ari";
+static const char* const GML_SCRIPT_MODIFY_HEALTH = "gml_Script_modify_health@Ari@Ari";
+static const char* const GML_SCRIPT_MODIFY_STAMINA = "gml_Script_modify_stamina@Ari@Ari";
+static const char* const GML_SCRIPT_GET_MOVE_SPEED = "gml_Script_get_move_speed@Ari@Ari";
+static const char* const GML_SCRIPT_GET_MINUTES = "gml_Script_get_minutes";
 static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
@@ -37,6 +44,7 @@ static const std::string RESTORATION_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Con
 static const std::string SECOND_WIND_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/second_wind";
 static const std::string HASTE_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/haste";
 //static const std::string HP_STAMINA_BOOST_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/hp_stamina_boost";
+static const int TWO_MINUTES_IN_SECONDS = 120;
 
 static enum class DungeonBiomes {
 	UPPER,
@@ -144,6 +152,11 @@ static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
 static bool localize_mod_text = false;
 static bool game_is_active = false;
+static bool is_restoration_tracked_interval = false;
+static bool is_second_wind_tracked_interval = false;
+static int current_time_in_seconds = 0;
+static int time_of_last_restoration_tick = 0;
+static int time_of_last_second_wind_tick = 0;
 static std::vector<FloorEnchantments> active_floor_enchantments = {};
 static std::map<FloorEnchantments, std::string> floor_enchantments_to_localized_string_map = {};
 static std::string ari_current_location = "";
@@ -224,6 +237,7 @@ void PlayConversation(std::string conversation_localization_str, CInstance* Self
 std::vector<FloorEnchantments> RandomFloorEnchantments(bool is_first_floor, DungeonBiomes dungeon_biome)
 {
 	std::vector<FloorEnchantments> random_floor_enchantments = {};
+	std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
 
 	if (is_first_floor)
 	{
@@ -234,11 +248,88 @@ std::vector<FloorEnchantments> RandomFloorEnchantments(bool is_first_floor, Dung
 		std::uniform_int_distribution<size_t> first_floor_distribution(0, FIRST_FLOOR_POSSIBLE_ENCHANTMENTS.size() - 1);
 		return { FIRST_FLOOR_POSSIBLE_ENCHANTMENTS[first_floor_distribution(random_generator)]};
 	}
-		
+	
 	if (dungeon_biome == DungeonBiomes::UPPER)
 	{
-		std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
+		// 50% chance for Group 1
+		int group_one_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_one_chance < 50)
+		{
+			std::uniform_int_distribution<size_t> group_one_distribution(0, GROUP_ONE_FLOOR_ENCHANTMENTS.size() - 1);
+			random_floor_enchantments.push_back(GROUP_ONE_FLOOR_ENCHANTMENTS[group_one_distribution(random_generator)]);
+		}
 
+		// 25% chance for Group 2
+		int group_two_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_two_chance < 25)
+		{
+			std::uniform_int_distribution<size_t> group_two_distribution(0, GROUP_TWO_FLOOR_ENCHANTMENTS.size() - 1);
+			random_floor_enchantments.push_back(GROUP_TWO_FLOOR_ENCHANTMENTS[group_two_distribution(random_generator)]);
+		}
+	}
+
+	if (dungeon_biome == DungeonBiomes::TIDE_CAVERNS)
+	{
+		// 65% chance for Group 1
+		int group_one_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_one_chance < 65)
+		{
+			std::uniform_int_distribution<size_t> group_one_distribution(0, GROUP_ONE_FLOOR_ENCHANTMENTS.size() - 1);
+			random_floor_enchantments.push_back(GROUP_ONE_FLOOR_ENCHANTMENTS[group_one_distribution(random_generator)]);
+		}
+
+		// 40% chance for Group 2
+		int group_two_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_two_chance < 40)
+		{
+			std::uniform_int_distribution<size_t> group_two_distribution(0, GROUP_TWO_FLOOR_ENCHANTMENTS.size() - 1);
+			random_floor_enchantments.push_back(GROUP_TWO_FLOOR_ENCHANTMENTS[group_two_distribution(random_generator)]);
+		}
+
+		// 25% chance for Group 3
+		int group_three_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_three_chance < 25)
+		{
+			int gloom_chance = zero_to_ninety_nine_distribution(random_generator);
+			if(gloom_chance < 60) // 60% chance for Gloom
+				random_floor_enchantments.push_back(FloorEnchantments::GLOOM);
+			else // 40% chance for Fey
+				random_floor_enchantments.push_back(FloorEnchantments::FEY);
+		}
+	}
+
+	if (dungeon_biome == DungeonBiomes::DEEP_EARTH)
+	{
+		// 45% chance for Group 1
+		int group_one_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_one_chance < 45)
+		{
+			std::uniform_int_distribution<size_t> group_one_distribution(0, GROUP_ONE_FLOOR_ENCHANTMENTS.size() - 1);
+			random_floor_enchantments.push_back(GROUP_ONE_FLOOR_ENCHANTMENTS[group_one_distribution(random_generator)]);
+		}
+
+		// 65% chance for Group 2
+		int group_two_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_two_chance < 65)
+		{
+			std::uniform_int_distribution<size_t> group_two_distribution(0, GROUP_TWO_FLOOR_ENCHANTMENTS.size() - 1);
+			random_floor_enchantments.push_back(GROUP_TWO_FLOOR_ENCHANTMENTS[group_two_distribution(random_generator)]);
+		}
+
+		// 30% chance for Group 3
+		int group_three_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_three_chance < 30)
+		{
+			int gloom_chance = zero_to_ninety_nine_distribution(random_generator);
+			if (gloom_chance < 70) // 70% chance for Gloom
+				random_floor_enchantments.push_back(FloorEnchantments::GLOOM);
+			else // 30% chance for Fey
+				random_floor_enchantments.push_back(FloorEnchantments::FEY);
+		}
+	}
+
+	if (dungeon_biome == DungeonBiomes::LAVA_CAVES)
+	{
 		// 60% chance for Group 1
 		int group_one_chance = zero_to_ninety_nine_distribution(random_generator);
 		if (group_one_chance < 60)
@@ -247,16 +338,315 @@ std::vector<FloorEnchantments> RandomFloorEnchantments(bool is_first_floor, Dung
 			random_floor_enchantments.push_back(GROUP_ONE_FLOOR_ENCHANTMENTS[group_one_distribution(random_generator)]);
 		}
 
-		// 20% chance for Group 2
+		// 75% chance for Group 2
 		int group_two_chance = zero_to_ninety_nine_distribution(random_generator);
-		if (group_two_chance < 20)
+		if (group_two_chance < 75)
 		{
 			std::uniform_int_distribution<size_t> group_two_distribution(0, GROUP_TWO_FLOOR_ENCHANTMENTS.size() - 1);
 			random_floor_enchantments.push_back(GROUP_TWO_FLOOR_ENCHANTMENTS[group_two_distribution(random_generator)]);
 		}
+
+		// 35% chance for Group 3
+		int group_three_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_three_chance < 35)
+		{
+			int gloom_chance = zero_to_ninety_nine_distribution(random_generator);
+			if (gloom_chance < 80) // 80% chance for Gloom
+				random_floor_enchantments.push_back(FloorEnchantments::GLOOM);
+			else // 20% chance for Fey
+				random_floor_enchantments.push_back(FloorEnchantments::FEY);
+		}
+	}
+
+	if (dungeon_biome == DungeonBiomes::RUINS)
+	{
+		// 65% chance for Group 1
+		int group_one_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_one_chance < 65)
+		{
+			std::uniform_int_distribution<size_t> group_one_distribution(0, GROUP_ONE_FLOOR_ENCHANTMENTS.size() - 1);
+			random_floor_enchantments.push_back(GROUP_ONE_FLOOR_ENCHANTMENTS[group_one_distribution(random_generator)]);
+		}
+
+		// 75% chance for Group 2
+		int group_two_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_two_chance < 75)
+		{
+			std::uniform_int_distribution<size_t> group_two_distribution(0, GROUP_TWO_FLOOR_ENCHANTMENTS.size() - 1);
+			random_floor_enchantments.push_back(GROUP_TWO_FLOOR_ENCHANTMENTS[group_two_distribution(random_generator)]);
+		}
+
+		// 40% chance for Group 3
+		int group_three_chance = zero_to_ninety_nine_distribution(random_generator);
+		if (group_three_chance < 40)
+		{
+			int gloom_chance = zero_to_ninety_nine_distribution(random_generator);
+			if (gloom_chance < 90) // 90% chance for Gloom
+				random_floor_enchantments.push_back(FloorEnchantments::GLOOM);
+			else // 10% chance for Fey
+				random_floor_enchantments.push_back(FloorEnchantments::FEY);
+		}
 	}
 
 	return random_floor_enchantments;
+}
+
+RValue GetMaxHealth(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_get_max_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_MAX_HEALTH,
+		(PVOID*)&gml_script_get_max_health
+	);
+
+	RValue result;
+	gml_script_get_max_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		0,
+		nullptr
+	);
+
+	return result;
+}
+
+RValue GetCurrentHealth(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_get_current_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_HEALTH,
+		(PVOID*)&gml_script_get_current_health
+	);
+
+	RValue result;
+	gml_script_get_current_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		0,
+		nullptr
+	);
+
+	return result;
+}
+
+void SetHealth(CInstance* Self, CInstance* Other, int value)
+{
+	CScript* gml_script_set_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SET_HEALTH,
+		(PVOID*)&gml_script_set_health
+	);
+
+	RValue result;
+	RValue health_modifier = value;
+	RValue* health_modifier_ptr = &health_modifier;
+
+	gml_script_set_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &health_modifier_ptr }
+	);
+}
+
+void ModifyHealth(CInstance* Self, CInstance* Other, int value)
+{
+	CScript* gml_script_modify_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_MODIFY_HEALTH,
+		(PVOID*)&gml_script_modify_health
+	);
+
+	RValue result;
+	RValue health_modifier = value;
+	RValue* health_modifier_ptr = &health_modifier;
+
+	gml_script_modify_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &health_modifier_ptr }
+	);
+}
+
+void ModifyStamina(CInstance* Self, CInstance* Other, int value)
+{
+	CScript* gml_script_modify_stamina = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_MODIFY_STAMINA,
+		(PVOID*)&gml_script_modify_stamina
+	);
+
+	RValue result;
+	RValue health_modifier = value;
+	RValue* health_modifier_ptr = &health_modifier;
+
+	gml_script_modify_stamina->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &health_modifier_ptr }
+	);
+}
+
+void ObjectCallback(
+	IN FWCodeEvent& CodeEvent
+)
+{
+	auto& [self, other, code, argc, argv] = CodeEvent.Arguments();
+
+	if (!self)
+		return;
+
+	if (!self->m_Object)
+		return;
+
+	if (strstr(self->m_Object->m_Name, "obj_ari"))
+	{
+		// Restoration
+		if (is_restoration_tracked_interval)
+		{
+			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
+			is_restoration_tracked_interval = false;
+		}
+
+		// Second Wind
+		if (is_second_wind_tracked_interval)
+		{
+			ModifyStamina(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
+			is_second_wind_tracked_interval = false;
+		}
+
+		// HP Penalty
+		auto hp_penalty = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::HP_PENALTY);
+		if (hp_penalty != active_floor_enchantments.end())
+		{
+			RValue max_health = GetMaxHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
+			RValue current_health = GetCurrentHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
+
+			int penalty = std::floor(max_health.ToDouble() * 0.25);
+			int adjusted_max_health = max_health.ToInt64() - penalty;
+			if (current_health.ToInt64() > adjusted_max_health)
+				SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, adjusted_max_health);
+		}
+	}
+}
+
+RValue& GmlScriptModifyStaminaCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	// Exhaustion
+	auto exhaustion = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::EXHAUSTION);
+	if (exhaustion != active_floor_enchantments.end())
+	{
+		if (Arguments[0]->ToDouble() < 0)
+		{
+			double modified_stamina_cost = Arguments[0]->ToDouble() * 2;
+			*Arguments[0] = modified_stamina_cost;
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_MODIFY_STAMINA));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptGetMoveSpeedCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_MOVE_SPEED));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	// Gravity
+	auto gravity = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::GRAVITY);
+	if (gravity != active_floor_enchantments.end())
+	{
+		Result = 1.0;
+	}
+
+	// Haste
+	auto haste = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::HASTE);
+	if (haste != active_floor_enchantments.end())
+	{
+		Result = 3.0;
+	}
+	
+	return Result; // 2.0 is default run speed
+}
+
+RValue& GmlScriptGetMinutesCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (game_is_active)
+	{
+		current_time_in_seconds = Arguments[0]->ToInt64();
+
+		// Restoration
+		auto restoration = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::RESTORATION);
+		if (restoration != active_floor_enchantments.end())
+		{
+			if (!is_restoration_tracked_interval && (current_time_in_seconds - time_of_last_restoration_tick) >= TWO_MINUTES_IN_SECONDS)
+			{
+				is_restoration_tracked_interval = true;
+				time_of_last_restoration_tick = current_time_in_seconds;
+			}
+		}
+
+		// Second Wind
+		auto second_wind = std::find(active_floor_enchantments.begin(), active_floor_enchantments.end(), FloorEnchantments::SECOND_WIND);
+		if (second_wind != active_floor_enchantments.end())
+		{
+			if (!is_second_wind_tracked_interval && (current_time_in_seconds - time_of_last_second_wind_tick) >= TWO_MINUTES_IN_SECONDS)
+			{
+				is_second_wind_tracked_interval = true;
+				time_of_last_second_wind_tick = current_time_in_seconds;
+			}
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_MINUTES));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
 }
 
 RValue& GmlScriptGetLocalizerCallback(
@@ -380,6 +770,37 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		if (ari_current_gm_room == "rm_mines_upper_floor1")
 		{
 			active_floor_enchantments = RandomFloorEnchantments(true, DungeonBiomes::UPPER);
+
+			// DEBUG SPAWN OBJ -------------------------------------------------------------------------------------------------------
+			//RValue layer_exists = g_ModuleInterface->CallBuiltin("layer_exists", { "Impl_Offering" });
+			//if (!layer_exists.ToBoolean())
+			//{
+			//	g_ModuleInterface->CallBuiltin("layer_create", { 400, "Impl_Offering" });
+			//	RValue obj_dungeon_ritual_altar_index = g_ModuleInterface->CallBuiltin("asset_get_index", { "obj_dungeon_shrine" });
+			//	double x = 224.0;
+			//	double y = 160.0;
+			//	std::string layer_name = "Impl_Offering";
+			//	RValue shrine_struct;
+			//	RValue item_id = 1427;
+			//	RValue shrine_type = 0.0;
+			//	RValue allowed_in_fire_spell = false;
+			//	RValue offset_with_cardinal = false;
+			//	RValue interactable_mode = 1;
+			//	RValue can_use = true;
+			//	g_ModuleInterface->GetRunnerInterface().StructCreate(&shrine_struct);
+			//	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&shrine_struct, "item_id", &item_id);
+			//	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&shrine_struct, "shrine_type", &shrine_type);
+			//	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&shrine_struct, "allowed_in_fire_spell", &allowed_in_fire_spell);
+			//	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&shrine_struct, "offset_with_cardinal", &offset_with_cardinal);
+			//	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&shrine_struct, "interactable_mode", &interactable_mode);
+			//	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&shrine_struct, "can_use", &can_use);
+			//	
+			//	try {
+			//		g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, RValue(layer_name), obj_dungeon_ritual_altar_index, shrine_struct });
+			//	}
+			//	catch (...) {}
+			//}
+			// -----------------------------------------------------------------------------------------------------------------------
 		}
 		else if (ari_current_gm_room.find("rm_mines_upper") != std::string::npos)
 		{
@@ -393,8 +814,16 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		//		teleport_ari = true;
 		//}
 
-		if(!active_floor_enchantments.empty())
+		if (!active_floor_enchantments.empty())
 			PlayConversation(FLOOR_ENCHANTMENT_CONVERSATION_KEY, Self, Other);
+
+		for (FloorEnchantments floor_enchantment : active_floor_enchantments)
+		{
+			if (floor_enchantment == FloorEnchantments::RESTORATION)
+				time_of_last_restoration_tick = current_time_in_seconds;
+			if (floor_enchantment == FloorEnchantments::SECOND_WIND)
+				time_of_last_second_wind_tick = current_time_in_seconds;
+		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_DUNGEON_ROOM_START));
@@ -430,6 +859,13 @@ RValue& GmlScriptGoToRoomCallback(
 	RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
 	ari_current_gm_room = room_name.ToString();
 
+	if (!ari_current_gm_room.contains("rm_mines"))
+	{
+		// TODO: Run logic to actually undo all active floor enchantments.
+		// TOOD: Remove all buffs.
+		active_floor_enchantments = {};
+	}
+
 	return Result;
 }
 
@@ -461,6 +897,102 @@ RValue& GmlScriptSetupMainScreenCallback(
 	);
 
 	return Result;
+}
+
+void CreateObjectCallback(AurieStatus& status)
+{
+	status = g_ModuleInterface->CreateCallback(
+		g_ArSelfModule,
+		EVENT_OBJECT_CALL,
+		ObjectCallback,
+		0
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook (EVENT_OBJECT_CALL)!", MOD_NAME, VERSION);
+	}
+}
+
+void CreateHookGmlScriptModifyStamina(AurieStatus& status)
+{
+	CScript* gml_script_modify_stamina = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_MODIFY_STAMINA,
+		(PVOID*)&gml_script_modify_stamina
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_STAMINA);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_MODIFY_STAMINA,
+		gml_script_modify_stamina->m_Functions->m_ScriptFunction,
+		GmlScriptModifyStaminaCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_STAMINA);
+	}
+}
+
+void CreateHookGmlScriptGetMoveSpeed(AurieStatus& status)
+{
+	CScript* gml_script_get_move_speed = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_MOVE_SPEED,
+		(PVOID*)&gml_script_get_move_speed
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_MOVE_SPEED);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GET_MOVE_SPEED,
+		gml_script_get_move_speed->m_Functions->m_ScriptFunction,
+		GmlScriptGetMoveSpeedCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_MOVE_SPEED);
+	}
+}
+
+void CreateHookGmlScriptGetMinutes(AurieStatus& status)
+{
+	CScript* gml_script_get_minutes = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_MINUTES,
+		(PVOID*)&gml_script_get_minutes
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_MINUTES);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GET_MINUTES,
+		gml_script_get_minutes->m_Functions->m_ScriptFunction,
+		GmlScriptGetMinutesCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_MINUTES);
+	}
 }
 
 void CreateHookGmlScriptGetLocalizer(AurieStatus& status)
@@ -645,6 +1177,34 @@ EXPORTED AurieStatus ModuleInitialize(
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
 	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
+
+	CreateObjectCallback(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptModifyStamina(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptGetMoveSpeed(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptGetMinutes(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
 
 	CreateHookGmlScriptGetLocalizer(status);
 	if (!AurieSuccess(status))
