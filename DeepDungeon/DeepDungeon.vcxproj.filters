@@ -47,5 +47,8 @@
     <ClInclude Include="include\YYToolkit\YYTK_Shared_Types.hpp">
       <Filter>Hlavičkové soubory</Filter>
     </ClInclude>
+    <ClInclude Include="include\magic_enum\magic_enum.hpp">
+      <Filter>Hlavičkové soubory</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
