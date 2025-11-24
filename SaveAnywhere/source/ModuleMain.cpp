@@ -12,7 +12,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "SaveAnywhere";
-static const char* const VERSION = "1.2.0";
+static const char* const VERSION = "1.2.1";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const SAVE_LOCATION_KEY = "save_location";
 static const char* const SAVE_X_POSITION_KEY = "save_x_position";
@@ -764,7 +764,7 @@ RValue& GmlScriptSaveGameCallback(
 			if (save_prefix.size() == 0)
 			{
 				// Get the save folder and file name.
-				std::string save_file = Arguments[0]->GetRefMember("save_path")->ToString();
+				std::string save_file = Arguments[0]->ToString();
 				std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
 				std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
 				save_folder = save_file.substr(0, save_file_name_delimiter_index);
