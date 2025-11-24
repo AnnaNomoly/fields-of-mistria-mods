@@ -22,13 +22,19 @@ static const char* const GML_SCRIPT_GET_MAX_HEALTH = "gml_Script_get_max_health@
 static const char* const GML_SCRIPT_GET_HEALTH = "gml_Script_get_health@Ari@Ari";
 static const char* const GML_SCRIPT_SET_HEALTH = "gml_Script_set_health@Ari@Ari";
 static const char* const GML_SCRIPT_MODIFY_HEALTH = "gml_Script_modify_health@Ari@Ari";
+static const char* const GML_SCRIPT_GET_STAMINA = "gml_Script_get_stamina@Ari@Ari";
 static const char* const GML_SCRIPT_MODIFY_STAMINA = "gml_Script_modify_stamina@Ari@Ari";
+static const char* const GML_SCRIPT_GET_MANA = "gml_Script_get_mana@Ari@Ari";
+static const char* const GML_SCRIPT_MODIFY_MANA = "gml_Script_modify_mana@Ari@Ari";
+static const char* const GML_SCRIPT_CAST_SPELL = "gml_Script_cast_spell";
 static const char* const GML_SCRIPT_SPAWN_MONSTER = "gml_Script_spawn_monster";
 static const char* const GML_SCRIPT_CAN_CAST_SPELL = "gml_Script_can_cast_spell";
 static const char* const GML_SCRIPT_GET_MOVE_SPEED = "gml_Script_get_move_speed@Ari@Ari";
 static const char* const GML_SCRIPT_DAMAGE = "gml_Script_damage@gml_Object_obj_damage_receiver_Create_0";
 static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script_get_treasure_from_distribution";
 static const char* const GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE = "gml_Script_deserialize@StatusEffectManager@StatusEffectManager";
+static const char* const GML_SCRIPT_TAKE_PRESS = "gml_Script_take_press@Input@Input";
+static const char* const GML_SCRIPT_ATTEMPT_INTERACT = "gml_Script_attempt_interact@gml_Object_par_interactable_Create_0";
 static const char* const GML_SCRIPT_USE_ITEM = "gml_Script_use_item";
 static const char* const GML_SCRIPT_HELD_ITEM = "gml_Script_held_item@Ari@Ari";
 static const char* const GML_SCRIPT_DROP_ITEM = "gml_Script_drop_item";
@@ -58,14 +64,20 @@ static const std::string SUSTAINING_POTION_NAME = "sustaining_potion";
 static const std::string HEALTH_SALVE_NAME = "health_salve";
 static const std::string STAMINA_SALVE_NAME = "stamina_salve";
 static const std::string MANA_SALVE_NAME = "mana_salve";
+static const std::string MISTPOOL_SWORD_NAME = "sword_scrap_metal";
+static const std::string MISTPOOL_HELMET_NAME = "scrap_metal_helmet";
+static const std::string MISTPOOL_CHESTPIECE_NAME = "scrap_metal_chestpiece";
+static const std::string MISTPOOL_PANTS_NAME = "scrap_metal_pants";
+static const std::string MISTPOOL_BOOTS_NAME = "scrap_metal_boots";
+static const std::string MISTPOOL_RING_NAME = "scrap_metal_ring";
 static const std::string ITEM_PENALTY_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_penalty";
 static const std::string ITEM_PROHIBITED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_prohibited";
 static const std::string ITEM_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_restricted";
 static const std::string CONCEALMENT_LOST_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/Sigils/concealment/deactivated";
 static const std::string FLOOR_ENCHANTMENT_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/floor_enchantments";
 static const std::string DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning";
+static const std::string OFFERINGS_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/offerings/result";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
-static const std::string DREAD_BEAST_WARNING_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/dread_beast_warning/init";
 static const std::string DREAD_BEAST_WARNING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Special/dread";
 static const std::string GLOOM_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Negative/gloom";
 static const std::string HP_PENALTY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Negative/hp_penalty";
@@ -79,8 +91,30 @@ static const std::string FEY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversatio
 static const std::string RESTORATION_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/restoration";
 static const std::string SECOND_WIND_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/second_wind";
 static const std::string HASTE_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/haste";
-//static const std::string HP_STAMINA_BOOST_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/hp_stamina_boost";
+
+static const std::string DREAD_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/dread";
+static const std::string INNER_FIRE_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Positive/inner_fire";
+static const std::string LEECH_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Positive/leech";
+static const std::string PERIL_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/peril";
+static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/reckoning";
+
+
+
 static const int TWO_MINUTES_IN_SECONDS = 120;
+
+static const std::vector<std::string> MISTPOOL_ARMOR_NAMES = {
+	MISTPOOL_HELMET_NAME,
+	MISTPOOL_CHESTPIECE_NAME,
+	MISTPOOL_PANTS_NAME,
+	MISTPOOL_BOOTS_NAME,
+	MISTPOOL_RING_NAME
+};
+
+static enum class AriResources {
+	HEALTH,
+	STAMINA,
+	MANA
+};
 
 static enum class DungeonBiomes {
 	UPPER,
@@ -96,7 +130,7 @@ static enum class FloorEnchantments {
 	EXHAUSTION, // Group 1
 	AMNESIA, // Group 2
 	ITEM_PENALTY, // Group 2
-	BLIND, // Group 2
+	DISTORTION, // Group 2
 	DAMAGE_DOWN, // Group 2
 	GRAVITY, // Group 1
 	GLOOM, // Group 3
@@ -105,21 +139,15 @@ static enum class FloorEnchantments {
 	RESTORATION, // Group 1
 	SECOND_WIND, // Group 1
 	HASTE, // Group 1
-	//HP_STAMINA_BOOST, // Group 1
 	FEY, // Group 3
 };
 
-// TODO: Change this to Offerings
-static enum class FloorShrines {
-	// Negative effects
-	DREAD,
-	PERIL,
-	CONFUSION,
-
-	// Positive effects
-	LEECH,
+static enum class Offerings {
+	DREAD, // TODO
 	INNER_FIRE,
-	GRIT
+	LEECH,
+	PERIL, // TODO: After traps are implemented
+	RECKONING,
 };
 
 static enum class Sigils {
@@ -144,31 +172,18 @@ static const std::vector<FloorEnchantments> GROUP_ONE_FLOOR_ENCHANTMENTS = {
 	FloorEnchantments::RESTORATION,
 	FloorEnchantments::SECOND_WIND,
 	FloorEnchantments::HASTE,
-	//FloorEnchantments::HP_STAMINA_BOOST
 };
 
 static const std::vector<FloorEnchantments> GROUP_TWO_FLOOR_ENCHANTMENTS = {
 	FloorEnchantments::AMNESIA,
 	FloorEnchantments::ITEM_PENALTY,
-	FloorEnchantments::BLIND,
+	FloorEnchantments::DISTORTION,
 	FloorEnchantments::DAMAGE_DOWN,
 };
 
 static const std::vector<FloorEnchantments> GROUP_THREE_FLOOR_ENCHANTMENTS = {
 	FloorEnchantments::GLOOM,
 	FloorEnchantments::FEY
-};
-
-static const std::vector<FloorShrines> NEGATIVE_FLOOR_SHRINES = {
-	FloorShrines::DREAD,
-	FloorShrines::PERIL,
-	FloorShrines::CONFUSION
-};
-
-static const std::vector<FloorShrines> POSITIVE_FLOOR_SHRINES = {
-	FloorShrines::LEECH,
-	FloorShrines::INNER_FIRE,
-	FloorShrines::GRIT
 };
 
 static const std::map<std::string, Sigils> item_name_to_sigil_map = {
@@ -192,12 +207,17 @@ static bool load_on_start = true;
 static bool localize_mod_text = false;
 static bool game_is_active = false;
 static bool sigil_item_used = false;
+static bool fire_breath_cast = false; // TESTING
+static bool reckoning_applied = false;
 static bool fairy_buff_applied = false;
 static bool chance_for_sigil_drop = false;
 static bool is_restoration_tracked_interval = false;
 static bool is_second_wind_tracked_interval = false;
+static bool offering_chance_occurred = false; // TESTING
+static bool obj_dungeon_ladder_down_focused = false; // TESTING
 static double ari_x = -1;
 static double ari_y = -1;
+static double floor_number = 0;
 static int current_time_in_seconds = -1;
 static int time_of_last_restoration_tick = -1;
 static int time_of_last_second_wind_tick = -1;
@@ -209,14 +229,30 @@ static std::string ari_current_gm_room = "";
 static std::unordered_set<int> restricted_items = {};
 static std::unordered_set<int> deep_dungeon_items = {};
 static std::map<Sigils, int> sigil_to_item_id_map = {};
-static std::map<Sigils, bool> sigil_is_being_used_map = {};
 static std::map<std::string, int> perk_name_to_id_map = {};
 static std::map<int, int> spell_id_to_default_cost_map = {};
+static std::map<std::string, int> player_state_to_id_map = {};
 static std::map<std::string, int> monster_name_to_id_map = {};
+static std::map<std::string, int> mistpool_gear_to_item_id_map = {};
 static std::unordered_set<Sigils> active_sigils = {};
+static std::unordered_set<Offerings> queued_offerings = {};
+static std::unordered_set<Offerings> active_offerings = {};
 static std::unordered_set<FloorEnchantments> active_floor_enchantments = {};
+static std::map<Offerings, std::string> offerings_to_localized_string_map = {};
 static std::map<FloorEnchantments, std::string> floor_enchantments_to_localized_string_map = {};
-static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script. 
+static std::map<AriResources, int> ari_resource_to_value_map = {}; // Used to track Ari's current resource levels.
+static std::map<AriResources, bool> ari_resource_to_penalty_map = {}; // Used to track penalties from offerings to apply.
+static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script.
+
+// DEBUG
+bool EnumFunction(
+	IN const char* MemberName,
+	IN OUT RValue* Value
+)
+{
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
+	return false;
+}
 
 void ResetStaticFields(bool returned_to_title_screen)
 {
@@ -227,23 +263,29 @@ void ResetStaticFields(bool returned_to_title_screen)
 		is_second_wind_tracked_interval = false;
 		ari_x = -1;
 		ari_y = -1;
+		floor_number = 0;
 		current_time_in_seconds = -1;
 		time_of_last_restoration_tick = -1;
 		time_of_last_second_wind_tick = -1;
 		held_item_id = -1;
-		sigil_of_silence_count = 0;
-		sigil_of_alteration_count = 0;
 		ari_current_location = "";
 		ari_current_gm_room = "";
-		script_name_to_reference_map = {};
+		script_name_to_reference_map.clear();
 	}
 
 	sigil_item_used = false;
+	fire_breath_cast = false;
+	reckoning_applied = false;
 	fairy_buff_applied = false;
 	chance_for_sigil_drop = false;
-	sigil_is_being_used_map = {};
-	active_sigils = {};
-	active_floor_enchantments = {};
+	offering_chance_occurred = false;
+	sigil_of_silence_count = 0;
+	sigil_of_alteration_count = 0;
+	active_sigils.clear();
+	queued_offerings.clear();
+	active_offerings.clear();
+	active_floor_enchantments.clear();
+	
 }
 
 bool GameIsPaused()
@@ -364,6 +406,21 @@ void DisableAllPerks()
 		__ari_perks_active[perk] = false;
 }
 
+void LoadPlayerStates()
+{
+	size_t array_length;
+	RValue player_states = global_instance->GetMember("__player_state__");
+	g_ModuleInterface->GetArraySize(player_states, array_length);
+
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* player_state;
+		g_ModuleInterface->GetArrayEntry(player_states, i, player_state);
+
+		player_state_to_id_map[player_state->ToString()] = i;
+	}
+}
+
 void LoadMonsters()
 {
 	size_t array_length;
@@ -412,7 +469,7 @@ void LoadItems()
 				if (item_name == custom_potion)
 				{
 					deep_dungeon_items.insert(item_id);
-					*item->GetRefMember("health_modifier") = 0;
+					//*item->GetRefMember("health_modifier") = 0;
 				}
 			}
 
@@ -440,16 +497,28 @@ void LoadItems()
 					g_ModuleInterface->GetArrayEntry(buffer, i, array_element);
 
 					if (array_element->ToString() == "armor")
+					{
 						*item->GetRefMember("defense") = 0;
+
+						for (std::string mistpool_armor_name : MISTPOOL_ARMOR_NAMES)
+						{
+							if(item_name == mistpool_armor_name)
+								mistpool_gear_to_item_id_map[mistpool_armor_name] = item_id;
+						}
+					}
 
 					if (array_element->ToString() == "weapon")
 					{
-						*item->GetRefMember("damage") = 0;
-
-						if (item_name == "sword_scrap_metal")
+						if (item_name == MISTPOOL_SWORD_NAME)
+						{
 							deep_dungeon_items.insert(item_id);
+							mistpool_gear_to_item_id_map[MISTPOOL_SWORD_NAME] = item_id;
+						}
 						else
+						{
+							*item->GetRefMember("damage") = 0;
 							restricted_items.insert(item_id);
+						}
 					}
 
 					if (array_element->ToString() == "bomb")
@@ -461,7 +530,7 @@ void LoadItems()
 			}
 
 			// All snake oils
-			if (StructVariableExists(*item, "default_infusion"))
+			if (item_name.contains("snake_oil"))
 			{
 				/*
 				   - [string] __infusion__[1] = 'fire_sword'
@@ -469,10 +538,46 @@ void LoadItems()
 				   - [string] __infusion__[16] = 'venom_sword'
 				*/
 				int default_infusion = item->GetMember("default_infusion").ToInt64();
-				if(default_infusion == 1 || default_infusion == 4 || default_infusion == 16) // TODO: Don't hard-code these ID's
+				if (default_infusion == 1 || default_infusion == 4 || default_infusion == 16) // TODO: Don't hard-code these ID's
 					restricted_items.insert(item_id);
 			}
 		}
+	}
+}
+
+void ScaleMistpoolWeapon(bool in_dungeon)
+{
+	RValue item_data = *global_instance->GetRefMember("__item_data");
+	
+	RValue* sword_scrap_metal;
+	g_ModuleInterface->GetArrayEntry(item_data, mistpool_gear_to_item_id_map["sword_scrap_metal"], sword_scrap_metal);
+
+	if (in_dungeon)
+	{
+		double damage = std::trunc(floor_number / 4.0) + 3;
+		*sword_scrap_metal->GetRefMember("damage") = damage;
+	}
+	else
+		*sword_scrap_metal->GetRefMember("damage") = 0;
+}
+
+void ScaleMistpoolArmor(bool in_dungeon)
+{
+	std::vector<std::string> mistpool_armor_names = { "scrap_metal_helmet", "scrap_metal_chestpiece", "scrap_metal_pants", "scrap_metal_boots", "scrap_metal_ring" };
+
+	RValue item_data = *global_instance->GetRefMember("__item_data");
+	for (std::string mistpool_armor_name : mistpool_armor_names)
+	{
+		RValue* mistpool_armor_piece;
+		g_ModuleInterface->GetArrayEntry(item_data, mistpool_gear_to_item_id_map[mistpool_armor_name], mistpool_armor_piece);
+
+		if (in_dungeon)
+		{
+			double defense = std::trunc(floor_number / 10.0);
+			*mistpool_armor_piece->GetRefMember("defense") = defense;
+		}
+		else
+			*mistpool_armor_piece->GetRefMember("defense") = 0;
 	}
 }
 
@@ -597,6 +702,45 @@ void PlayConversation(std::string conversation_localization_str, CInstance* Self
 	);
 }
 
+void SetFloorNumber()
+{
+	if (ari_current_gm_room == "rm_mines_upper_floor1")
+		floor_number = 1;
+	if (ari_current_gm_room == "rm_mines_upper_elevator5")
+		floor_number = 5;
+	if (ari_current_gm_room == "rm_mines_upper_elevator10")
+		floor_number = 10;
+	if (ari_current_gm_room == "rm_mines_upper_elevator15")
+		floor_number = 15;
+	if (ari_current_gm_room == "rm_mines_tide_floor21")
+		floor_number = 21;
+	if (ari_current_gm_room == "rm_mines_tide_elevator25")
+		floor_number = 25;
+	if (ari_current_gm_room == "rm_mines_tide_elevator30")
+		floor_number = 30;
+	if (ari_current_gm_room == "rm_mines_tide_elevator35")
+		floor_number = 35;
+	if (ari_current_gm_room == "rm_mines_deep_41")
+		floor_number = 41;
+	if (ari_current_gm_room == "rm_mines_deep_45")
+		floor_number = 45;
+	if (ari_current_gm_room == "rm_mines_deep_50")
+		floor_number = 50;
+	if (ari_current_gm_room == "rm_mines_deep_55")
+		floor_number = 55;
+	if (ari_current_gm_room == "rm_mines_lava_61")
+		floor_number = 61;
+	if (ari_current_gm_room == "rm_mines_lava_65")
+		floor_number = 65;
+	if (ari_current_gm_room == "rm_mines_lava_70")
+		floor_number = 70;
+	if (ari_current_gm_room == "rm_mines_lava_75")
+		floor_number = 75;
+
+	floor_number++;
+	// TODO: Add Ruins floors when released.
+}
+
 std::unordered_set<FloorEnchantments> RandomFloorEnchantments(bool is_first_floor, DungeonBiomes dungeon_biome)
 {
 	static thread_local std::mt19937 random_generator(std::random_device{}());
@@ -607,7 +751,7 @@ std::unordered_set<FloorEnchantments> RandomFloorEnchantments(bool is_first_floo
 	if (is_first_floor)
 	{
 		const std::vector<FloorEnchantments> FIRST_FLOOR_POSSIBLE_ENCHANTMENTS = {
-			FloorEnchantments::RESTORATION, FloorEnchantments::SECOND_WIND, FloorEnchantments::HASTE/*, FloorEnchantments::HP_STAMINA_BOOST*/
+			FloorEnchantments::RESTORATION, FloorEnchantments::SECOND_WIND, FloorEnchantments::HASTE
 		};
 
 		std::uniform_int_distribution<size_t> first_floor_distribution(0, FIRST_FLOOR_POSSIBLE_ENCHANTMENTS.size() - 1);
@@ -829,16 +973,16 @@ RValue GetMaxHealth(CInstance* Self, CInstance* Other)
 	return result;
 }
 
-RValue GetCurrentHealth(CInstance* Self, CInstance* Other)
+RValue GetHealth(CInstance* Self, CInstance* Other)
 {
-	CScript* gml_script_get_current_health = nullptr;
+	CScript* gml_script_get_health = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
 		GML_SCRIPT_GET_HEALTH,
-		(PVOID*)&gml_script_get_current_health
+		(PVOID*)&gml_script_get_health
 	);
 
 	RValue result;
-	gml_script_get_current_health->m_Functions->m_ScriptFunction(
+	gml_script_get_health->m_Functions->m_ScriptFunction(
 		Self,
 		Other,
 		result,
@@ -891,6 +1035,26 @@ void ModifyHealth(CInstance* Self, CInstance* Other, int value)
 	);
 }
 
+RValue GetStamina(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_get_stamina = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_STAMINA,
+		(PVOID*)&gml_script_get_stamina
+	);
+
+	RValue result;
+	gml_script_get_stamina->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		0,
+		nullptr
+	);
+
+	return result;
+}
+
 void ModifyStamina(CInstance* Self, CInstance* Other, int value)
 {
 	CScript* gml_script_modify_stamina = nullptr;
@@ -900,16 +1064,97 @@ void ModifyStamina(CInstance* Self, CInstance* Other, int value)
 	);
 
 	RValue result;
-	RValue health_modifier = value;
-	RValue* health_modifier_ptr = &health_modifier;
+	RValue stamina_modifier = value;
+	RValue* stamina_modifier_ptr = &stamina_modifier;
 
 	gml_script_modify_stamina->m_Functions->m_ScriptFunction(
 		Self,
 		Other,
 		result,
 		1,
+		{ &stamina_modifier_ptr }
+	);
+}
+
+RValue GetMana(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_get_mana = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_MANA,
+		(PVOID*)&gml_script_get_mana
+	);
+
+	RValue result;
+	gml_script_get_mana->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		0,
+		nullptr
+	);
+
+	return result;
+}
+
+void ModifyMana(CInstance* Self, CInstance* Other, int value)
+{
+	CScript* gml_script_modify_mana = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_MODIFY_MANA,
+		(PVOID*)&gml_script_modify_mana
+	);
+
+	RValue result;
+	RValue mana_modifier = value;
+	RValue* mana_modifier_ptr = &mana_modifier;
+
+	gml_script_modify_mana->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &mana_modifier_ptr }
+	);
+}
+
+void CastSpell(CInstance* Self, CInstance* Other, int spell_id)
+{
+	CScript* gml_script_cast_spell = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CAST_SPELL,
+		(PVOID*)&gml_script_cast_spell
+	);
+
+	RValue result;
+	RValue health_modifier = spell_id;
+	RValue* health_modifier_ptr = &health_modifier;
+
+	gml_script_cast_spell->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
 		{ &health_modifier_ptr }
 	);
+}
+
+void ApplyOfferingPenalties(CInstance* Self, CInstance* Other)
+{
+	if (ari_resource_to_penalty_map[AriResources::HEALTH])
+		ModifyHealth(Self, Other, -25);
+	if (ari_resource_to_penalty_map[AriResources::STAMINA])
+		ModifyStamina(Self, Other, -20);
+	if (ari_resource_to_penalty_map[AriResources::MANA])
+		ModifyMana(Self, Other, -1);
+
+	ari_resource_to_penalty_map.clear();
+}
+
+void TrackAriResources(CInstance* Self, CInstance* Other)
+{
+	ari_resource_to_value_map[AriResources::HEALTH] = GetHealth(Self, Other).ToInt64();
+	ari_resource_to_value_map[AriResources::STAMINA] = GetStamina(Self, Other).ToInt64();
+	ari_resource_to_value_map[AriResources::MANA] = GetMana(Self, Other).ToInt64();
 }
 
 void ObjectCallback(
@@ -934,6 +1179,85 @@ void ObjectCallback(
 		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
 		ari_y = y.ToDouble();
 
+		ApplyOfferingPenalties(global_instance->GetRefMember("__ari")->ToInstance(), self);
+
+		RValue ari = self->ToRValue();
+		if (StructVariableExists(ari, "fsm"))
+		{
+			RValue fsm = ari.GetMember("fsm");
+
+			if (StructVariableExists(fsm, "state"))
+			{
+				RValue state = fsm.GetMember("state");
+				if (StructVariableExists(state, "state_id"))
+				{
+					RValue state_id = state.GetMember("state_id");
+					if (state_id.ToInt64() == player_state_to_id_map["hold_to_use"])
+					{
+						if (StructVariableExists(state, "did_action"))
+						{
+							RValue did_action = state.GetMember("did_action");
+							if (did_action.ToBoolean() && sigil_item_used)
+							{
+								sigil_item_used = false;
+
+								if (held_item_id == sigil_to_item_id_map[Sigils::ALTERATION])
+									active_sigils.insert(Sigils::ALTERATION);
+								if (held_item_id == sigil_to_item_id_map[Sigils::CONCEALMENT])
+									active_sigils.insert(Sigils::CONCEALMENT);
+								if (held_item_id == sigil_to_item_id_map[Sigils::FORTIFICATION])
+									active_sigils.insert(Sigils::FORTIFICATION);
+								if (held_item_id == sigil_to_item_id_map[Sigils::FORTUNE])
+								{
+									active_sigils.insert(Sigils::FORTUNE);
+									SpawnLadder(global_instance->GetRefMember("__ari")->ToInstance(), self, ari_x, ari_y); //SpawnLadder(Self, Other, ari_x, ari_y);
+								}
+								if (held_item_id == sigil_to_item_id_map[Sigils::PROTECTION])
+								{
+									std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
+
+									active_sigils.insert(Sigils::PROTECTION);
+									RegisterStatusEffect(refs[0], refs[1], 3, RValue(), 1, 2147483647.0); // TODO: Don't hardcode the status ID (3)
+									SetInvulnerabilityHits(2);
+								}
+								if (held_item_id == sigil_to_item_id_map[Sigils::RAGE])
+									active_sigils.insert(Sigils::RAGE);
+								if (held_item_id == sigil_to_item_id_map[Sigils::REDEMPTION])
+								{
+									std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
+
+									active_sigils.insert(Sigils::REDEMPTION);
+									RegisterStatusEffect(refs[0], refs[1], 2, RValue(), 1, 2147483647.0);
+								}
+								if (held_item_id == sigil_to_item_id_map[Sigils::SAFETY])
+									active_sigils.insert(Sigils::SAFETY); // TODO: Check if SAFETY is active when traps are implemented
+								if (held_item_id == sigil_to_item_id_map[Sigils::SERENITY])
+								{
+									// TODO: Check for other Floor Enchantments and Offering effects to cancel as implemented
+									if (active_floor_enchantments.contains(FloorEnchantments::FEY))
+									{
+										std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
+
+										ModifySpellCosts(true);
+										CancelStatusEffect(refs[0], refs[1], 2); // TODO: Don't hardcode the status ID (2)
+									}
+
+									active_floor_enchantments.clear();
+									active_sigils.insert(Sigils::SERENITY);
+								}
+								if (held_item_id == sigil_to_item_id_map[Sigils::SILENCE])
+									active_sigils.insert(Sigils::SILENCE);
+								if (held_item_id == sigil_to_item_id_map[Sigils::STRENGTH])
+									active_sigils.insert(Sigils::STRENGTH);
+								if (held_item_id == sigil_to_item_id_map[Sigils::TEMPTATION])
+									active_sigils.insert(Sigils::TEMPTATION);
+							}
+						}
+					}
+				}
+			}
+		}
+
 		// Restoration
 		if (is_restoration_tracked_interval)
 		{
@@ -952,7 +1276,7 @@ void ObjectCallback(
 		if (active_floor_enchantments.contains(FloorEnchantments::HP_PENALTY))
 		{
 			RValue max_health = GetMaxHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
-			RValue current_health = GetCurrentHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
+			RValue current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
 
 			int penalty = std::trunc(max_health.ToDouble() * 0.25);
 			int adjusted_max_health = max_health.ToInt64() - penalty;
@@ -966,12 +1290,27 @@ void ObjectCallback(
 			if (!fairy_buff_applied)
 			{
 				std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
-
-				ModifySpellCosts(false);
 				RegisterStatusEffect(refs[0], refs[1], 2, RValue(), 1, 2147483647.0); // TODO: Don't hardcode the status ID (2)
 				fairy_buff_applied = true;
 			}
+			ModifySpellCosts(false);
 		}
+
+		// Inner Fire
+		if (active_offerings.contains(Offerings::INNER_FIRE) && !fire_breath_cast)
+		{
+			fire_breath_cast = true;
+			CastSpell(global_instance->GetRefMember("__ari")->ToInstance(), self, 0); // TODO 
+		}
+
+		// Reckoning
+		if (active_offerings.contains(Offerings::RECKONING) && !reckoning_applied)
+		{
+			reckoning_applied = true;
+			SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
+		}
+
+		TrackAriResources(global_instance->GetRefMember("__ari")->ToInstance(), self);
 	}
 
 	if (strstr(self->m_Object->m_Name, "obj_monster"))
@@ -1080,6 +1419,16 @@ void ObjectCallback(
 							*monster.GetRefMember("hit_points") = 0;
 					}
 				}
+
+				// Reckoning
+				if (active_offerings.contains(Offerings::RECKONING))
+				{
+					if (!StructVariableExists(monster, "__deep_dungeon__reckoning_applied") && StructVariableExists(monster, "hit_points"))
+					{
+						*monster.GetRefMember("hit_points") = 1;
+						StructVariableSet(monster, "__deep_dungeon__reckoning_applied", true);
+					}
+				}
 			}
 		}
 	}
@@ -1118,8 +1467,8 @@ void ObjectCallback(
 
 			if (StructVariableExists(monster, "fsm"))
 			{
-				RValue state_id = monster.GetMember("fsm").GetMember("state").GetMember("state_id");
-				if (state_id.ToInt64() == 4)
+				RValue state_id = monster.GetMember("fsm").GetMember("state").GetMember("state_id"); // TODO: Don't hard-code these. Get them from the monster's __rockclod_state__ global.
+				if (state_id.ToInt64() == 4) // Attack
 					*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = false;
 
 				if (state_id.ToInt64() == 5 && !wait_to_change_attack_pattern.ToBoolean()) // Tired
@@ -1199,89 +1548,12 @@ RValue& GmlScriptRegisterStatusEffectCallback(
 	{
 		if (Arguments[0]->ToInt64() == 0) // TODO: Don't hardcode the status ID (0)
 		{
-			double finish = Arguments[4]->ToDouble();
-			*Arguments[4] = finish - 3600; // Reduce the duration of Restoration
+			int finish = Arguments[3]->ToInt64();
+			*Arguments[3] = finish - 3600; // Reduce the duration of Restoration
 		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_REGISTER_STATUS_EFFECT));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
-}
-
-RValue& GmlScriptModifyHealthCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	int debug = Arguments[0]->ToInt64();
-	if (!GameIsPaused() && sigil_item_used && Arguments[0]->ToInt64() == 0) // TODO: Figure out why healing floor enchantment is bugging out item use detection
-	{
-		if (held_item_id == sigil_to_item_id_map[Sigils::ALTERATION])
-			active_sigils.insert(Sigils::ALTERATION);
-		if (held_item_id == sigil_to_item_id_map[Sigils::CONCEALMENT])
-			active_sigils.insert(Sigils::CONCEALMENT);
-		if (held_item_id == sigil_to_item_id_map[Sigils::FORTIFICATION])
-			active_sigils.insert(Sigils::FORTIFICATION);
-		if (held_item_id == sigil_to_item_id_map[Sigils::FORTUNE])
-		{
-			active_sigils.insert(Sigils::FORTUNE);
-			SpawnLadder(Self, Other, ari_x, ari_y);
-		}
-		if (held_item_id == sigil_to_item_id_map[Sigils::PROTECTION])
-		{
-			std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
-
-			active_sigils.insert(Sigils::PROTECTION);
-			RegisterStatusEffect(refs[0], refs[1], 3, RValue(), 1, 2147483647.0); // TODO: Don't hardcode the status ID (3)
-			SetInvulnerabilityHits(2);
-		}
-		if (held_item_id == sigil_to_item_id_map[Sigils::RAGE])
-			active_sigils.insert(Sigils::RAGE);
-		if (held_item_id == sigil_to_item_id_map[Sigils::REDEMPTION])
-		{
-			std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
-
-			active_sigils.insert(Sigils::REDEMPTION);
-			RegisterStatusEffect(refs[0], refs[1], 2, RValue(), 1, 2147483647.0);
-		}
-		if (held_item_id == sigil_to_item_id_map[Sigils::SAFETY])
-			active_sigils.insert(Sigils::SAFETY); // TODO: Check if SAFETY is active when traps are implemented
-		if (held_item_id == sigil_to_item_id_map[Sigils::SERENITY])
-		{
-			// TODO: Check for other Floor Enchantments and Offering effects to cancel as implemented
-			if (active_floor_enchantments.contains(FloorEnchantments::FEY))
-			{
-				std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
-
-				ModifySpellCosts(true);
-				CancelStatusEffect(refs[0], refs[1], 2); // TODO: Don't hardcode the status ID (2)
-			}
-
-			active_floor_enchantments = {};
-			active_sigils.insert(Sigils::SERENITY);
-		}
-		if (held_item_id == sigil_to_item_id_map[Sigils::SILENCE])
-			active_sigils.insert(Sigils::SILENCE);
-		if (held_item_id == sigil_to_item_id_map[Sigils::STRENGTH])
-			active_sigils.insert(Sigils::STRENGTH);
-		if (held_item_id == sigil_to_item_id_map[Sigils::TEMPTATION])
-			active_sigils.insert(Sigils::TEMPTATION); // TODO: Check if TEMPTATION is actve when Offerings are implemented
-	}
-
-	sigil_item_used = false;
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_MODIFY_HEALTH));
 	original(
 		Self,
 		Other,
@@ -1462,8 +1734,8 @@ RValue& GmlScriptDamageCallback(
 	static thread_local std::mt19937 random_generator(std::random_device{}());
 	std::uniform_int_distribution<size_t> zero_to_one_distribution(0, 1);
 
-	// Blind
-	if (active_floor_enchantments.contains(FloorEnchantments::BLIND))
+	// Distortion
+	if (active_floor_enchantments.contains(FloorEnchantments::DISTORTION))
 	{
 		RValue target = Arguments[0]->GetMember("target");
 		if (target.ToInt64() != 1) // Everything not Ari
@@ -1596,6 +1868,8 @@ RValue& GmlScriptGetTreasureFromDistributionCallback(
 	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal"))
 		chance_for_sigil_drop = true;
 
+	size_t size;
+	g_ModuleInterface->GetArraySize(Result, size);
 	return Result;
 }
 
@@ -1611,6 +1885,133 @@ RValue& GmlScriptStatusEffectManagerCallback(
 		script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE] = { Self, Other };
 	
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptTakePressCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_TAKE_PRESS));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (game_is_active && obj_dungeon_ladder_down_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean() && !offering_chance_occurred)
+	{
+		static thread_local std::mt19937 random_generator(std::random_device{}());
+		std::uniform_int_distribution<size_t> zero_to_nine_distribution(0, 9);
+		
+		int roll = zero_to_nine_distribution(random_generator); // 10% chance for an Offering event
+		if (active_sigils.contains(Sigils::TEMPTATION) || roll == 0)
+		{ 
+			std::uniform_int_distribution<size_t> random_ari_resource_distribution(0, magic_enum::enum_count<AriResources>() - 1);
+			AriResources resource = magic_enum::enum_value<AriResources>(random_ari_resource_distribution(random_generator));
+			if (resource == AriResources::HEALTH && ari_resource_to_value_map[AriResources::HEALTH] > 25)
+				PlayConversation("Conversations/Mods/Deep Dungeon/offering/health", Self, Other);
+			if (resource == AriResources::STAMINA && ari_resource_to_value_map[AriResources::STAMINA] > 20)
+				PlayConversation("Conversations/Mods/Deep Dungeon/offering/stamina", Self, Other);
+			if (resource == AriResources::MANA && ari_resource_to_value_map[AriResources::MANA] > 1)
+				PlayConversation("Conversations/Mods/Deep Dungeon/offering/mana", Self, Other);
+
+			Result = false;
+		}
+
+		offering_chance_occurred = true;
+	}
+
+	return Result;
+}
+
+RValue& GmlScriptAttemptInteractCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (game_is_active && Self->m_Object != nullptr && floor_number != 0)
+	{
+		std::string self_name = Self->m_Object->m_Name;
+		if (self_name == "obj_dungeon_ladder_down")
+			obj_dungeon_ladder_down_focused = true;
+		else
+			obj_dungeon_ladder_down_focused = false;
+	}
+	else
+		obj_dungeon_ladder_down_focused = false;
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ATTEMPT_INTERACT));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptPlayTextCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (game_is_active)
+	{
+		bool is_offering = false;
+		std::string conversation_name = Arguments[0]->ToString();
+
+		if (conversation_name == "Conversations/Mods/Deep Dungeon/offering/2/health")
+		{
+			is_offering = true;
+			ari_resource_to_penalty_map[AriResources::HEALTH] = true;
+		}
+			
+		if (conversation_name == "Conversations/Mods/Deep Dungeon/offering/2/stamina")
+		{
+			is_offering = true;
+			ari_resource_to_penalty_map[AriResources::STAMINA] = true;
+		}
+			
+		if (conversation_name == "Conversations/Mods/Deep Dungeon/offering/2/mana")
+		{
+			is_offering = true;
+			ari_resource_to_penalty_map[AriResources::MANA] = true;
+		}
+			
+		if (is_offering)
+		{
+			// Pick a random offering effect
+			static thread_local std::mt19937 random_generator(std::random_device{}());
+			std::uniform_int_distribution<size_t> random_offering_distribution(0, magic_enum::enum_count<Offerings>() - 1);
+			Offerings offering = magic_enum::enum_value<Offerings>(random_offering_distribution(random_generator));
+			queued_offerings.insert(offering);
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_TEXT));
 	original(
 		Self,
 		Other,
@@ -1671,6 +2072,7 @@ RValue& GmlScriptUseItemCallback(
 	}
 
 	// Sigil Item
+	sigil_item_used = false;
 	for (const auto& item : sigil_to_item_id_map) {
 		if (item.second == held_item_id) {
 			sigil_item_used = true;
@@ -1736,6 +2138,7 @@ RValue& GmlScriptDropItemCallback(
 			std::uniform_int_distribution<size_t> random_sigil_distribution(0, magic_enum::enum_count<Sigils>() - 1);
 			int64_t random_sigil = sigil_to_item_id_map[magic_enum::enum_value<Sigils>(random_sigil_distribution(random_generator))];
 			*Arguments[0] = random_sigil;
+			//chance_for_sigil_drop = false; // testing
 		}
 	}
 
@@ -1813,13 +2216,19 @@ RValue& GmlScriptGetLocalizerCallback(
 		floor_enchantments_to_localized_string_map[FloorEnchantments::EXHAUSTION] = LocalizeString(Self, Other, EXHAUSTION_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::AMNESIA] = LocalizeString(Self, Other, AMNESIA_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::ITEM_PENALTY] = LocalizeString(Self, Other, ITEM_PENALTY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
-		floor_enchantments_to_localized_string_map[FloorEnchantments::BLIND] = LocalizeString(Self, Other, BLIND_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
+		floor_enchantments_to_localized_string_map[FloorEnchantments::DISTORTION] = LocalizeString(Self, Other, BLIND_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::DAMAGE_DOWN] = LocalizeString(Self, Other, DAMAGE_DOWN_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::GRAVITY] = LocalizeString(Self, Other, GRAVITY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::FEY] = LocalizeString(Self, Other, FEY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::RESTORATION] = LocalizeString(Self, Other, RESTORATION_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::SECOND_WIND] = LocalizeString(Self, Other, SECOND_WIND_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
-		floor_enchantments_to_localized_string_map[FloorEnchantments::HASTE] = LocalizeString(Self, Other, HASTE_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();		
+		floor_enchantments_to_localized_string_map[FloorEnchantments::HASTE] = LocalizeString(Self, Other, HASTE_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
+
+		offerings_to_localized_string_map[Offerings::DREAD] = LocalizeString(Self, Other, DREAD_OFFERING_LOCALIZED_TEXT_KEY).ToString();
+		offerings_to_localized_string_map[Offerings::INNER_FIRE] = LocalizeString(Self, Other, INNER_FIRE_OFFERING_LOCALIZED_TEXT_KEY).ToString();
+		offerings_to_localized_string_map[Offerings::LEECH] = LocalizeString(Self, Other, LEECH_OFFERING_LOCALIZED_TEXT_KEY).ToString();
+		offerings_to_localized_string_map[Offerings::PERIL] = LocalizeString(Self, Other, PERIL_OFFERING_LOCALIZED_TEXT_KEY).ToString();
+		offerings_to_localized_string_map[Offerings::RECKONING] = LocalizeString(Self, Other, RECKONING_OFFERING_LOCALIZED_TEXT_KEY).ToString();
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_LOCALIZER));
@@ -1833,7 +2242,6 @@ RValue& GmlScriptGetLocalizerCallback(
 
 	if (game_is_active)
 	{
-		std::string debug = Arguments[0]->ToString();
 		if (Arguments[0]->ToString() == FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY)
 		{
 			std::string custom_text = "";
@@ -1848,9 +2256,19 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
-		if (Arguments[0]->ToString() == DREAD_BEAST_WARNING_PLACEHOLDER_TEXT_KEY)
+		if (Arguments[0]->ToString() == OFFERINGS_PLACEHOLDER_TEXT_KEY)
 		{
-			// TODO
+			std::string custom_text = "";
+			for (auto it = queued_offerings.begin(); it != queued_offerings.end();)
+			{
+				custom_text += offerings_to_localized_string_map[*it];
+
+				if (++it != queued_offerings.end())
+					custom_text += "\n";
+			}
+
+			Result = RValue(custom_text);
+			return Result;
 		}
 	}
 
@@ -1912,13 +2330,20 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 {
 	// TODO: Run logic to actually undo all active floor enchantments.
 	// TOOD: Remove all buffs.
-	active_sigils = {};
-	active_floor_enchantments = {};
+	active_sigils.clear();
+	active_floor_enchantments.clear();
+	active_offerings = queued_offerings;
+	queued_offerings.clear();
 	DisableAllPerks();
 	ModifySpellCosts(true);
+	ScaleMistpoolArmor(true);
+	ScaleMistpoolWeapon(true);
 	CancelAllStatusEffects();
 	SetInvulnerabilityHits(0);
+	reckoning_applied = false;
 	fairy_buff_applied = false;
+	chance_for_sigil_drop = false;
+	offering_chance_occurred = false;
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
 
@@ -1982,19 +2407,34 @@ RValue& GmlScriptGoToRoomCallback(
 	RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
 	ari_current_gm_room = room_name.ToString();
 
+	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry")
+		SetFloorNumber();
+	else
+		floor_number = 0;
+
 	if (ari_current_location == "dungeon" && (!ari_current_gm_room.contains("rm_mines") || ari_current_gm_room == "rm_mines_entry"))
 	{
 		// TODO: Run logic to actually undo all active floor enchantments.
 		// TOOD: Remove all buffs.
-		active_sigils = {};
-		active_floor_enchantments = {};
+		active_sigils.clear();
+		active_floor_enchantments.clear();
+		active_offerings.clear(); // Different than OnDungeonRoomStart
+		queued_offerings.clear();
+		ModifySpellCosts(true);
+		ScaleMistpoolArmor(true);
+		ScaleMistpoolWeapon(true);
 		CancelAllStatusEffects();
 		SetInvulnerabilityHits(0);
-		ModifySpellCosts(true);
+		fire_breath_cast = false; // Different than OnDungeonRoomStart
+		reckoning_applied = false;
 		fairy_buff_applied = false;
+		chance_for_sigil_drop = false;
+		offering_chance_occurred = false;
 		sigil_of_silence_count = 0;
 		sigil_of_alteration_count = 0;
 	}
+	else
+		active_offerings.clear(); // TESTING -- Confirm this clears stuff like Reckoning before new monsters spawn and get modified
 
 	return Result;
 }
@@ -2017,6 +2457,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		LoadSpells();
 		LoadItems();
 		LoadMonsters();
+		LoadPlayerStates();
 		// TODO: Load other stuff
 	}
 	else
@@ -2054,7 +2495,6 @@ RValue& GmlScriptGetEquipmentBonusFromCallback(
 		Arguments
 	);
 
-	// Dungeon's Curse: Prevent infusions on armor and tools from applying.
 	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal"))
 	{
 		/*
@@ -2063,7 +2503,14 @@ RValue& GmlScriptGetEquipmentBonusFromCallback(
 		   - [string] __infusion__[6] = 'lightweight'
 		   - [string] __infusion__[15] = 'tireless'
 		*/
+
 		int infusion_id = Arguments[0]->ToInt64();
+
+		// Leech
+		if (active_offerings.contains(Offerings::LEECH) && infusion_id == 5) // TODO: Don't hard-code this ID (5)
+			Result = 1;
+
+		// Dungeon's Curse: Prevent infusions on armor and tools from applying.
 		if (infusion_id == 2 || infusion_id == 3 || infusion_id == 6 || infusion_id == 15) // TODO: Don't hard-code these ID's
 			Result = 0;
 	}
@@ -2182,33 +2629,6 @@ void CreateHookGmlScriptRegisterStatusEffect(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_REGISTER_STATUS_EFFECT);
-	}
-}
-
-void CreateHookGmlScriptModifyHealth(AurieStatus& status)
-{
-	CScript* gml_script_modify_health = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_MODIFY_HEALTH,
-		(PVOID*)&gml_script_modify_health
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_HEALTH);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		GML_SCRIPT_MODIFY_HEALTH,
-		gml_script_modify_health->m_Functions->m_ScriptFunction,
-		GmlScriptModifyHealthCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_HEALTH);
 	}
 }
 
@@ -2398,6 +2818,88 @@ void CreateHookGmlScriptStatusEffectManager(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE);
+	}
+}
+
+void CreateHookGmlScriptTakePress(AurieStatus& status)
+{
+	CScript* gml_script_take_press = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_TAKE_PRESS,
+		(PVOID*)&gml_script_take_press
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TAKE_PRESS);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_TAKE_PRESS,
+		gml_script_take_press->m_Functions->m_ScriptFunction,
+		GmlScriptTakePressCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TAKE_PRESS);
+	}
+}
+
+void CreateHookGmlScriptAttemptInteract(AurieStatus& status)
+{
+	CScript* gml_script_attempt_interact = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_ATTEMPT_INTERACT,
+		(PVOID*)&gml_script_attempt_interact
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ATTEMPT_INTERACT);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_ATTEMPT_INTERACT,
+		gml_script_attempt_interact->m_Functions->m_ScriptFunction,
+		GmlScriptAttemptInteractCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ATTEMPT_INTERACT);
+	}
+}
+
+void CreateHookGmlScriptPlayText(AurieStatus& status)
+{
+	CScript* gml_script_play_text = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_PLAY_TEXT,
+		(PVOID*)&gml_script_play_text
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_TEXT);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_PLAY_TEXT,
+		gml_script_play_text->m_Functions->m_ScriptFunction,
+		GmlScriptPlayTextCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_TEXT);
 	}
 }
 
@@ -2790,13 +3292,6 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
-	CreateHookGmlScriptModifyHealth(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-		return status;
-	}
-
 	CreateHookGmlScriptModifyStamina(status);
 	if (!AurieSuccess(status))
 	{
@@ -2840,6 +3335,27 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptStatusEffectManager(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptTakePress(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptAttemptInteract(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptPlayText(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
