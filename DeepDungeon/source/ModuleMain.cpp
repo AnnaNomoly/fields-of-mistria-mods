@@ -76,6 +76,7 @@ static const std::string ITEM_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/
 static const std::string CONCEALMENT_LOST_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/Sigils/concealment/deactivated";
 static const std::string FLOOR_ENCHANTMENT_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/floor_enchantments";
 static const std::string DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning";
+static const std::string FLOOR_ENCHANTMENT_AND_DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning_and_floor_enchantments";
 static const std::string OFFERINGS_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/offerings/result";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
 static const std::string DREAD_BEAST_WARNING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Special/dread";
@@ -84,7 +85,7 @@ static const std::string HP_PENALTY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conv
 static const std::string EXHAUSTION_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Negative/exhaustion";
 static const std::string AMNESIA_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Negative/amnesia";
 static const std::string ITEM_PENALTY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Negative/item_penalty";
-static const std::string BLIND_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Negative/blind";
+static const std::string DISTORTION_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Negative/distortion";
 static const std::string DAMAGE_DOWN_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Negative/damage_down";
 static const std::string GRAVITY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Negative/gravity";
 static const std::string FEY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/fey";
@@ -97,8 +98,6 @@ static const std::string INNER_FIRE_OFFERING_LOCALIZED_TEXT_KEY = "Conversations
 static const std::string LEECH_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Positive/leech";
 static const std::string PERIL_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/peril";
 static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/reckoning";
-
-
 
 static const int TWO_MINUTES_IN_SECONDS = 120;
 
@@ -244,14 +243,24 @@ static std::map<AriResources, int> ari_resource_to_value_map = {}; // Used to tr
 static std::map<AriResources, bool> ari_resource_to_penalty_map = {}; // Used to track penalties from offerings to apply.
 static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script.
 
-// DEBUG
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
+// GUI
+static bool show_dashes = false;
+static bool show_danger_banner = false;
+static bool fade_initialized = false;
+static uint64_t fade_start_time = 0;
+
+
+void ResetFade()
 {
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
+	fade_initialized = false;
+	fade_start_time = 0;
+}
+
+void ResetCustomDrawFields()
+{
+	show_dashes = false;
+	show_danger_banner = false;
+	ResetFade();
 }
 
 void ResetStaticFields(bool returned_to_title_screen)
@@ -285,7 +294,7 @@ void ResetStaticFields(bool returned_to_title_screen)
 	queued_offerings.clear();
 	active_offerings.clear();
 	active_floor_enchantments.clear();
-	
+	ResetCustomDrawFields();
 }
 
 bool GameIsPaused()
@@ -312,6 +321,187 @@ RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue va
 		"struct_set",
 		{ the_struct, variable_name, value }
 	);
+}
+
+uint64_t GetCurrentSystemTime() {
+	return duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+std::pair<int, int> GetCenterOffset(int screen_center_x, int screen_center_y, int image_width, int image_height) {
+	int offset_x = screen_center_x - image_width / 2;
+	int offset_y = screen_center_y - image_height / 2;
+	return { offset_x, offset_y };
+}
+
+std::vector<double> GetCenter(std::vector<double> topLeft, std::vector<double> bottomRight)
+{
+	double x = (topLeft[0] + bottomRight[0]) / 2.0;
+	double y = (topLeft[1] + bottomRight[1]) / 2.0;
+	std::vector<double> center = { x, y };
+	return center;
+}
+
+void DrawRectangle(int color, float x1, float y1, float x2, float y2, bool outline)
+{
+	g_ModuleInterface->CallBuiltin(
+		"draw_set_color", {
+		 color
+		}
+	);
+
+	g_ModuleInterface->CallBuiltin(
+		"draw_rectangle", {
+			x1, y1, x2, y2, outline
+		}
+	);
+}
+
+void DrawImage(int x, int y, int transparency)
+{
+	RValue sprite_index = g_ModuleInterface->CallBuiltin(
+		"asset_get_index", {
+			"aldarian_danger_banner"
+		}
+	);
+
+	g_ModuleInterface->CallBuiltin(
+		"draw_sprite_ext", {
+			sprite_index, -1, x, y, 1, 1, 0, 16777215, transparency / 100.0
+		}
+	);
+}
+
+void FadeInImage(double seconds_per_cycle, int repeat_count) {
+	// --- optimize this ---------------------------------------------------------------------
+	RValue window_get_width = g_ModuleInterface->CallBuiltin(
+		"window_get_width",
+		{}
+	);
+
+	RValue window_get_height = g_ModuleInterface->CallBuiltin(
+		"window_get_height",
+		{}
+	);
+
+	// Window corners
+	std::vector<double> window_top_left = { 0.0, 0.0 };
+	std::vector<double> window_top_right = { window_get_width.m_Real, 0.0 };
+	std::vector<double> window_bottom_left = { 0.0, window_get_height.m_Real };
+	std::vector<double> window_bottom_right = { window_get_width.m_Real, window_get_height.m_Real };
+
+	// Window center
+	auto center = GetCenter(window_top_left, window_bottom_right);
+	auto centered_offset = GetCenterOffset(center[0], center[1], 400, 120);
+	// ----------------------------------------------------------------------------------------
+
+
+	if (!fade_initialized) {
+		fade_start_time = GetCurrentSystemTime();
+		fade_initialized = true;
+	}
+
+	double cycle_ms = seconds_per_cycle * 1000.0;
+	uint64_t elapsed = GetCurrentSystemTime() - fade_start_time;
+
+	int current_cycle = elapsed / cycle_ms;
+
+	if (current_cycle >= repeat_count) {
+		return;
+		//DrawImage(centered_offset.first, centered_offset.second, 0); // Fully transparent after done
+	}
+
+	double cycle_position = static_cast<double>(elapsed % static_cast<int>(cycle_ms));
+	double half_cycle = cycle_ms / 2.0;
+	int transparency = 0;
+
+	if (cycle_position <= half_cycle) {
+		// Fade in: 0 -> 100
+		transparency = static_cast<int>((cycle_position / half_cycle) * 100);
+	}
+	else {
+		// Fade out: 100 -> 0
+		double fade_out_pos = cycle_position - half_cycle;
+		transparency = static_cast<int>(((half_cycle - fade_out_pos) / half_cycle) * 100);
+	}
+
+	transparency = std::clamp(transparency, 0, 100);
+
+	DrawImage(centered_offset.first, centered_offset.second, transparency);
+}
+
+void DrawDashedBorder(
+	float dash_len,
+	float dash_thk,
+	float speed,          // pixels per second
+	float screen_width,
+	float screen_height,
+	uint64_t current_time_ms
+) {
+	// Static dash state
+	static std::vector<float> dash_positions;  // positions around perimeter
+	static bool initialized = false;
+
+	float top_len = screen_width;
+	float right_len = screen_height;
+	float bottom_len = screen_width;
+	float left_len = screen_height;
+	float perimeter = 2.0f * (screen_width + screen_height);
+
+	// Desired dash spacing (avg)
+	float target_spacing = perimeter / 40.0f;
+
+	if (!initialized) {
+		// Compute dash count per edge
+		int top_count = static_cast<int>(std::floor(top_len / target_spacing));
+		int right_count = static_cast<int>(std::floor(right_len / target_spacing));
+		int bottom_count = static_cast<int>(std::floor(bottom_len / target_spacing));
+		int left_count = static_cast<int>(std::floor(left_len / target_spacing));
+
+		// Store total dashes spaced along perimeter
+		dash_positions.clear();
+		for (int i = 0; i < top_count; ++i)
+			dash_positions.push_back((top_len / top_count) * i);
+		for (int i = 0; i < right_count; ++i)
+			dash_positions.push_back(top_len + (right_len / right_count) * i);
+		for (int i = 0; i < bottom_count; ++i)
+			dash_positions.push_back(top_len + right_len + (bottom_len / bottom_count) * i);
+		for (int i = 0; i < left_count; ++i)
+			dash_positions.push_back(top_len + right_len + bottom_len + (left_len / left_count) * i);
+
+		initialized = true;
+	}
+
+	// Time-based offset
+	static uint64_t last_time = current_time_ms;
+	float delta_sec = (current_time_ms - last_time) / 1000.0f;
+	last_time = current_time_ms;
+
+	static float offset = 0.0f;
+	offset += speed * delta_sec;
+	if (offset > perimeter) offset -= perimeter;
+
+	// Draw all dashes with animated offset
+	for (float base_pos : dash_positions) {
+		float pos = base_pos + offset;
+		if (pos >= perimeter) pos -= perimeter;
+
+		if (pos < top_len) {
+			float x = pos;
+			DrawRectangle(255, x, 0.0f, x + dash_len, dash_thk, false);
+		}
+		else if (pos < top_len + right_len) {
+			float y = pos - top_len;
+			DrawRectangle(255, screen_width - dash_thk, y, screen_width, y + dash_len, false);
+		}
+		else if (pos < top_len + right_len + bottom_len) {
+			float x = screen_width - (pos - (top_len + right_len));
+			DrawRectangle(255, x, screen_height - dash_thk, x + dash_len, screen_height, false);
+		}
+		else {
+			float y = screen_height - (pos - (top_len + right_len + bottom_len));
+			DrawRectangle(255, 0.0f, y, dash_thk, y + dash_len, false);
+		}
+	}
 }
 
 void LoadPerks()
@@ -2216,7 +2406,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		floor_enchantments_to_localized_string_map[FloorEnchantments::EXHAUSTION] = LocalizeString(Self, Other, EXHAUSTION_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::AMNESIA] = LocalizeString(Self, Other, AMNESIA_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::ITEM_PENALTY] = LocalizeString(Self, Other, ITEM_PENALTY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
-		floor_enchantments_to_localized_string_map[FloorEnchantments::DISTORTION] = LocalizeString(Self, Other, BLIND_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
+		floor_enchantments_to_localized_string_map[FloorEnchantments::DISTORTION] = LocalizeString(Self, Other, DISTORTION_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::DAMAGE_DOWN] = LocalizeString(Self, Other, DAMAGE_DOWN_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::GRAVITY] = LocalizeString(Self, Other, GRAVITY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
 		floor_enchantments_to_localized_string_map[FloorEnchantments::FEY] = LocalizeString(Self, Other, FEY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY).ToString();
@@ -2330,9 +2520,12 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 {
 	// TODO: Run logic to actually undo all active floor enchantments.
 	// TOOD: Remove all buffs.
+	ResetCustomDrawFields();
 	active_sigils.clear();
 	active_floor_enchantments.clear();
 	active_offerings = queued_offerings;
+	show_dashes = active_offerings.contains(Offerings::DREAD);
+	show_danger_banner = active_offerings.contains(Offerings::DREAD);
 	queued_offerings.clear();
 	DisableAllPerks();
 	ModifySpellCosts(true);
@@ -2362,8 +2555,12 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		else if (ari_current_gm_room.find("rm_mines_ruins") != std::string::npos)
 			active_floor_enchantments = RandomFloorEnchantments(false, DungeonBiomes::RUINS);
 
-		if (!active_floor_enchantments.empty())
+		if (!active_floor_enchantments.empty() && active_offerings.contains(Offerings::DREAD))
+			PlayConversation(FLOOR_ENCHANTMENT_AND_DREAD_BEAST_WARNING_CONVERSATION_KEY, Self, Other);
+		else if (!active_floor_enchantments.empty())
 			PlayConversation(FLOOR_ENCHANTMENT_CONVERSATION_KEY, Self, Other);
+		else if(active_offerings.contains(Offerings::DREAD))
+			PlayConversation(DREAD_BEAST_WARNING_CONVERSATION_KEY, Self, Other);
 
 		for (FloorEnchantments floor_enchantment : active_floor_enchantments)
 		{
@@ -2416,6 +2613,7 @@ RValue& GmlScriptGoToRoomCallback(
 	{
 		// TODO: Run logic to actually undo all active floor enchantments.
 		// TOOD: Remove all buffs.
+		ResetCustomDrawFields();
 		active_sigils.clear();
 		active_floor_enchantments.clear();
 		active_offerings.clear(); // Different than OnDungeonRoomStart
@@ -2585,6 +2783,36 @@ RValue& GmlScriptOnDrawGuiCallback(
 				{ 0, 0, window_width, window_height, false }
 			);
 		}
+
+		// Danger Floor Border
+		if (show_dashes)
+		{
+			uint64_t time_now = GetCurrentSystemTime(); // Replace with your timer logic
+			RValue window_get_width = g_ModuleInterface->CallBuiltin( // TODO: Don't do this in this function
+				"window_get_width",
+				{}
+			);
+			double window_width = window_get_width.m_Real;
+
+			RValue window_get_height = g_ModuleInterface->CallBuiltin( // TODO: Don't do this in this function
+				"window_get_height",
+				{}
+			);
+			double window_height = window_get_height.m_Real;
+
+			DrawDashedBorder(
+				20.0f,    // dash length in pixels
+				4.0f,     // dash thickness
+				80.0f,    // speed pixels per second
+				window_width,
+				window_height,
+				GetCurrentSystemTime()
+			);
+		}
+
+		// Danger Floor Banner
+		if (show_danger_banner)
+			FadeInImage(2, 2); // 3, 2
 	}
 
 	return Result;
