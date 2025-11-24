@@ -38,7 +38,7 @@ void CreateOrLoadModFolder()
 	std::wstring save_backup_folder = mod_data_folder + L"\\SaveBackup";
 	if (!std::filesystem::exists(save_backup_folder))
 	{
-		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"DIY\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, save_backup_folder.c_str());
+		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"SaveBackup\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, save_backup_folder.c_str());
 		std::filesystem::create_directory(save_backup_folder);
 	}
 
