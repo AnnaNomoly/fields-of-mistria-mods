@@ -22,35 +22,6 @@ static int cardinal_override = UNSET_CARDINAL_OVERRIDE;
 static double face_dir_override = UNSET_FACE_DIR_OVERRIDE;
 static std::vector<int> item_ids = {};
 static CInstance* ari = nullptr;
-static std::vector<std::string> struct_field_names = {};
-
-bool StructVariableExists(RValue the_struct, const char* variable_name)
-{
-	RValue struct_exists = g_ModuleInterface->CallBuiltin(
-		"struct_exists",
-		{ the_struct, variable_name }
-	);
-
-	return struct_exists.m_Real == 0 ? false : true;
-}
-
-bool GetStructFieldNames(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	struct_field_names.push_back(MemberName);
-	return false;
-}
-
-bool EnumFunction(
-	IN const char* MemberName,
-	IN OUT RValue* Value
-)
-{
-	g_ModuleInterface->Print(CM_LIGHTYELLOW, "Member Name: %s", MemberName);
-	return false;
-}
 
 std::vector<double> GetCenter(std::vector<double> topLeft, std::vector<double> bottomRight)
 {
@@ -212,7 +183,7 @@ void ObjectCallback(
 			{ self, "set_cardinal" }
 		);
 
-		if(exists.m_Kind == VALUE_BOOL && exists.m_Real == 1.0)
+		if (exists.m_Kind == VALUE_BOOL && exists.m_Real == 1.0)
 			ari = self;
 	}
 }
@@ -253,46 +224,17 @@ RValue& GmlScriptUseItemCallback(
 	IN RValue** Arguments
 )
 {
-	//if (ari != nullptr && held_item_id != UNSET_ITEM_ID)
-	//{
-	//	auto it = std::find(item_ids.begin(), item_ids.end(), held_item_id);
-	//	if (it != item_ids.end()) {
-	//		GetDirectionalValues();
-	//		FaceDir(Self, Other);
-	//		SetCardinal(Self, Other);
-	//	}
-	//}
+	if (ari != nullptr && held_item_id != UNSET_ITEM_ID)
+	{
+		auto it = std::find(item_ids.begin(), item_ids.end(), held_item_id);
+		if (it != item_ids.end()) {
+			GetDirectionalValues();
+			FaceDir(Self, Other);
+			SetCardinal(Self, Other);
+		}
+	}
 
-	//const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_use_item"));
-	//original(
-	//	Self,
-	//	Other,
-	//	Result,
-	//	ArgumentCount,
-	//	Arguments
-	//);
-
-	//cardinal_override = UNSET_CARDINAL_OVERRIDE;
-	//face_dir_override = UNSET_FACE_DIR_OVERRIDE;
-
-	return Result;
-}
-
-RValue& GmlScriptMoveAriCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	g_ModuleInterface->Print(CM_WHITE, "ENTER: gml_Script_watering_can@anon@83944@AriFsm@AriFsm");
-	g_ModuleInterface->Print(CM_WHITE, "=============== %s ===============", "Self");
-	g_ModuleInterface->EnumInstanceMembers(Self, EnumFunction);
-	g_ModuleInterface->Print(CM_WHITE, "=============== %s ===============", "Other");
-	g_ModuleInterface->EnumInstanceMembers(Other, EnumFunction);
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_update@ToolbarMenu@ToolbarMenu"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_use_item"));
 	original(
 		Self,
 		Other,
@@ -300,6 +242,9 @@ RValue& GmlScriptMoveAriCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	cardinal_override = UNSET_CARDINAL_OVERRIDE;
+	face_dir_override = UNSET_FACE_DIR_OVERRIDE;
 
 	return Result;
 }
@@ -433,33 +378,6 @@ void CreateHookGmlScriptUseItem(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptMoveAri(AurieStatus& status)
-{
-	CScript* gml_script_use_item = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_update@ToolbarMenu@ToolbarMenu",
-		(PVOID*)&gml_script_use_item
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to get script (gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem)!", VERSION);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		"gml_Script_update@ToolbarMenu@ToolbarMenu",
-		gml_script_use_item->m_Functions->m_ScriptFunction,
-		GmlScriptMoveAriCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook script (gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem)!", VERSION);
-	}
-}
-
 void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 {
 	CScript* gml_script_setup_main_screen = nullptr;
@@ -492,9 +410,9 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	UNREFERENCED_PARAMETER(ModulePath);
 
 	AurieStatus status = AURIE_SUCCESS;
-	
+
 	status = ObGetInterface(
-		"YYTK_Main", 
+		"YYTK_Main",
 		(AurieInterfaceBase*&)(g_ModuleInterface)
 	);
 
@@ -518,13 +436,6 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptUseItem(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
-		return status;
-	}
-
-	CreateHookGmlScriptMoveAri(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
