@@ -31,6 +31,8 @@ static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Lo
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
+static const char* const GML_SCRIPT_SPAWN_TUTORIAL = "gml_Script_spawn_tutorial";
+static const char* const GML_SCRIPT_UPDATE_TOOLBAR_MENU = "gml_Script_update@ToolbarMenu@ToolbarMenu";
 static const char* const GML_SCRIPT_CANCEL_STATUS_EFFECT = "gml_Script_cancel@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_REGISTER_STATUS_EFFECT = "gml_Script_register@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_GET_MAX_HEALTH = "gml_Script_get_max_health@Ari@Ari";
@@ -65,6 +67,8 @@ static const char* const GML_SCRIPT_GET_EQUIPMENT_BONUS_FROM = "gml_Script_get_e
 static const char* const GML_SCRIPT_HUD_SHOULD_SHOW = "gml_Script_hud_should_show";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const char* const GML_SCRIPT_DISPLAY_RESIZE = "gml_Script_resize_amount@Display@Display";
+static const char* const GML_SCRIPT_GET_ITEM_UI_ICON = "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem";
+static const char* const GML_SCRIPT_SHOW_ROOM_TITLE = "gml_Script_on_room_start@Camera@Camera"; // TODO: Change this to gml_Script_show_room_title
 static const std::string SIGIL_OF_ALTERATION_NAME = "sigil_of_alteration";
 static const std::string SIGIL_OF_CONCEALMENT_NAME = "sigil_of_concealment";
 static const std::string SIGIL_OF_FORTIFICATION_NAME = "sigil_of_fortification";
@@ -87,6 +91,7 @@ static const std::string MISTPOOL_CHESTPIECE_NAME = "scrap_metal_chestpiece";
 static const std::string MISTPOOL_PANTS_NAME = "scrap_metal_pants";
 static const std::string MISTPOOL_BOOTS_NAME = "scrap_metal_boots";
 static const std::string MISTPOOL_RING_NAME = "scrap_metal_ring";
+static const std::string SIGIL_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_limit";
 static const std::string SALVE_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/salve_limit";
 static const std::string ITEM_PENALTY_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_penalty";
 static const std::string ITEM_PROHIBITED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_prohibited";
@@ -409,6 +414,7 @@ static std::string ari_current_gm_room = "";
 static std::unordered_set<int> restricted_items = {};
 static std::unordered_set<int> deep_dungeon_items = {};
 static std::map<Sigils, int> sigil_to_item_id_map = {};
+static std::map<int, Sigils> item_id_to_sigil_map = {};
 static std::map<std::string, int> perk_name_to_id_map = {};
 static std::map<int, int> spell_id_to_default_cost_map = {};
 static std::map<std::string, int> salve_name_to_id_map = {};
@@ -419,7 +425,6 @@ static std::map<std::string, int> infusion_name_to_id_map = {};
 static std::map<std::string, int> status_effect_name_to_id_map = {};
 static std::map<std::string, int> mistpool_gear_to_item_id_map = {};
 std::unordered_set<std::pair<int,int>, pair_hash> floor_trap_positions = {};
-static std::unordered_set<int> sigils_used = {}; // TODO
 static std::unordered_set<int> salves_used = {};
 static std::unordered_set<Traps> active_traps = {};
 static std::unordered_set<Sigils> active_sigils = {};
@@ -435,6 +440,7 @@ static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_m
 static std::map<std::string, std::unordered_set<int>> dungeon_biome_to_candidate_monsters_map = {}; // Holds the candidate monster spawns for each dungeon biome.
 static std::map<int, std::string> floor_number_to_biome_name_map = {}; // Maps floor numbers to the dungeon biome name.
 static std::vector<CInstance*> current_floor_monsters = {};
+static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {}; // Tracks when a notification was last displayed.
 
 // GUI
 static double window_width = 0;
@@ -955,6 +961,7 @@ void LoadItems()
 			{
 				deep_dungeon_items.insert(item_id);
 				sigil_to_item_id_map[item_name_to_sigil_map.at(item_name)] = item_id;
+				item_id_to_sigil_map[item_id] = item_name_to_sigil_map.at(item_name);
 
 				*item->GetRefMember("health_modifier") = 0;
 			}
@@ -1041,6 +1048,17 @@ void LoadItems()
 			}
 		}
 	}
+}
+
+void MarkDungeonTutorialUnseen()
+{
+	RValue ari = *global_instance->GetRefMember("__ari");
+	RValue tutorials_seen = *ari.GetRefMember("tutorials_seen");
+
+	RValue* mines_tutorial;
+	g_ModuleInterface->GetArrayEntry(tutorials_seen, tutorial_name_to_id_map["mines"], mines_tutorial);
+
+	*mines_tutorial = false; // TESTING - Check this works
 }
 
 void ScaleMistpoolWeapon(bool in_dungeon)
@@ -1181,22 +1199,28 @@ void SpawnMonster(CInstance* Self, CInstance* Other, int room_x, int room_y, int
 
 void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
 {
-	CScript* gml_script_create_notification = nullptr;
-	g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_CREATE_NOTIFICATION,
-		(PVOID*)&gml_script_create_notification
-	);
+	uint64_t current_system_time = GetCurrentSystemTime();
+	if (current_system_time > notification_name_to_last_display_time_map[notification_localization_str] + 5000)
+	{
+		CScript* gml_script_create_notification = nullptr;
+		g_ModuleInterface->GetNamedRoutinePointer(
+			GML_SCRIPT_CREATE_NOTIFICATION,
+			(PVOID*)&gml_script_create_notification
+		);
 
-	RValue result;
-	RValue notification = RValue(notification_localization_str);
-	RValue* notification_ptr = &notification;
-	gml_script_create_notification->m_Functions->m_ScriptFunction(
-		Self,
-		Other,
-		result,
-		1,
-		{ &notification_ptr }
-	);
+		RValue result;
+		RValue notification = RValue(notification_localization_str);
+		RValue* notification_ptr = &notification;
+		gml_script_create_notification->m_Functions->m_ScriptFunction(
+			Self,
+			Other,
+			result,
+			1,
+			{ &notification_ptr }
+		);
+
+		notification_name_to_last_display_time_map[notification_localization_str] = current_system_time;
+	}
 }
 
 void PlayConversation(std::string conversation_localization_str, CInstance* Self, CInstance* Other)
@@ -1231,7 +1255,7 @@ void SpawnTutorial(std::string tutorial_name, CInstance* Self, CInstance* Other)
 {
 	CScript* gml_script_create_notification = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_spawn_tutorial",
+		GML_SCRIPT_SPAWN_TUTORIAL,
 		(PVOID*)&gml_script_create_notification
 	);
 
@@ -1251,7 +1275,7 @@ void UpdateToolbarMenu(CInstance* Self, CInstance* Other)
 {
 	CScript* gml_script_update_toolbar_menu = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_update@ToolbarMenu@ToolbarMenu",
+		GML_SCRIPT_UPDATE_TOOLBAR_MENU,
 		(PVOID*)&gml_script_update_toolbar_menu
 	);
 
@@ -1263,6 +1287,11 @@ void UpdateToolbarMenu(CInstance* Self, CInstance* Other)
 		0,
 		nullptr
 	);
+}
+
+bool AriCurrentGmRoomIsDungeonFloor()
+{
+	return ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal");
 }
 
 void SetFloorNumber()
@@ -1780,7 +1809,7 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 		g_ModuleInterface->Print(CM_LIGHTPURPLE, "Inhibiting Trap Ended: %d", current_time_in_seconds);
 		active_traps.erase(Traps::INHIBITING);
 		active_traps_to_value_map.erase(Traps::INHIBITING);
-		UpdateToolbarMenu(script_name_to_reference_map["gml_Script_update@ToolbarMenu@ToolbarMenu"][0], script_name_to_reference_map["gml_Script_update@ToolbarMenu@ToolbarMenu"][1]);
+		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 	}
 
 	// Process traps in range.
@@ -1825,7 +1854,7 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			{
 				PlaySoundEffect("snd_bark_surprised", 100);
 				CreateNotification(INHIBITING_TRAP_NOTIFICATION_KEY, Self, Other);
-				UpdateToolbarMenu(script_name_to_reference_map["gml_Script_update@ToolbarMenu@ToolbarMenu"][0], script_name_to_reference_map["gml_Script_update@ToolbarMenu@ToolbarMenu"][1]);
+				UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 				g_ModuleInterface->Print(CM_LIGHTPURPLE, "Inhibiting Trap Started: %d", current_time_in_seconds);
 
 				if (!active_traps_to_value_map.contains(Traps::INHIBITING))
@@ -1943,7 +1972,7 @@ void ObjectCallback(
 							RValue did_action = state.GetMember("did_action");
 							if (did_action.ToBoolean())
 							{
-								if (sigil_item_used)
+								if (sigil_item_used) // TODO: This might not be neccessary
 								{
 									sigil_item_used = false;
 
@@ -1956,7 +1985,7 @@ void ObjectCallback(
 									if (held_item_id == sigil_to_item_id_map[Sigils::FORTUNE])
 									{
 										active_sigils.insert(Sigils::FORTUNE);
-										SpawnLadder(global_instance->GetRefMember("__ari")->ToInstance(), self, ari_x, ari_y); //SpawnLadder(Self, Other, ari_x, ari_y);
+										SpawnLadder(global_instance->GetRefMember("__ari")->ToInstance(), self, ari_x, ari_y);
 									}
 									if (held_item_id == sigil_to_item_id_map[Sigils::PROTECTION])
 									{
@@ -1977,8 +2006,8 @@ void ObjectCallback(
 									}
 									if (held_item_id == sigil_to_item_id_map[Sigils::SAFETY])
 									{
-										active_sigils.insert(Sigils::SAFETY);
 										floor_trap_positions.clear();
+										active_sigils.insert(Sigils::SAFETY);
 									}
 									if (held_item_id == sigil_to_item_id_map[Sigils::SERENITY])
 									{
@@ -2000,11 +2029,13 @@ void ObjectCallback(
 										active_sigils.insert(Sigils::STRENGTH);
 									if (held_item_id == sigil_to_item_id_map[Sigils::TEMPTATION])
 										active_sigils.insert(Sigils::TEMPTATION);
+
+									UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 								}
-								else
+								else if (held_item_id == salve_name_to_id_map[HEALTH_SALVE_NAME] || held_item_id == salve_name_to_id_map[STAMINA_SALVE_NAME] || held_item_id == salve_name_to_id_map[MANA_SALVE_NAME])
 								{
-									if (held_item_id == salve_name_to_id_map[HEALTH_SALVE_NAME] || held_item_id == salve_name_to_id_map[STAMINA_SALVE_NAME] || held_item_id == salve_name_to_id_map[MANA_SALVE_NAME])
-										salves_used.insert(held_item_id);
+									salves_used.insert(held_item_id);
+									UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 								}
 							}
 						}
@@ -2106,8 +2137,7 @@ void ObjectCallback(
 				}
 
 				// Sigil of Concealment
-				auto sigil_of_concealment = std::find(active_sigils.begin(), active_sigils.end(), Sigils::CONCEALMENT);
-				if (sigil_of_concealment != active_sigils.end())
+				if (active_sigils.contains(Sigils::CONCEALMENT))
 				{
 					if (StructVariableExists(monster, "config"))
 					{
@@ -2123,6 +2153,7 @@ void ObjectCallback(
 						{
 							active_sigils.erase(Sigils::CONCEALMENT);
 							CreateNotification(CONCEALMENT_LOST_NOTIFICATION_KEY, nullptr, nullptr);
+							UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 						}
 					}
 				}
@@ -2259,6 +2290,40 @@ void ObjectCallback(
 	*/
 }
 
+RValue& GmlScriptCancelStatusEffectCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	// Protection
+	if (active_sigils.contains(Sigils::PROTECTION) && Arguments[0]->ToInt64() == status_effect_name_to_id_map["guardians_shield"])
+	{
+		active_sigils.erase(Sigils::PROTECTION);
+		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+	}
+
+	// Redemption
+	if (active_sigils.contains(Sigils::REDEMPTION) && Arguments[0]->ToInt64() == status_effect_name_to_id_map["fairy"])
+	{
+		active_sigils.erase(Sigils::REDEMPTION);
+		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CANCEL_STATUS_EFFECT));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
 RValue& GmlScriptRegisterStatusEffectCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -2267,7 +2332,7 @@ RValue& GmlScriptRegisterStatusEffectCallback(
 	IN RValue** Arguments
 )
 {
-	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal"))
+	if (AriCurrentGmRoomIsDungeonFloor())
 	{
 		if (Arguments[0]->ToInt64() == status_effect_name_to_id_map["restorative"])
 		{
@@ -2592,11 +2657,9 @@ RValue& GmlScriptGetTreasureFromDistributionCallback(
 		Arguments
 	);
 
-	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal"))
+	if (AriCurrentGmRoomIsDungeonFloor())
 		chance_for_sigil_drop = true;
 
-	size_t size;
-	g_ModuleInterface->GetArraySize(Result, size);
 	return Result;
 }
 
@@ -2821,14 +2884,22 @@ RValue& GmlScriptUseItemCallback(
 		}
 	}
 	
-	if(ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal"))
+	if(AriCurrentGmRoomIsDungeonFloor())
 	{
 		if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari"))
 		{
+			// Sigil Already Used
+			if (item_id_to_sigil_map.contains(held_item_id) && active_sigils.contains(item_id_to_sigil_map[held_item_id]))
+			{
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - That sigil is already active!", MOD_NAME, VERSION);
+				CreateNotification(SIGIL_LIMIT_NOTIFICATION_KEY, Self, Other);
+				return Result;
+			}
+
 			// Salve Limit
 			if (salves_used.contains(held_item_id))
 			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - That item is prohibited in the Deep Dungeon!", MOD_NAME, VERSION);
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You have already used that type of salve on the current floor!", MOD_NAME, VERSION);
 				CreateNotification(SALVE_LIMIT_NOTIFICATION_KEY, Self, Other);
 				return Result;
 			}
@@ -2899,6 +2970,8 @@ RValue& GmlScriptHeldItemCallback(
 		int item_id = Result.GetMember("item_id").ToInt64();
 		if (held_item_id != item_id)
 			held_item_id = item_id;
+
+		// TODO: Try updating the icon
 	}
 
 	return Result;
@@ -3070,8 +3143,12 @@ RValue& GmlScriptGetWeatherCallback(
 	IN RValue** Arguments
 )
 {
-	game_is_active = true;
-
+	if (!game_is_active)
+	{
+		game_is_active = true;
+		MarkDungeonTutorialUnseen();
+	}
+	
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_WEATHER));
 	original(
 		Self,
@@ -3146,7 +3223,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
 
-	// TODO: Offerings should only apply to these types of rooms. Also, confirm what "milestone" rooms are.
+	// TODO: Confirm what "milestone" rooms are and determine if they should be removed from this conditional.
 	if (ari_current_gm_room != "rm_mines_entry" && ari_current_gm_room.find("seal") == std::string::npos && ari_current_gm_room.find("ritual") == std::string::npos && ari_current_gm_room.find("treasure") == std::string::npos && ari_current_gm_room.find("milestone") == std::string::npos)
 	{
 		GenerateFloorTraps(); // TODO: Testing this
@@ -3178,6 +3255,8 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 			if (floor_enchantment == FloorEnchantments::SECOND_WIND)
 				time_of_last_second_wind_tick = current_time_in_seconds;
 		}
+
+		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_DUNGEON_ROOM_START));
@@ -3313,7 +3392,7 @@ RValue& GmlScriptGetEquipmentBonusFromCallback(
 		Arguments
 	);
 
-	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal"))
+	if (AriCurrentGmRoomIsDungeonFloor())
 	{
 		int infusion_id = Arguments[0]->ToInt64();
 
@@ -3446,7 +3525,7 @@ RValue& GmlScriptGetUiIconCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_ITEM_UI_ICON));
 	original(
 		Self,
 		Other,
@@ -3460,9 +3539,10 @@ RValue& GmlScriptGetUiIconCallback(
 		RValue self = Self->ToRValue();
 		if (StructVariableExists(self, "item_id"))
 		{
-			if (self.GetMember("item_id").ToInt64() == mistpool_gear_to_item_id_map[MISTPOOL_SWORD_NAME])
+			int item_id = self.GetMember("item_id").ToInt64();
+			if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_SWORD_NAME])
 			{
-				if (active_traps.contains(Traps::INHIBITING))
+				if (active_traps.contains(Traps::INHIBITING) || !AriCurrentGmRoomIsDungeonFloor())
 				{
 					RValue spr_ui_item_tool_mistpool_sword_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_sword_disabled" });
 					Result = spr_ui_item_tool_mistpool_sword_disabled;
@@ -3471,6 +3551,214 @@ RValue& GmlScriptGetUiIconCallback(
 				{
 					RValue spr_ui_item_tool_mistpool_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_sword" });
 					Result = spr_ui_item_tool_mistpool_sword;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::ALTERATION])
+			{
+				if (active_sigils.contains(Sigils::ALTERATION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_alteration_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_alteration_disabled" });
+					Result = spr_ui_item_sigil_of_alteration_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_alteration = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_alteration" });
+					Result = spr_ui_item_sigil_of_alteration;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::CONCEALMENT])
+			{
+				if (active_sigils.contains(Sigils::CONCEALMENT) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_concealment_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_concealment_disabled" });
+					Result = spr_ui_item_sigil_of_concealment_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_concealment = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_concealment" });
+					Result = spr_ui_item_sigil_of_concealment;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::FORTIFICATION])
+			{
+				if (active_sigils.contains(Sigils::FORTIFICATION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_fortification_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortification_disabled" });
+					Result = spr_ui_item_sigil_of_fortification_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_fortification = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortification" });
+					Result = spr_ui_item_sigil_of_fortification;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::FORTUNE])
+			{
+				if (active_sigils.contains(Sigils::FORTUNE) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_fortune_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortune_disabled" });
+					Result = spr_ui_item_sigil_of_fortune_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_fortune = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortune" });
+					Result = spr_ui_item_sigil_of_fortune;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::PROTECTION])
+			{
+				if (active_sigils.contains(Sigils::PROTECTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_protection_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_protection_disabled" });
+					Result = spr_ui_item_sigil_of_protection_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_protection = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_protection" });
+					Result = spr_ui_item_sigil_of_protection;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::RAGE])
+			{
+				if (active_sigils.contains(Sigils::RAGE) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_rage_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_rage_disabled" });
+					Result = spr_ui_item_sigil_of_rage_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_rage = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_rage" });
+					Result = spr_ui_item_sigil_of_rage;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::REDEMPTION])
+			{
+				if (active_sigils.contains(Sigils::REDEMPTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_redemption_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_redemption_disabled" });
+					Result = spr_ui_item_sigil_of_redemption_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_redemption = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_redemption" });
+					Result = spr_ui_item_sigil_of_redemption;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::SAFETY])
+			{
+				if (active_sigils.contains(Sigils::SAFETY) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_safety_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_safety_disabled" });
+					Result = spr_ui_item_sigil_of_safety_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_safety = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_safety" });
+					Result = spr_ui_item_sigil_of_safety;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::SERENITY])
+			{
+				if (active_sigils.contains(Sigils::SERENITY) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_serenity_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_serenity_disabled" });
+					Result = spr_ui_item_sigil_of_serenity_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_serenity = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_serenity" });
+					Result = spr_ui_item_sigil_of_serenity;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::SILENCE])
+			{
+				if (active_sigils.contains(Sigils::SILENCE) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_silence_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_silence_disabled" });
+					Result = spr_ui_item_sigil_of_silence_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_silence = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_silence" });
+					Result = spr_ui_item_sigil_of_silence;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::STRENGTH])
+			{
+				if (active_sigils.contains(Sigils::STRENGTH) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_strength_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_strength_disabled" });
+					Result = spr_ui_item_sigil_of_strength_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_strength = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_strength" });
+					Result = spr_ui_item_sigil_of_strength;
+				}
+			}
+			if (item_id == sigil_to_item_id_map[Sigils::TEMPTATION])
+			{
+				if (active_sigils.contains(Sigils::TEMPTATION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_sigil_of_temptation_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_temptation_disabled" });
+					Result = spr_ui_item_sigil_of_temptation_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_sigil_of_temptation = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_temptation" });
+					Result = spr_ui_item_sigil_of_temptation;
+				}
+			}
+			if (item_id == salve_name_to_id_map[SUSTAINING_POTION_NAME])
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_potion_sustain_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_potion_sustain_disabled" });
+					Result = spr_ui_item_potion_sustain_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_potion_sustain = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_potion_sustain" });
+					Result = spr_ui_item_potion_sustain;
+				}
+			}
+			if (item_id == salve_name_to_id_map[HEALTH_SALVE_NAME])
+			{
+				if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_salve_health_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_health_disabled" });
+					Result = spr_ui_item_salve_health_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_salve_health = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_health" });
+					Result = spr_ui_item_salve_health;
+				}
+			}
+			if (item_id == salve_name_to_id_map[STAMINA_SALVE_NAME])
+			{
+				if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_salve_stamina_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_stamina_disabled" });
+					Result = spr_ui_item_salve_stamina_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_salve_stamina = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_stamina" });
+					Result = spr_ui_item_salve_stamina;
+				}
+			}
+			if (item_id == salve_name_to_id_map[MANA_SALVE_NAME])
+			{
+				if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+				{
+					RValue spr_ui_item_salve_mana_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_mana_disabled" });
+					Result = spr_ui_item_salve_mana_disabled;
+				}
+				else
+				{
+					RValue spr_ui_item_salve_mana = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_mana" });
+					Result = spr_ui_item_salve_mana;
 				}
 			}
 		}
@@ -3487,10 +3775,33 @@ RValue& GmlScriptUpdateToolbarMenuCallback(
 	IN RValue** Arguments
 )
 {
-	if (!script_name_to_reference_map.contains("gml_Script_update@ToolbarMenu@ToolbarMenu"))
-		script_name_to_reference_map["gml_Script_update@ToolbarMenu@ToolbarMenu"] = { Self, Other };
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+		script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU] = { Self, Other };
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_update@ToolbarMenu@ToolbarMenu"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_UPDATE_TOOLBAR_MENU));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptShowRoomTitleCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (game_is_active)
+		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SHOW_ROOM_TITLE));
 	original(
 		Self,
 		Other,
@@ -3514,6 +3825,33 @@ void CreateObjectCallback(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook (EVENT_OBJECT_CALL)!", MOD_NAME, VERSION);
+	}
+}
+
+void CreateHookGmlScriptCancelStatusEffect(AurieStatus& status)
+{
+	CScript* gml_script_cancel_status_effect = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CANCEL_STATUS_EFFECT,
+		(PVOID*)&gml_script_cancel_status_effect
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CANCEL_STATUS_EFFECT);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CANCEL_STATUS_EFFECT,
+		gml_script_cancel_status_effect->m_Functions->m_ScriptFunction,
+		GmlScriptCancelStatusEffectCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CANCEL_STATUS_EFFECT);
 	}
 }
 
@@ -4227,18 +4565,18 @@ void CreateHookGmlScriptGetUiIcon(AurieStatus& status)
 {
 	CScript* gml_script_get_ui_icon = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem",
+		GML_SCRIPT_GET_ITEM_UI_ICON,
 		(PVOID*)&gml_script_get_ui_icon
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_ITEM_UI_ICON);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem",
+		GML_SCRIPT_GET_ITEM_UI_ICON,
 		gml_script_get_ui_icon->m_Functions->m_ScriptFunction,
 		GmlScriptGetUiIconCallback,
 		nullptr
@@ -4246,34 +4584,61 @@ void CreateHookGmlScriptGetUiIcon(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_ITEM_UI_ICON);
 	}
 }
 
 void CreateHookGmlScriptUpdateToolbarMenu(AurieStatus& status)
 {
-	CScript* gml_script_get_ui_icon = nullptr;
+	CScript* gml_script_update_toolbar_menu = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_update@ToolbarMenu@ToolbarMenu",
-		(PVOID*)&gml_script_get_ui_icon
+		GML_SCRIPT_UPDATE_TOOLBAR_MENU,
+		(PVOID*)&gml_script_update_toolbar_menu
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, "gml_Script_update@ToolbarMenu@ToolbarMenu");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_UPDATE_TOOLBAR_MENU);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_update@ToolbarMenu@ToolbarMenu",
-		gml_script_get_ui_icon->m_Functions->m_ScriptFunction,
+		GML_SCRIPT_UPDATE_TOOLBAR_MENU,
+		gml_script_update_toolbar_menu->m_Functions->m_ScriptFunction,
 		GmlScriptUpdateToolbarMenuCallback,
 		nullptr
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, "gml_Script_update@ToolbarMenu@ToolbarMenu");
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_UPDATE_TOOLBAR_MENU);
+	}
+}
+
+void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
+{
+	CScript* gml_script_show_room_title = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SHOW_ROOM_TITLE,
+		(PVOID*)&gml_script_show_room_title
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SHOW_ROOM_TITLE);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_SHOW_ROOM_TITLE,
+		gml_script_show_room_title->m_Functions->m_ScriptFunction,
+		GmlScriptShowRoomTitleCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SHOW_ROOM_TITLE);
 	}
 }
 
@@ -4299,6 +4664,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
 
 	CreateObjectCallback(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCancelStatusEffect(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
@@ -4495,6 +4867,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptUpdateToolbarMenu(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptShowRoomTitle(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
