@@ -8,7 +8,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "MagicalGirlAri";
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.0.1";
 static const char* const EASTER_EGG_SET_PIECE_REQUIREMENT_KEY = "easter_egg_set_piece_requirement";
 static const char* const BONUS_DAILY_MANA_SET_PIECE_REQUIREMENT_KEY = "bonus_daily_mana_set_piece_requirement";
 static const char* const VANQUISH_ENEMY_SET_PIECE_REQUIREMENT_KEY = "vanquish_enemy_set_piece_requirement";
