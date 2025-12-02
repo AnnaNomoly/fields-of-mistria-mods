@@ -12,7 +12,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "ChutesAndLadders";
-static const char* const VERSION = "1.2.0";
+static const char* const VERSION = "1.2.1";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE_KEY = "ritual_chamber_additional_spawn_chance";
 static const std::string LADDER_SPAWNED_LOCALIZATION_KEY = "mods/ChutesAndLadders/ladder_spawned";
@@ -167,6 +167,7 @@ static std::mt19937 generator(std::random_device{}());
 static std::map<std::string, int> location_name_to_id_map = {};
 static std::map<std::string, bool> active_perk_map = {};
 static std::map<std::string, int64_t> perk_name_to_id_map = {};
+static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {};
 
 RValue StructVariableGet(RValue the_struct, const char* variable_name)
 {
@@ -199,6 +200,10 @@ bool GameWindowHasFocus()
 {
 	RValue window_has_focus = g_ModuleInterface->CallBuiltin("window_has_focus", {});
 	return RValueAsBool(window_has_focus);
+}
+
+uint64_t GetCurrentSystemTime() {
+	return duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 int ActivationButtonToVirtualKey()
@@ -649,22 +654,28 @@ void CreateOrLoadConfigFile()
 
 void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
 {
-	CScript* gml_script_create_notification = nullptr;
-	g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_CREATE_NOTIFICATION,
-		(PVOID*)&gml_script_create_notification
-	);
+	uint64_t current_system_time = GetCurrentSystemTime();
+	if (current_system_time > notification_name_to_last_display_time_map[notification_localization_str] + 5000)
+	{
+		CScript* gml_script_create_notification = nullptr;
+		g_ModuleInterface->GetNamedRoutinePointer(
+			GML_SCRIPT_CREATE_NOTIFICATION,
+			(PVOID*)&gml_script_create_notification
+		);
 
-	RValue result;
-	RValue notification = notification_localization_str;
-	RValue* notification_ptr = &notification;
-	gml_script_create_notification->m_Functions->m_ScriptFunction(
-		Self,
-		Other,
-		result,
-		1,
-		{ &notification_ptr }
-	);
+		RValue result;
+		RValue notification = RValue(notification_localization_str);
+		RValue* notification_ptr = &notification;
+		gml_script_create_notification->m_Functions->m_ScriptFunction(
+			Self,
+			Other,
+			result,
+			1,
+			{ &notification_ptr }
+		);
+
+		notification_name_to_last_display_time_map[notification_localization_str] = current_system_time;
+	}
 }
 
 void SpawnLadder(CInstance* Self, CInstance* Other)
@@ -919,7 +930,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 
 		if (activate)
 		{
-			if (ari_current_location == "dungeon")
+			if (ari_current_location == "dungeon" && ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry")
 			{
 				SpawnLadder(Self, Other);
 			}
