@@ -18,13 +18,14 @@ The table below will be updated with mod development to indicate the status of a
 | Cookbook | 1.1.5 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/162 |
 | Curator | 1.1.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/337 |
 | DataMining | 1.0.0 | 🟡 | N/A |
+| Deep Dungeon | 0.1.0 | ✅ | N/A |
 | Dig Up Anything | 1.2.3 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/138 |
 | Directional Attacks | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/248 |
 | D.I.Y | 1.1.2 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/243 |
 | Elegance | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/453 |
 | Friday Night Reminder | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/290 |
 | Infinite Health | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/83 |
-| Magical Girl Ari | 1.0.0 | ✅ | N/A |
+| Magical Girl Ari | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/516 |
 | Mill Anywhere | 1.1.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/128 |
 | Mistbloom | 1.0.2 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/348 |
 | Mute Any Sound | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/508 |
@@ -39,6 +40,7 @@ The table below will be updated with mod development to indicate the status of a
 | Telepop | 2.1.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/108 |
 | The Aldarian Exconomy | 1.0.0 | ❌ | N/A |
 | The Perfect Gift | 1.1.5 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/244 |
+| Utility Sword | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/517 |
 | Wardrobe | 1.1.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/206 |
 | Work Hard | 1.0.0 | ❌ | N/A |
 | Zoom Control | 1.0.0 | ❌ | N/A |
