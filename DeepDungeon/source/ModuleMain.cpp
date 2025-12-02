@@ -26,7 +26,7 @@ struct pair_hash {
 };
 
 static const char* const MOD_NAME = "DeepDungeon";
-static const char* const VERSION = "0.1.0";
+static const char* const VERSION = "0.2.0";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
@@ -68,7 +68,6 @@ static const char* const GML_SCRIPT_HUD_SHOULD_SHOW = "gml_Script_hud_should_sho
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const char* const GML_SCRIPT_DISPLAY_RESIZE = "gml_Script_resize_amount@Display@Display";
 static const char* const GML_SCRIPT_GET_ITEM_UI_ICON = "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem";
-static const char* const GML_SCRIPT_SHOW_ROOM_TITLE = "gml_Script_on_room_start@Camera@Camera"; // TODO: Change this to gml_Script_show_room_title
 static const std::string SIGIL_OF_ALTERATION_NAME = "sigil_of_alteration";
 static const std::string SIGIL_OF_CONCEALMENT_NAME = "sigil_of_concealment";
 static const std::string SIGIL_OF_FORTIFICATION_NAME = "sigil_of_fortification";
@@ -501,7 +500,6 @@ void ResetStaticFields(bool returned_to_title_screen)
 	current_floor_monsters.clear();
 	ResetCustomDrawFields();
 }
-
 bool GameIsPaused()
 {
 	CInstance* global_instance = nullptr;
@@ -1061,6 +1059,127 @@ void MarkDungeonTutorialUnseen()
 	*mines_tutorial = false; // TESTING - Check this works
 }
 
+void ModifyMistpoolWeaponSprites()
+{
+	// Sprite indexes for the "Scrap Metal Sword" which is used as the Mistpool Sword.
+	RValue spr_weapon_sword_scrap_metal_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_combo1_e" });
+	RValue spr_weapon_sword_scrap_metal_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_combo1_n" });
+	RValue spr_weapon_sword_scrap_metal_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_combo1_s" });
+	RValue spr_weapon_sword_scrap_metal_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_combo2_e" });
+	RValue spr_weapon_sword_scrap_metal_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_combo2_n" });
+	RValue spr_weapon_sword_scrap_metal_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_combo2_s" });
+	RValue spr_weapon_sword_scrap_metal_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_combo3_e" });
+	RValue spr_weapon_sword_scrap_metal_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_combo3_n" });
+	RValue spr_weapon_sword_scrap_metal_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_combo3_s" });
+	RValue spr_weapon_sword_scrap_metal_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_scrap_metal_tool_down_attack_e" });
+	RValue spr_ui_item_tool_scrap_metal_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_scrap_metal_sword" });
+
+	if (floor_number < 20)
+	{
+		RValue spr_weapon_sword_worn_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo1_e" });
+		RValue spr_weapon_sword_worn_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo1_n" });
+		RValue spr_weapon_sword_worn_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo1_s" });
+		RValue spr_weapon_sword_worn_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo2_e" });
+		RValue spr_weapon_sword_worn_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo2_n" });
+		RValue spr_weapon_sword_worn_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo2_s" });
+		RValue spr_weapon_sword_worn_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo3_e" });
+		RValue spr_weapon_sword_worn_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo3_n" });
+		RValue spr_weapon_sword_worn_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo3_s" });
+		RValue spr_weapon_sword_worn_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_down_attack_e" });
+		RValue spr_ui_item_tool_rusty_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_rusty_sword" });
+
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_worn_tool_combo1_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_worn_tool_combo1_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_worn_tool_combo1_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_worn_tool_combo2_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_worn_tool_combo2_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_worn_tool_combo2_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_worn_tool_combo3_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_worn_tool_combo3_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_worn_tool_combo3_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_worn_tool_down_attack_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_rusty_sword });
+	}
+	else if (floor_number < 40)
+	{
+		RValue spr_weapon_sword_verdigris_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo1_e" });
+		RValue spr_weapon_sword_verdigris_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo1_n" });
+		RValue spr_weapon_sword_verdigris_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo1_s" });
+		RValue spr_weapon_sword_verdigris_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo2_e" });
+		RValue spr_weapon_sword_verdigris_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo2_n" });
+		RValue spr_weapon_sword_verdigris_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo2_s" });
+		RValue spr_weapon_sword_verdigris_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo3_e" });
+		RValue spr_weapon_sword_verdigris_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo3_n" });
+		RValue spr_weapon_sword_verdigris_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo3_s" });
+		RValue spr_weapon_sword_verdigris_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_down_attack_e" });
+		RValue spr_ui_item_tool_verdigris_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_verdigris_sword" });
+
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_verdigris_tool_combo1_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_verdigris_tool_combo1_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_verdigris_tool_combo1_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_verdigris_tool_combo2_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_verdigris_tool_combo2_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_verdigris_tool_combo2_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_verdigris_tool_combo3_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_verdigris_tool_combo3_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_verdigris_tool_combo3_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_verdigris_tool_down_attack_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_verdigris_sword });
+	}
+	else if (floor_number < 60)
+	{
+		RValue spr_weapon_sword_crystal_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo1_e" });
+		RValue spr_weapon_sword_crystal_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo1_n" });
+		RValue spr_weapon_sword_crystal_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo1_s" });
+		RValue spr_weapon_sword_crystal_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo2_e" });
+		RValue spr_weapon_sword_crystal_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo2_n" });
+		RValue spr_weapon_sword_crystal_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo2_s" });
+		RValue spr_weapon_sword_crystal_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo3_e" });
+		RValue spr_weapon_sword_crystal_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo3_n" });
+		RValue spr_weapon_sword_crystal_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo3_s" });
+		RValue spr_weapon_sword_crystal_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_down_attack_e" });
+		RValue spr_ui_item_tool_crystal_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_crystal_sword" });
+
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_crystal_tool_combo1_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_crystal_tool_combo1_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_crystal_tool_combo1_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_crystal_tool_combo2_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_crystal_tool_combo2_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_crystal_tool_combo2_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_crystal_tool_combo3_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_crystal_tool_combo3_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_crystal_tool_combo3_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_crystal_tool_down_attack_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_crystal_sword });
+	}
+	else
+	{
+		RValue spr_weapon_sword_tarnished_gold_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo1_e" });
+		RValue spr_weapon_sword_tarnished_gold_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo1_n" });
+		RValue spr_weapon_sword_tarnished_gold_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo1_s" });
+		RValue spr_weapon_sword_tarnished_gold_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo2_e" });
+		RValue spr_weapon_sword_tarnished_gold_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo2_n" });
+		RValue spr_weapon_sword_tarnished_gold_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo2_s" });
+		RValue spr_weapon_sword_tarnished_gold_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo3_e" });
+		RValue spr_weapon_sword_tarnished_gold_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo3_n" });
+		RValue spr_weapon_sword_tarnished_gold_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo3_s" });
+		RValue spr_weapon_sword_tarnished_gold_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_down_attack_e" });
+		RValue spr_ui_item_tool_tarnished_gold_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_tarnished_gold_sword" });
+
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_tarnished_gold_tool_combo1_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_tarnished_gold_tool_combo1_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_tarnished_gold_tool_combo1_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_tarnished_gold_tool_combo2_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_tarnished_gold_tool_combo2_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_tarnished_gold_tool_combo2_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_tarnished_gold_tool_combo3_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_tarnished_gold_tool_combo3_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_tarnished_gold_tool_combo3_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_tarnished_gold_tool_down_attack_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_tarnished_gold_sword });
+	}
+}
+
 void ScaleMistpoolWeapon(bool in_dungeon)
 {
 	RValue item_data = *global_instance->GetRefMember("__item_data");
@@ -1339,6 +1458,147 @@ void SetFloorNumber()
 	// TODO: Add Ruins floors when released.
 	else
 		floor_number++;
+}
+
+RValue GetDynamicItemSprite(int item_id)
+{
+	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_SWORD_NAME])
+	{
+		if (active_traps.contains(Traps::INHIBITING) || !AriCurrentGmRoomIsDungeonFloor())
+		{
+			if (floor_number < 20)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_rusty_sword_disabled" });
+			else if (floor_number < 40)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_verdigris_sword_disabled" });
+			else if (floor_number < 60)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_crystal_sword_disabled" });
+			else
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_tarnished_gold_sword_disabled" });
+		}
+		else
+		{
+			if (floor_number < 20)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_rusty_sword" });
+			else if (floor_number < 40)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_verdigris_sword" });
+			else if (floor_number < 60)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_crystal_sword" });
+			else
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_tarnished_gold_sword" });
+		}
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::ALTERATION])
+	{
+		if (active_sigils.contains(Sigils::ALTERATION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_alteration_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_alteration" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::CONCEALMENT])
+	{
+		if (active_sigils.contains(Sigils::CONCEALMENT) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_concealment_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_concealment" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::FORTIFICATION])
+	{
+		if (active_sigils.contains(Sigils::FORTIFICATION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortification_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortification" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::FORTUNE])
+	{
+		if (active_sigils.contains(Sigils::FORTUNE) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortune_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortune" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::PROTECTION])
+	{
+		if (active_sigils.contains(Sigils::PROTECTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_protection_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_protection" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::RAGE])
+	{
+		if (active_sigils.contains(Sigils::RAGE) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_rage_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_rage" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::REDEMPTION])
+	{
+		if (active_sigils.contains(Sigils::REDEMPTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_redemption_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_redemption" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::SAFETY])
+	{
+		if (active_sigils.contains(Sigils::SAFETY) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_safety_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_safety" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::SERENITY])
+	{
+		if (active_sigils.contains(Sigils::SERENITY) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_serenity_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_serenity" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::SILENCE])
+	{
+		if (active_sigils.contains(Sigils::SILENCE) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_silence_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_silence" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::STRENGTH])
+	{
+		if (active_sigils.contains(Sigils::STRENGTH) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_strength_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_strength" });
+	}
+	if (item_id == sigil_to_item_id_map[Sigils::TEMPTATION])
+	{
+		if (active_sigils.contains(Sigils::TEMPTATION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_temptation_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_temptation" });
+	}
+	if (item_id == salve_name_to_id_map[SUSTAINING_POTION_NAME])
+	{
+		if (active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_potion_sustain_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_potion_sustain" });
+	}
+	if (item_id == salve_name_to_id_map[HEALTH_SALVE_NAME])
+	{
+		if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_health_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_health" });
+	}
+	if (item_id == salve_name_to_id_map[STAMINA_SALVE_NAME])
+	{
+		if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_stamina_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_stamina" });
+	}
+	if (item_id == salve_name_to_id_map[MANA_SALVE_NAME])
+	{
+		if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_mana_disabled" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_mana" });
+	}
 }
 
 std::unordered_set<FloorEnchantments> RandomFloorEnchantments(bool is_first_floor, DungeonBiomes dungeon_biome)
@@ -1809,7 +2069,9 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 		g_ModuleInterface->Print(CM_LIGHTPURPLE, "Inhibiting Trap Ended: %d", current_time_in_seconds);
 		active_traps.erase(Traps::INHIBITING);
 		active_traps_to_value_map.erase(Traps::INHIBITING);
-		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 	}
 
 	// Process traps in range.
@@ -1854,8 +2116,10 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			{
 				PlaySoundEffect("snd_bark_surprised", 100);
 				CreateNotification(INHIBITING_TRAP_NOTIFICATION_KEY, Self, Other);
-				UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 				g_ModuleInterface->Print(CM_LIGHTPURPLE, "Inhibiting Trap Started: %d", current_time_in_seconds);
+
+				if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+					UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 
 				if (!active_traps_to_value_map.contains(Traps::INHIBITING))
 					active_traps_to_value_map[Traps::INHIBITING] = current_time_in_seconds + 900; // 15m
@@ -1951,7 +2215,7 @@ void ObjectCallback(
 				}
 			}
 		}
-
+		
 		ApplyOfferingPenalties(global_instance->GetRefMember("__ari")->ToInstance(), self);
 
 		RValue ari = self->ToRValue();
@@ -2030,12 +2294,15 @@ void ObjectCallback(
 									if (held_item_id == sigil_to_item_id_map[Sigils::TEMPTATION])
 										active_sigils.insert(Sigils::TEMPTATION);
 
-									UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+									if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+										UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 								}
 								else if (held_item_id == salve_name_to_id_map[HEALTH_SALVE_NAME] || held_item_id == salve_name_to_id_map[STAMINA_SALVE_NAME] || held_item_id == salve_name_to_id_map[MANA_SALVE_NAME])
 								{
 									salves_used.insert(held_item_id);
-									UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+									if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+										UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 								}
 							}
 						}
@@ -2153,7 +2420,9 @@ void ObjectCallback(
 						{
 							active_sigils.erase(Sigils::CONCEALMENT);
 							CreateNotification(CONCEALMENT_LOST_NOTIFICATION_KEY, nullptr, nullptr);
-							UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+							if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+								UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 						}
 					}
 				}
@@ -2302,14 +2571,18 @@ RValue& GmlScriptCancelStatusEffectCallback(
 	if (active_sigils.contains(Sigils::PROTECTION) && Arguments[0]->ToInt64() == status_effect_name_to_id_map["guardians_shield"])
 	{
 		active_sigils.erase(Sigils::PROTECTION);
-		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 	}
 
 	// Redemption
 	if (active_sigils.contains(Sigils::REDEMPTION) && Arguments[0]->ToInt64() == status_effect_name_to_id_map["fairy"])
 	{
 		active_sigils.erase(Sigils::REDEMPTION);
-		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CANCEL_STATUS_EFFECT));
@@ -2502,7 +2775,7 @@ RValue& GmlScriptGetMoveSpeedCallback(
 
 	// Gravity
 	if (active_floor_enchantments.contains(FloorEnchantments::GRAVITY))
-		Result = 1.0;
+		Result = 1.25; // TODO: Trying 1.25 instead of 1.0 for balancing
 
 	// Haste
 	if (active_floor_enchantments.contains(FloorEnchantments::HASTE))
@@ -2970,8 +3243,6 @@ RValue& GmlScriptHeldItemCallback(
 		int item_id = Result.GetMember("item_id").ToInt64();
 		if (held_item_id != item_id)
 			held_item_id = item_id;
-
-		// TODO: Try updating the icon
 	}
 
 	return Result;
@@ -3193,7 +3464,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 )
 {
 	// TODO: Run logic to actually undo all active floor enchantments.
-	// TOOD: Remove all buffs.
+	// TODO: Remove all buffs.
 	ResetCustomDrawFields();
 	salves_used.clear();
 	active_sigils.clear();
@@ -3256,7 +3527,8 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 				time_of_last_second_wind_tick = current_time_in_seconds;
 		}
 
-		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_DUNGEON_ROOM_START));
@@ -3296,6 +3568,11 @@ RValue& GmlScriptGoToRoomCallback(
 		SetFloorNumber();
 	else
 		floor_number = 0;
+
+	ModifyMistpoolWeaponSprites();
+
+	if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 
 	if (ari_current_location == "dungeon" && (!ari_current_gm_room.contains("rm_mines") || ari_current_gm_room == "rm_mines_entry"))
 	{
@@ -3540,227 +3817,8 @@ RValue& GmlScriptGetUiIconCallback(
 		if (StructVariableExists(self, "item_id"))
 		{
 			int item_id = self.GetMember("item_id").ToInt64();
-			if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_SWORD_NAME])
-			{
-				if (active_traps.contains(Traps::INHIBITING) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_tool_mistpool_sword_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_sword_disabled" });
-					Result = spr_ui_item_tool_mistpool_sword_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_tool_mistpool_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_sword" });
-					Result = spr_ui_item_tool_mistpool_sword;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::ALTERATION])
-			{
-				if (active_sigils.contains(Sigils::ALTERATION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_alteration_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_alteration_disabled" });
-					Result = spr_ui_item_sigil_of_alteration_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_alteration = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_alteration" });
-					Result = spr_ui_item_sigil_of_alteration;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::CONCEALMENT])
-			{
-				if (active_sigils.contains(Sigils::CONCEALMENT) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_concealment_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_concealment_disabled" });
-					Result = spr_ui_item_sigil_of_concealment_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_concealment = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_concealment" });
-					Result = spr_ui_item_sigil_of_concealment;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::FORTIFICATION])
-			{
-				if (active_sigils.contains(Sigils::FORTIFICATION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_fortification_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortification_disabled" });
-					Result = spr_ui_item_sigil_of_fortification_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_fortification = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortification" });
-					Result = spr_ui_item_sigil_of_fortification;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::FORTUNE])
-			{
-				if (active_sigils.contains(Sigils::FORTUNE) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_fortune_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortune_disabled" });
-					Result = spr_ui_item_sigil_of_fortune_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_fortune = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_fortune" });
-					Result = spr_ui_item_sigil_of_fortune;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::PROTECTION])
-			{
-				if (active_sigils.contains(Sigils::PROTECTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_protection_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_protection_disabled" });
-					Result = spr_ui_item_sigil_of_protection_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_protection = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_protection" });
-					Result = spr_ui_item_sigil_of_protection;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::RAGE])
-			{
-				if (active_sigils.contains(Sigils::RAGE) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_rage_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_rage_disabled" });
-					Result = spr_ui_item_sigil_of_rage_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_rage = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_rage" });
-					Result = spr_ui_item_sigil_of_rage;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::REDEMPTION])
-			{
-				if (active_sigils.contains(Sigils::REDEMPTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_redemption_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_redemption_disabled" });
-					Result = spr_ui_item_sigil_of_redemption_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_redemption = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_redemption" });
-					Result = spr_ui_item_sigil_of_redemption;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::SAFETY])
-			{
-				if (active_sigils.contains(Sigils::SAFETY) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_safety_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_safety_disabled" });
-					Result = spr_ui_item_sigil_of_safety_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_safety = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_safety" });
-					Result = spr_ui_item_sigil_of_safety;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::SERENITY])
-			{
-				if (active_sigils.contains(Sigils::SERENITY) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_serenity_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_serenity_disabled" });
-					Result = spr_ui_item_sigil_of_serenity_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_serenity = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_serenity" });
-					Result = spr_ui_item_sigil_of_serenity;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::SILENCE])
-			{
-				if (active_sigils.contains(Sigils::SILENCE) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_silence_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_silence_disabled" });
-					Result = spr_ui_item_sigil_of_silence_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_silence = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_silence" });
-					Result = spr_ui_item_sigil_of_silence;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::STRENGTH])
-			{
-				if (active_sigils.contains(Sigils::STRENGTH) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_strength_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_strength_disabled" });
-					Result = spr_ui_item_sigil_of_strength_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_strength = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_strength" });
-					Result = spr_ui_item_sigil_of_strength;
-				}
-			}
-			if (item_id == sigil_to_item_id_map[Sigils::TEMPTATION])
-			{
-				if (active_sigils.contains(Sigils::TEMPTATION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_sigil_of_temptation_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_temptation_disabled" });
-					Result = spr_ui_item_sigil_of_temptation_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_sigil_of_temptation = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_temptation" });
-					Result = spr_ui_item_sigil_of_temptation;
-				}
-			}
-			if (item_id == salve_name_to_id_map[SUSTAINING_POTION_NAME])
-			{
-				if (active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_potion_sustain_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_potion_sustain_disabled" });
-					Result = spr_ui_item_potion_sustain_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_potion_sustain = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_potion_sustain" });
-					Result = spr_ui_item_potion_sustain;
-				}
-			}
-			if (item_id == salve_name_to_id_map[HEALTH_SALVE_NAME])
-			{
-				if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_salve_health_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_health_disabled" });
-					Result = spr_ui_item_salve_health_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_salve_health = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_health" });
-					Result = spr_ui_item_salve_health;
-				}
-			}
-			if (item_id == salve_name_to_id_map[STAMINA_SALVE_NAME])
-			{
-				if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_salve_stamina_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_stamina_disabled" });
-					Result = spr_ui_item_salve_stamina_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_salve_stamina = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_stamina" });
-					Result = spr_ui_item_salve_stamina;
-				}
-			}
-			if (item_id == salve_name_to_id_map[MANA_SALVE_NAME])
-			{
-				if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
-				{
-					RValue spr_ui_item_salve_mana_disabled = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_mana_disabled" });
-					Result = spr_ui_item_salve_mana_disabled;
-				}
-				else
-				{
-					RValue spr_ui_item_salve_mana = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_mana" });
-					Result = spr_ui_item_salve_mana;
-				}
-			}
+			if(deep_dungeon_items.contains(item_id))
+				Result = GetDynamicItemSprite(item_id);
 		}
 	}
 
@@ -3779,29 +3837,6 @@ RValue& GmlScriptUpdateToolbarMenuCallback(
 		script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU] = { Self, Other };
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_UPDATE_TOOLBAR_MENU));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	return Result;
-}
-
-RValue& GmlScriptShowRoomTitleCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	if (game_is_active)
-		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SHOW_ROOM_TITLE));
 	original(
 		Self,
 		Other,
@@ -4615,33 +4650,6 @@ void CreateHookGmlScriptUpdateToolbarMenu(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
-{
-	CScript* gml_script_show_room_title = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_SHOW_ROOM_TITLE,
-		(PVOID*)&gml_script_show_room_title
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SHOW_ROOM_TITLE);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		GML_SCRIPT_SHOW_ROOM_TITLE,
-		gml_script_show_room_title->m_Functions->m_ScriptFunction,
-		GmlScriptShowRoomTitleCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SHOW_ROOM_TITLE);
-	}
-}
-
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -4867,13 +4875,6 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptUpdateToolbarMenu(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-		return status;
-	}
-
-	CreateHookGmlScriptShowRoomTitle(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
