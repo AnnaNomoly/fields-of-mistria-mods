@@ -48,7 +48,7 @@ static const char* const GML_SCRIPT_SPAWN_MONSTER = "gml_Script_spawn_monster";
 static const char* const GML_SCRIPT_CAN_CAST_SPELL = "gml_Script_can_cast_spell";
 static const char* const GML_SCRIPT_GET_MOVE_SPEED = "gml_Script_get_move_speed@Ari@Ari";
 static const char* const GML_SCRIPT_DAMAGE = "gml_Script_damage@gml_Object_obj_damage_receiver_Create_0";
-static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script_get_treasure_from_distribution";
+static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact";
 static const char* const GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE = "gml_Script_deserialize@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_TAKE_PRESS = "gml_Script_take_press@Input@Input";
 static const char* const GML_SCRIPT_CHECK_VALUE = "gml_Script_check_value@Input@Input";
@@ -68,6 +68,7 @@ static const char* const GML_SCRIPT_HUD_SHOULD_SHOW = "gml_Script_hud_should_sho
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const char* const GML_SCRIPT_DISPLAY_RESIZE = "gml_Script_resize_amount@Display@Display";
 static const char* const GML_SCRIPT_GET_ITEM_UI_ICON = "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem";
+static const char* const GML_SCRIPT_CREATE_ITEM_PROTOTYPES = "gml_Script_create_item_prototypes";
 static const std::string SIGIL_OF_ALTERATION_NAME = "sigil_of_alteration";
 static const std::string SIGIL_OF_CONCEALMENT_NAME = "sigil_of_concealment";
 static const std::string SIGIL_OF_FORTIFICATION_NAME = "sigil_of_fortification";
@@ -90,6 +91,10 @@ static const std::string MISTPOOL_CHESTPIECE_NAME = "scrap_metal_chestpiece";
 static const std::string MISTPOOL_PANTS_NAME = "scrap_metal_pants";
 static const std::string MISTPOOL_BOOTS_NAME = "scrap_metal_boots";
 static const std::string MISTPOOL_RING_NAME = "scrap_metal_ring";
+static const std::string TREASURE_CHEST_WOOD_NAME = "treasure_chest_wood";
+static const std::string TREASURE_CHEST_COPPER_NAME = "treasure_chest_copper";
+static const std::string TREASURE_CHEST_SILVER_NAME = "treasure_chest_silver";
+static const std::string TREASURE_CHEST_GOLD_NAME = "treasure_chest_gold";
 static const std::string SIGIL_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_limit";
 static const std::string SALVE_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/salve_limit";
 static const std::string ITEM_PENALTY_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_penalty";
@@ -129,6 +134,14 @@ static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/
 
 static const int TWO_MINUTES_IN_SECONDS = 120;
 static const int TRAP_ACTIVATION_DISTANCE = 16;
+
+// TODO: Do I need this?
+static const std::unordered_set<std::string> DUNGEON_TREASURE_CHEST_NAMES = {
+	TREASURE_CHEST_WOOD_NAME,
+	TREASURE_CHEST_COPPER_NAME,
+	TREASURE_CHEST_SILVER_NAME,
+	TREASURE_CHEST_GOLD_NAME
+};
 
 static const std::vector<std::string> MISTPOOL_ARMOR_NAMES = {
 	MISTPOOL_HELMET_NAME,
@@ -394,7 +407,6 @@ static bool sigil_item_used = false;
 static bool fire_breath_cast = false; // TESTING
 static bool reckoning_applied = false;
 static bool fairy_buff_applied = false;
-static bool chance_for_sigil_drop = false;
 static bool is_restoration_tracked_interval = false;
 static bool is_second_wind_tracked_interval = false;
 static bool offering_chance_occurred = false; // TESTING
@@ -408,6 +420,7 @@ static int time_of_last_second_wind_tick = -1;
 static int held_item_id = -1;
 static int sigil_of_silence_count = 0;
 static int sigil_of_alteration_count = 0;
+
 static std::string ari_current_location = "";
 static std::string ari_current_gm_room = "";
 static std::unordered_set<int> restricted_items = {};
@@ -417,6 +430,7 @@ static std::map<int, Sigils> item_id_to_sigil_map = {};
 static std::map<std::string, int> perk_name_to_id_map = {};
 static std::map<int, int> spell_id_to_default_cost_map = {};
 static std::map<std::string, int> salve_name_to_id_map = {};
+static std::map<int, std::string> object_id_to_name_map = {};
 static std::map<std::string, int> player_state_to_id_map = {};
 static std::map<std::string, int> monster_name_to_id_map = {};
 static std::map<std::string, int> tutorial_name_to_id_map = {};
@@ -440,6 +454,8 @@ static std::map<std::string, std::unordered_set<int>> dungeon_biome_to_candidate
 static std::map<int, std::string> floor_number_to_biome_name_map = {}; // Maps floor numbers to the dungeon biome name.
 static std::vector<CInstance*> current_floor_monsters = {};
 static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {}; // Tracks when a notification was last displayed.
+static std::map<int, RValue> item_id_to_prototype_map = {};
+static RValue live_item;
 
 // GUI
 static double window_width = 0;
@@ -485,7 +501,6 @@ void ResetStaticFields(bool returned_to_title_screen)
 	fire_breath_cast = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
-	chance_for_sigil_drop = false;
 	offering_chance_occurred = false;
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
@@ -934,6 +949,21 @@ void LoadDungeonBiomeCandidateMonsters()
 			for (size_t j = floor; j <= max_floors; j++)
 				floor_number_to_biome_name_map[j] = biome_name;
 		}
+	}
+}
+
+void LoadObjectIds()
+{
+	size_t array_length;
+	RValue objects = global_instance->GetMember("__object_id__");
+	g_ModuleInterface->GetArraySize(objects, array_length);
+
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* object;
+		g_ModuleInterface->GetArrayEntry(objects, i, object);
+
+		object_id_to_name_map[i] = object->ToString();
 	}
 }
 
@@ -1405,6 +1435,64 @@ void UpdateToolbarMenu(CInstance* Self, CInstance* Other)
 		result,
 		0,
 		nullptr
+	);
+}
+
+void DropItem(int item_id, double x_coord, double y_coord, CInstance* Self, CInstance* Other)
+{
+	// Last minute sanity checks to prevent errors. Log which occurred.
+	if (live_item.m_Kind == VALUE_UNDEFINED || live_item.m_Kind == VALUE_UNSET || live_item.m_Kind == VALUE_NULL)
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] Tried to call %s but the static \"live_item\" var was NULL, UNSET, or UNDEFINED!", MOD_NAME, VERSION, GML_SCRIPT_DROP_ITEM);
+		return;
+	}
+	if (live_item.m_Kind != VALUE_OBJECT)
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] Tried to call %s but the static \"live_item\" var was an OBJECT!", MOD_NAME, VERSION, GML_SCRIPT_DROP_ITEM);
+		return;
+	}
+	if (!StructVariableExists(live_item, "prototype") || !StructVariableExists(live_item, "item_id"))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] Tried to call %s but the static \"live_item\" var was missing the \"prototype\" or \"item_id\" fields!", MOD_NAME, VERSION, GML_SCRIPT_DROP_ITEM);
+		return;
+	}
+
+	//RValue item = RValue(live_item);
+	RValue item = g_ModuleInterface->CallBuiltin("variable_clone", { live_item });
+	*item.GetRefMember("prototype") = item_id_to_prototype_map[item_id];
+	*item.GetRefMember("item_id") = item_id;
+
+	auto one = item.GetMember("item_id"); // DEBUG
+	auto two = live_item.GetMember("item_id"); // DEBUG
+
+	//*live_item.GetRefMember("prototype") = item_id_to_prototype_map[item_id];
+	//*live_item.GetRefMember("item_id") = item_id;
+
+	CScript* gml_script_drop_item = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_DROP_ITEM,
+		(PVOID*)&gml_script_drop_item
+	);
+
+	RValue x = x_coord;
+	RValue y = y_coord;
+	RValue undefined;
+
+	RValue* item_ptr = &item;
+	//RValue* item_ptr = &live_item;
+	RValue* x_ptr = &x;
+	RValue* y_ptr = &y;
+	RValue* undefined_ptr = &undefined;
+
+	RValue result;
+	RValue* arguments[4] = { item_ptr, x_ptr, y_ptr, undefined_ptr };
+
+	gml_script_drop_item->m_Functions->m_ScriptFunction(
+		Self,
+		Self,
+		result,
+		4,
+		arguments
 	);
 }
 
@@ -2163,6 +2251,41 @@ void TrackAriResources(CInstance* Self, CInstance* Other)
 	ari_resource_to_value_map[AriResources::MANA] = GetMana(Self, Other).ToInt64();
 }
 
+void GenerateTreasureChestLoot(std::string object_name, CInstance* Self, CInstance* Other)
+{
+	if (live_item.m_Kind == VALUE_UNDEFINED || live_item.m_Kind == VALUE_UNSET || live_item.m_Kind == VALUE_NULL)
+		return;
+
+	static thread_local std::mt19937 random_generator(std::random_device{}());
+	std::uniform_int_distribution<size_t> zero_to_nintey_nine_distribution(0, 99);
+	std::uniform_int_distribution<size_t> random_sigil_distribution(0, magic_enum::enum_count<Sigils>() - 1);
+
+	std::vector<int> roll_success_thresholds = {};
+	if (object_name == TREASURE_CHEST_WOOD_NAME)
+		roll_success_thresholds = { 50, 25, 0, 0 };
+	else if (object_name == TREASURE_CHEST_COPPER_NAME)
+		roll_success_thresholds = { 75, 50, 10, 0 };
+	else if (object_name == TREASURE_CHEST_SILVER_NAME)
+		roll_success_thresholds = { 100, 50, 25, 0 };
+	else if (object_name == TREASURE_CHEST_GOLD_NAME)
+		roll_success_thresholds = { 100, 100, 25, 10 };
+
+	std::unordered_set<Sigils> sigils_spawned = {};
+	for (size_t i = 0; i < roll_success_thresholds.size(); i++)
+	{
+		int roll_for_drop = zero_to_nintey_nine_distribution(random_generator);
+		if (roll_for_drop < roll_success_thresholds[i])
+		{
+			Sigils random_sigil = magic_enum::enum_value<Sigils>(random_sigil_distribution(random_generator));
+			while(sigils_spawned.contains(random_sigil))
+				random_sigil = magic_enum::enum_value<Sigils>(random_sigil_distribution(random_generator));
+
+			sigils_spawned.insert(random_sigil);
+			DropItem(sigil_to_item_id_map[random_sigil], ari_x, ari_y, Self, Other);
+		}
+	}
+}
+
 void ObjectCallback(
 	IN FWCodeEvent& CodeEvent
 )
@@ -2913,7 +3036,7 @@ RValue& GmlScriptDamageCallback(
 	return Result;
 }
 
-RValue& GmlScriptGetTreasureFromDistributionCallback(
+RValue& GmlScriptInteractCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
 	OUT RValue& Result,
@@ -2921,7 +3044,21 @@ RValue& GmlScriptGetTreasureFromDistributionCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION));
+	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal"))
+	{
+		if (Arguments[0]->m_Kind == VALUE_OBJECT && StructVariableExists(*Arguments[0], "object_id"))
+		{
+			int object_id = Arguments[0]->GetMember("object_id").ToInt64();
+			if (object_id_to_name_map.contains(object_id))
+			{
+				std::string object_name = object_id_to_name_map[object_id];
+				if (DUNGEON_TREASURE_CHEST_NAMES.contains(object_name)) // Generate custom treasure chest loot. Currently only Sigils.
+					GenerateTreasureChestLoot(object_name, Self, Other); // TODO: Chance for Cursed Armor drops.
+			}
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_INTERACT));
 	original(
 		Self,
 		Other,
@@ -2929,10 +3066,6 @@ RValue& GmlScriptGetTreasureFromDistributionCallback(
 		ArgumentCount,
 		Arguments
 	);
-
-	if (AriCurrentGmRoomIsDungeonFloor())
-		chance_for_sigil_drop = true;
-
 	return Result;
 }
 
@@ -3129,6 +3262,12 @@ RValue& GmlScriptUseItemCallback(
 	IN RValue** Arguments
 )
 {
+	if (live_item.m_Kind == VALUE_UNDEFINED || live_item.m_Kind == VALUE_UNSET || live_item.m_Kind == VALUE_NULL)
+	{
+		if (Arguments[0]->m_Kind == VALUE_OBJECT)
+			live_item = *Arguments[0];
+	}
+
 	// Inhibiting Trap
 	if (active_traps.contains(Traps::INHIBITING))
 	{
@@ -3256,17 +3395,13 @@ RValue& GmlScriptDropItemCallback(
 	IN RValue** Arguments
 )
 {
-	if (chance_for_sigil_drop && Arguments[0]->m_Kind == VALUE_INT64)
+	if (live_item.m_Kind == VALUE_UNDEFINED || live_item.m_Kind == VALUE_UNSET || live_item.m_Kind == VALUE_NULL)
 	{
-		static thread_local std::mt19937 random_generator(std::random_device{}());
-		std::uniform_int_distribution<size_t> zero_to_four_distribution(0, 3); // 25% chance for a sigil to drop
-
-		int roll = zero_to_four_distribution(random_generator);
-		if (roll == 0)
+		if (Arguments[0]->m_Kind == VALUE_ARRAY)
 		{
-			std::uniform_int_distribution<size_t> random_sigil_distribution(0, magic_enum::enum_count<Sigils>() - 1);
-			int64_t random_sigil = sigil_to_item_id_map[magic_enum::enum_value<Sigils>(random_sigil_distribution(random_generator))];
-			*Arguments[0] = random_sigil;
+			RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { *Arguments[0] });
+			if (array_length.ToInt64() > 0)
+				live_item = RValue(g_ModuleInterface->CallBuiltin("array_get", { *Arguments[0], 0 }));
 		}
 	}
 
@@ -3489,7 +3624,6 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	SetInvulnerabilityHits(0);
 	reckoning_applied = false;
 	fairy_buff_applied = false;
-	chance_for_sigil_drop = false;
 	offering_chance_occurred = false;
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
@@ -3596,7 +3730,6 @@ RValue& GmlScriptGoToRoomCallback(
 		fire_breath_cast = false; // Different than OnDungeonRoomStart
 		reckoning_applied = false;
 		fairy_buff_applied = false;
-		chance_for_sigil_drop = false;
 		offering_chance_occurred = false;
 		sigil_of_silence_count = 0;
 		sigil_of_alteration_count = 0;
@@ -3627,6 +3760,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		LoadSpells();
 		LoadStatusEffects();
 		LoadInfusions();
+		LoadObjectIds();
 		LoadItems();
 		LoadMonsters();
 		LoadDungeonBiomeCandidateMonsters();
@@ -3848,6 +3982,38 @@ RValue& GmlScriptUpdateToolbarMenuCallback(
 	return Result;
 }
 
+RValue& GmlScriptCreateItemPrototypesCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CREATE_ITEM_PROTOTYPES));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	size_t array_length;
+	g_ModuleInterface->GetArraySize(Result, array_length);
+
+	// Load all items.
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(Result, i, array_element);
+
+		item_id_to_prototype_map[i] = *array_element;
+	}
+
+	return Result;
+}
+
 void CreateObjectCallback(AurieStatus& status)
 {
 	status = g_ModuleInterface->CreateCallback(
@@ -4052,30 +4218,30 @@ void CreateHookGmlScriptDamage(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptGetTreasureFromDistribution(AurieStatus& status)
+void CreateHookGmlScriptInteract(AurieStatus& status)
 {
-	CScript* gml_script_get_treasure_from_distribution = nullptr;
+	CScript* gml_script_interact = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION,
-		(PVOID*)&gml_script_get_treasure_from_distribution
+		GML_SCRIPT_INTERACT,
+		(PVOID*)&gml_script_interact
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_INTERACT);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION,
-		gml_script_get_treasure_from_distribution->m_Functions->m_ScriptFunction,
-		GmlScriptGetTreasureFromDistributionCallback,
+		GML_SCRIPT_INTERACT,
+		gml_script_interact->m_Functions->m_ScriptFunction,
+		GmlScriptInteractCallback,
 		nullptr
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_INTERACT);
 	}
 }
 
@@ -4650,6 +4816,33 @@ void CreateHookGmlScriptUpdateToolbarMenu(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptCreateItemPrototypes(AurieStatus& status)
+{
+	CScript* gml_script_create_item_prototypes = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CREATE_ITEM_PROTOTYPES,
+		(PVOID*)&gml_script_create_item_prototypes
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CREATE_ITEM_PROTOTYPES);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CREATE_ITEM_PROTOTYPES,
+		gml_script_create_item_prototypes->m_Functions->m_ScriptFunction,
+		GmlScriptCreateItemPrototypesCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CREATE_ITEM_PROTOTYPES);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -4727,7 +4920,7 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
-	CreateHookGmlScriptGetTreasureFromDistribution(status);
+	CreateHookGmlScriptInteract(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
@@ -4875,6 +5068,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptUpdateToolbarMenu(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCreateItemPrototypes(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
