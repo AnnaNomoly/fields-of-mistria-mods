@@ -69,6 +69,9 @@ static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Displa
 static const char* const GML_SCRIPT_DISPLAY_RESIZE = "gml_Script_resize_amount@Display@Display";
 static const char* const GML_SCRIPT_GET_ITEM_UI_ICON = "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem";
 static const char* const GML_SCRIPT_CREATE_ITEM_PROTOTYPES = "gml_Script_create_item_prototypes";
+static const char* const GML_SCRIPT_STOP_ROOM_TITLE = "gml_Script_stop_room_title";
+static const char* const GML_SCRIPT_DESERIALIZE_LIVE_ITEM = "gml_Script_deserialize_live_item";
+static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script_get_treasure_from_distribution";
 static const std::string SIGIL_OF_ALTERATION_NAME = "sigil_of_alteration";
 static const std::string SIGIL_OF_CONCEALMENT_NAME = "sigil_of_concealment";
 static const std::string SIGIL_OF_FORTIFICATION_NAME = "sigil_of_fortification";
@@ -91,6 +94,13 @@ static const std::string MISTPOOL_CHESTPIECE_NAME = "scrap_metal_chestpiece";
 static const std::string MISTPOOL_PANTS_NAME = "scrap_metal_pants";
 static const std::string MISTPOOL_BOOTS_NAME = "scrap_metal_boots";
 static const std::string MISTPOOL_RING_NAME = "scrap_metal_ring";
+static const std::string CURSED_HELMET_NAME = "cursed_helmet";
+static const std::string CURSED_CHESTPIECE_NAME = "cursed_chestpiece";
+static const std::string CURSED_PANTS_NAME = "cursed_pants";
+static const std::string CURSED_BOOTS_NAME = "cursed_boots";
+static const std::string CURSED_GLOVES_NAME = "cursed_gloves";
+static const std::string CURSED_BRACELET_NAME = "cursed_bracelet";
+// TODO: Cleric gear
 static const std::string TREASURE_CHEST_WOOD_NAME = "treasure_chest_wood";
 static const std::string TREASURE_CHEST_COPPER_NAME = "treasure_chest_copper";
 static const std::string TREASURE_CHEST_SILVER_NAME = "treasure_chest_silver";
@@ -110,6 +120,7 @@ static const std::string LURING_TRAP_NOTIFICATION_KEY = "Notifications/Mods/Deep
 static const std::string FLOOR_ENCHANTMENT_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/floor_enchantments";
 static const std::string DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning";
 static const std::string FLOOR_ENCHANTMENT_AND_DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning_and_floor_enchantments";
+static const std::string PROGRESSION_MODE_ELEVATOR_LOCKED_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Progression Mode/elevator_locked";
 static const std::string OFFERINGS_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/offerings/result";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
 static const std::string DREAD_BEAST_WARNING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Special/dread";
@@ -135,7 +146,6 @@ static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/
 static const int TWO_MINUTES_IN_SECONDS = 120;
 static const int TRAP_ACTIVATION_DISTANCE = 16;
 
-// TODO: Do I need this?
 static const std::unordered_set<std::string> DUNGEON_TREASURE_CHEST_NAMES = {
 	TREASURE_CHEST_WOOD_NAME,
 	TREASURE_CHEST_COPPER_NAME,
@@ -403,14 +413,17 @@ static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
 static bool localize_mod_text = false;
 static bool game_is_active = false;
+static bool progression_mode = true; // TODO: Make this configurable
+static bool biome_reward = false;
 static bool sigil_item_used = false;
-static bool fire_breath_cast = false; // TESTING
+static bool fire_breath_cast = false;
 static bool reckoning_applied = false;
 static bool fairy_buff_applied = false;
 static bool is_restoration_tracked_interval = false;
 static bool is_second_wind_tracked_interval = false;
-static bool offering_chance_occurred = false; // TESTING
-static bool obj_dungeon_ladder_down_focused = false; // TESTING
+static bool offering_chance_occurred = false;
+static bool obj_dungeon_elevator_focused = false;
+static bool obj_dungeon_ladder_down_focused = false;
 static double ari_x = -1;
 static double ari_y = -1;
 static double floor_number = 0;
@@ -436,7 +449,9 @@ static std::map<std::string, int> monster_name_to_id_map = {};
 static std::map<std::string, int> tutorial_name_to_id_map = {};
 static std::map<std::string, int> infusion_name_to_id_map = {};
 static std::map<std::string, int> status_effect_name_to_id_map = {};
-static std::map<std::string, int> mistpool_gear_to_item_id_map = {};
+static std::map<std::string, int> mistpool_gear_to_item_id_map = {}; // TODO: Remove this. Use item_name_to_id_map instead.
+static std::map<std::string, int> cursed_gear_to_item_id_map = {}; // TODO: Remove this. Use item_name_to_id_map instead.
+static std::map<std::string, int> item_name_to_id_map = {};
 std::unordered_set<std::pair<int,int>, pair_hash> floor_trap_positions = {};
 static std::unordered_set<int> salves_used = {};
 static std::unordered_set<Traps> active_traps = {};
@@ -455,7 +470,6 @@ static std::map<int, std::string> floor_number_to_biome_name_map = {}; // Maps f
 static std::vector<CInstance*> current_floor_monsters = {};
 static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {}; // Tracks when a notification was last displayed.
 static std::map<int, RValue> item_id_to_prototype_map = {};
-static RValue live_item;
 
 // GUI
 static double window_width = 0;
@@ -502,6 +516,8 @@ void ResetStaticFields(bool returned_to_title_screen)
 	reckoning_applied = false;
 	fairy_buff_applied = false;
 	offering_chance_occurred = false;
+	obj_dungeon_elevator_focused = false;
+	obj_dungeon_ladder_down_focused = false;
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
 	salves_used.clear();
@@ -983,6 +999,7 @@ void LoadItems()
 		{
 			int item_id = item->GetMember("item_id").ToInt64();
 			std::string item_name = item->GetMember("recipe_key").ToString(); // The internal item name
+			item_name_to_id_map[item_name] = item_id;
 
 			// Sigil items
 			if (item_name_to_sigil_map.contains(item_name))
@@ -1002,9 +1019,14 @@ void LoadItems()
 				{
 					deep_dungeon_items.insert(item_id);
 					salve_name_to_id_map[item_name] = item_id;
-					//*item->GetRefMember("health_modifier") = 0;
 				}
 			}
+
+			// Cursed armor
+			std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME, CURSED_BRACELET_NAME };
+			for (std::string cursed_armor_name : cursed_armor)
+				if (item_name == cursed_armor_name)
+					cursed_gear_to_item_id_map[cursed_armor_name] = item_id;
 
 			// All consumable items
 			if (name_key.ToString().contains("cooked_dishes"))
@@ -1031,13 +1053,12 @@ void LoadItems()
 
 					if (array_element->ToString() == "armor")
 					{
+						// TODO: Don't do this to Class armor!
 						*item->GetRefMember("defense") = 0;
 
 						for (std::string mistpool_armor_name : MISTPOOL_ARMOR_NAMES)
-						{
 							if(item_name == mistpool_armor_name)
 								mistpool_gear_to_item_id_map[mistpool_armor_name] = item_id;
-						}
 					}
 
 					if (array_element->ToString() == "weapon")
@@ -1438,35 +1459,45 @@ void UpdateToolbarMenu(CInstance* Self, CInstance* Other)
 	);
 }
 
+RValue DeserializeLiveItem(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_deserialize_live_item = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_DESERIALIZE_LIVE_ITEM,
+		(PVOID*)&gml_script_deserialize_live_item
+	);
+
+	std::map<std::string, RValue> rvalue_map = {
+		{ "cosmetic", RValue() }, // UNDEFINED
+		{ "item_id", RValue("sword_scrap_metal")}, // STRING
+		{ "infusion", RValue() }, // UNDEFINED
+		{ "animal_cosmetic", RValue() }, // UNDEFINED
+		{ "date_photo", RValue() }, // UNDEFINED
+		{ "inner_item", RValue() }, // UNDEFINED
+		{ "gold_to_gain", RValue() }, // UNDEFINED
+		{ "auto_use", false }, // BOOL
+		{ "pet_cosmetic_set_name", RValue() } // UNDEFINED
+	};
+
+	RValue result;
+	RValue input = rvalue_map;
+	RValue* input_ptr = &input;
+	gml_script_deserialize_live_item->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &input_ptr }
+	);
+
+	return result;
+}
+
 void DropItem(int item_id, double x_coord, double y_coord, CInstance* Self, CInstance* Other)
 {
-	// Last minute sanity checks to prevent errors. Log which occurred.
-	if (live_item.m_Kind == VALUE_UNDEFINED || live_item.m_Kind == VALUE_UNSET || live_item.m_Kind == VALUE_NULL)
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] Tried to call %s but the static \"live_item\" var was NULL, UNSET, or UNDEFINED!", MOD_NAME, VERSION, GML_SCRIPT_DROP_ITEM);
-		return;
-	}
-	if (live_item.m_Kind != VALUE_OBJECT)
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] Tried to call %s but the static \"live_item\" var was an OBJECT!", MOD_NAME, VERSION, GML_SCRIPT_DROP_ITEM);
-		return;
-	}
-	if (!StructVariableExists(live_item, "prototype") || !StructVariableExists(live_item, "item_id"))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] Tried to call %s but the static \"live_item\" var was missing the \"prototype\" or \"item_id\" fields!", MOD_NAME, VERSION, GML_SCRIPT_DROP_ITEM);
-		return;
-	}
-
-	//RValue item = RValue(live_item);
-	RValue item = g_ModuleInterface->CallBuiltin("variable_clone", { live_item });
+	RValue item = DeserializeLiveItem(Self, Other);
 	*item.GetRefMember("prototype") = item_id_to_prototype_map[item_id];
 	*item.GetRefMember("item_id") = item_id;
-
-	auto one = item.GetMember("item_id"); // DEBUG
-	auto two = live_item.GetMember("item_id"); // DEBUG
-
-	//*live_item.GetRefMember("prototype") = item_id_to_prototype_map[item_id];
-	//*live_item.GetRefMember("item_id") = item_id;
 
 	CScript* gml_script_drop_item = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
@@ -1479,7 +1510,6 @@ void DropItem(int item_id, double x_coord, double y_coord, CInstance* Self, CIns
 	RValue undefined;
 
 	RValue* item_ptr = &item;
-	//RValue* item_ptr = &live_item;
 	RValue* x_ptr = &x;
 	RValue* y_ptr = &y;
 	RValue* undefined_ptr = &undefined;
@@ -1633,7 +1663,7 @@ RValue GetDynamicItemSprite(int item_id)
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::SERENITY])
 	{
-		if (active_sigils.contains(Sigils::SERENITY) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+		if (active_sigils.contains(Sigils::SERENITY) || !AriCurrentGmRoomIsDungeonFloor())
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_serenity_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_serenity" });
@@ -2253,28 +2283,26 @@ void TrackAriResources(CInstance* Self, CInstance* Other)
 
 void GenerateTreasureChestLoot(std::string object_name, CInstance* Self, CInstance* Other)
 {
-	if (live_item.m_Kind == VALUE_UNDEFINED || live_item.m_Kind == VALUE_UNSET || live_item.m_Kind == VALUE_NULL)
-		return;
-
 	static thread_local std::mt19937 random_generator(std::random_device{}());
 	std::uniform_int_distribution<size_t> zero_to_nintey_nine_distribution(0, 99);
 	std::uniform_int_distribution<size_t> random_sigil_distribution(0, magic_enum::enum_count<Sigils>() - 1);
 
-	std::vector<int> roll_success_thresholds = {};
+	// Sigils
+	std::vector<int> sigil_roll_success_thresholds = {};
 	if (object_name == TREASURE_CHEST_WOOD_NAME)
-		roll_success_thresholds = { 50, 25, 0, 0 };
+		sigil_roll_success_thresholds = { 50, 25, 0, 0 };
 	else if (object_name == TREASURE_CHEST_COPPER_NAME)
-		roll_success_thresholds = { 75, 50, 10, 0 };
+		sigil_roll_success_thresholds = { 75, 50, 10, 0 };
 	else if (object_name == TREASURE_CHEST_SILVER_NAME)
-		roll_success_thresholds = { 100, 50, 25, 0 };
+		sigil_roll_success_thresholds = { 100, 50, 25, 0 };
 	else if (object_name == TREASURE_CHEST_GOLD_NAME)
-		roll_success_thresholds = { 100, 100, 25, 10 };
+		sigil_roll_success_thresholds = { 100, 100, 25, 10 };
 
 	std::unordered_set<Sigils> sigils_spawned = {};
-	for (size_t i = 0; i < roll_success_thresholds.size(); i++)
+	for (size_t i = 0; i < sigil_roll_success_thresholds.size(); i++)
 	{
 		int roll_for_drop = zero_to_nintey_nine_distribution(random_generator);
-		if (roll_for_drop < roll_success_thresholds[i])
+		if (roll_for_drop < sigil_roll_success_thresholds[i])
 		{
 			Sigils random_sigil = magic_enum::enum_value<Sigils>(random_sigil_distribution(random_generator));
 			while(sigils_spawned.contains(random_sigil))
@@ -2283,6 +2311,32 @@ void GenerateTreasureChestLoot(std::string object_name, CInstance* Self, CInstan
 			sigils_spawned.insert(random_sigil);
 			DropItem(sigil_to_item_id_map[random_sigil], ari_x, ari_y, Self, Other);
 		}
+	}
+
+	// Cursed Armor
+	int cursed_armor_roll_success_threshold = 0;
+	if (object_name == TREASURE_CHEST_WOOD_NAME)
+		cursed_armor_roll_success_threshold = 1;
+	else if (object_name == TREASURE_CHEST_COPPER_NAME)
+		cursed_armor_roll_success_threshold = 2;
+	else if (object_name == TREASURE_CHEST_SILVER_NAME)
+		cursed_armor_roll_success_threshold = 3;
+	else if (object_name == TREASURE_CHEST_GOLD_NAME)
+		cursed_armor_roll_success_threshold = 4;
+
+	int roll_for_drop = zero_to_nintey_nine_distribution(random_generator);
+	if (roll_for_drop < cursed_armor_roll_success_threshold)
+	{
+		if (floor_number < 20) // Upper Mines
+			DropItem(cursed_gear_to_item_id_map[CURSED_CHESTPIECE_NAME], ari_x, ari_y, Self, Other);
+		else if (floor_number < 40) // Tide Caverns
+			DropItem(cursed_gear_to_item_id_map[CURSED_HELMET_NAME], ari_x, ari_y, Self, Other);
+		else if (floor_number < 60) // Deep Earth
+			DropItem(cursed_gear_to_item_id_map[CURSED_GLOVES_NAME], ari_x, ari_y, Self, Other);
+		else if (floor_number < 80) // Lava Caves
+			DropItem(cursed_gear_to_item_id_map[CURSED_PANTS_NAME], ari_x, ari_y, Self, Other);
+		else if (floor_number < 100) // Ruins
+			DropItem(cursed_gear_to_item_id_map[CURSED_BOOTS_NAME], ari_x, ari_y, Self, Other);
 	}
 }
 
@@ -2308,6 +2362,47 @@ void ObjectCallback(
 		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
 		ari_y = y.ToDouble();
 
+		// Progression Mode Biome Cleared Rewards
+		if (progression_mode && biome_reward && ari_x != 0 && ari_y != 0 && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
+		{
+			// Upper Mines
+			if (ari_current_gm_room == "rm_water_seal") 
+			{
+				biome_reward = false;
+				DropItem(cursed_gear_to_item_id_map[CURSED_CHESTPIECE_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map["lift_key_floor_twenty"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+			}
+			// Tide Caverns
+			else if (ari_current_gm_room == "rm_earth_seal")
+			{
+				biome_reward = false;
+				DropItem(cursed_gear_to_item_id_map[CURSED_HELMET_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map["lift_key_floor_forty"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+			}
+			// Deep Earth
+			else if (ari_current_gm_room == "rm_fire_seal") 
+			{
+				biome_reward = false;
+				DropItem(cursed_gear_to_item_id_map[CURSED_GLOVES_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map["lift_key_floor_sixty"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+			}
+			// Lava Caves
+			else if (ari_current_gm_room == "rm_ruins_seal") 
+			{
+				biome_reward = false;
+				DropItem(cursed_gear_to_item_id_map[CURSED_PANTS_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map["lift_key_floor_eighty"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+
+			}
+			// Ruins
+			else if (ari_current_gm_room == "not_yet_implemented") // TODO: Use room name when its implemented
+			{
+				biome_reward = false;
+				DropItem(cursed_gear_to_item_id_map[CURSED_BOOTS_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				// TODO: Drop some special kind of key?
+			}
+		}
+
 		// Floor Traps
 		if (active_traps.contains(Traps::EXPLODING))
 		{
@@ -2325,6 +2420,7 @@ void ObjectCallback(
 					g_ModuleInterface->GetBuiltin("x", monster, NULL_INDEX, monster_x);
 					g_ModuleInterface->GetBuiltin("y", monster, NULL_INDEX, monster_y);
 
+					// TODO: See if it's possible to directly check the distance between the trap and the monsters.
 					double distance = GetDistance(ari_x, ari_y, monster_x.ToInt64(), monster_y.ToInt64());
 					if (distance <= 32)
 					{
@@ -2506,10 +2602,33 @@ void ObjectCallback(
 
 			if (is_valid_monster_object)
 			{
+				// Track the monster
 				if (!StructVariableExists(monster, "__deep_dungeon__current_floor_monsters") && StructVariableExists(monster, "hit_points"))
 				{
 					current_floor_monsters.push_back(self); // TESTING
 					StructVariableSet(monster, "__deep_dungeon__current_floor_monsters", true);
+				}
+
+				// Beast Coin drop
+				if (!StructVariableExists(monster, "__deep_dungeon__beast_coin_drop") && StructVariableExists(monster, "hit_points"))
+				{
+					double hit_points = monster.GetMember("hit_points").ToDouble();
+					if (std::isfinite(hit_points) && hit_points <= 0 && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
+					{
+						// TODO: Determine if the drop should have RNG
+						if (floor_number < 20) // Upper Mines
+							DropItem(item_name_to_id_map["beast_coin_tiny"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						else if (floor_number < 40) // Tide Caverns
+							DropItem(item_name_to_id_map["beast_coin_small"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						else if (floor_number < 60) // Deep Earth
+							DropItem(item_name_to_id_map["beast_coin_medium"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						else if (floor_number < 80) // Lava Caves
+							DropItem(item_name_to_id_map["beast_coin_large"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						else if (floor_number < 100) // Ruins
+							DropItem(item_name_to_id_map["beast_coin_giant"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+
+						StructVariableSet(monster, "__deep_dungeon__beast_coin_drop", true);
+					}
 				}
 
 				// Gloom
@@ -3044,20 +3163,6 @@ RValue& GmlScriptInteractCallback(
 	IN RValue** Arguments
 )
 {
-	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal"))
-	{
-		if (Arguments[0]->m_Kind == VALUE_OBJECT && StructVariableExists(*Arguments[0], "object_id"))
-		{
-			int object_id = Arguments[0]->GetMember("object_id").ToInt64();
-			if (object_id_to_name_map.contains(object_id))
-			{
-				std::string object_name = object_id_to_name_map[object_id];
-				if (DUNGEON_TREASURE_CHEST_NAMES.contains(object_name)) // Generate custom treasure chest loot. Currently only Sigils.
-					GenerateTreasureChestLoot(object_name, Self, Other); // TODO: Chance for Cursed Armor drops.
-			}
-		}
-	}
-
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_INTERACT));
 	original(
 		Self,
@@ -3109,6 +3214,7 @@ RValue& GmlScriptTakePressCallback(
 		Arguments
 	);
 
+	// Chance for an Offering event when using a ladder on a dungeon floor.
 	if (game_is_active && obj_dungeon_ladder_down_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean() && !offering_chance_occurred)
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
@@ -3130,6 +3236,12 @@ RValue& GmlScriptTakePressCallback(
 		}
 
 		offering_chance_occurred = true;
+	}
+	// Disable the elevator in progression mode.
+	else if (game_is_active && progression_mode && (ari_current_gm_room.contains("rm_mines") || ari_current_gm_room.contains("seal")) && obj_dungeon_elevator_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean())
+	{
+		PlayConversation(PROGRESSION_MODE_ELEVATOR_LOCKED_CONVERSATION_KEY, Self, Other);
+		Result = false;
 	}
 
 	return Result;
@@ -3178,16 +3290,39 @@ RValue& GmlScriptAttemptInteractCallback(
 	IN RValue** Arguments
 )
 {
-	if (game_is_active && Self->m_Object != nullptr && floor_number != 0)
+	if (game_is_active && Self->m_Object != nullptr)
 	{
 		std::string self_name = Self->m_Object->m_Name;
+
 		if (self_name == "obj_dungeon_ladder_down")
-			obj_dungeon_ladder_down_focused = true;
-		else
+		{
+			if (floor_number != 0)
+				obj_dungeon_ladder_down_focused = true;
+			else
+				obj_dungeon_ladder_down_focused = false;
+
+			obj_dungeon_elevator_focused = false;
+		}
+		else if (self_name == "obj_dungeon_elevator")
+		{
+			if (progression_mode)
+				obj_dungeon_elevator_focused = true;
+			else
+				obj_dungeon_elevator_focused = false;
+
 			obj_dungeon_ladder_down_focused = false;
+		}
+		else
+		{
+			obj_dungeon_ladder_down_focused = false;
+			obj_dungeon_elevator_focused = false;
+		}
 	}
 	else
+	{
 		obj_dungeon_ladder_down_focused = false;
+		obj_dungeon_elevator_focused = false;
+	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ATTEMPT_INTERACT));
 	original(
@@ -3262,12 +3397,6 @@ RValue& GmlScriptUseItemCallback(
 	IN RValue** Arguments
 )
 {
-	if (live_item.m_Kind == VALUE_UNDEFINED || live_item.m_Kind == VALUE_UNSET || live_item.m_Kind == VALUE_NULL)
-	{
-		if (Arguments[0]->m_Kind == VALUE_OBJECT)
-			live_item = *Arguments[0];
-	}
-
 	// Inhibiting Trap
 	if (active_traps.contains(Traps::INHIBITING))
 	{
@@ -3395,13 +3524,47 @@ RValue& GmlScriptDropItemCallback(
 	IN RValue** Arguments
 )
 {
-	if (live_item.m_Kind == VALUE_UNDEFINED || live_item.m_Kind == VALUE_UNSET || live_item.m_Kind == VALUE_NULL)
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
+		script_name_to_reference_map[GML_SCRIPT_DROP_ITEM] = {Self, Other};
+
+	if (ari_current_gm_room.contains("rm_mines"))
 	{
+		bool chance_to_spawn_glowstone = false;
+
 		if (Arguments[0]->m_Kind == VALUE_ARRAY)
 		{
-			RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { *Arguments[0] });
-			if (array_length.ToInt64() > 0)
-				live_item = RValue(g_ModuleInterface->CallBuiltin("array_get", { *Arguments[0], 0 }));
+			size_t array_length;
+			g_ModuleInterface->GetArraySize(*Arguments[0], array_length);
+
+			for (size_t i = 0; i < array_length; i++)
+			{
+				RValue* array_element;
+				g_ModuleInterface->GetArrayEntry(*Arguments[0], i, array_element);
+
+				if (StructVariableExists(*array_element, "item_id"))
+				{
+					int item_id = array_element->GetMember("item_id").ToInt64();
+					if (item_id == item_name_to_id_map["ore_stone"])
+						chance_to_spawn_glowstone = true;
+				}
+			}
+		}
+		else if (Arguments[0]->m_Kind == VALUE_INT64 && Arguments[0]->ToInt64() == item_name_to_id_map["ore_stone"])
+			chance_to_spawn_glowstone = true;
+
+		// TODO: Test if there should be some RNG for dropping glowstone.
+		if (chance_to_spawn_glowstone)
+		{
+			if (floor_number < 20) // Upper Mines
+				DropItem(item_name_to_id_map["glow_stone_tiny"], ari_x, ari_y, Self, Other);
+			else if (floor_number < 40) // Tide Caverns
+				DropItem(item_name_to_id_map["glow_stone_small"], ari_x, ari_y, Self, Other);
+			else if (floor_number < 60) // Deep Earth
+				DropItem(item_name_to_id_map["glow_stone_medium"], ari_x, ari_y, Self, Other);
+			else if (floor_number < 80) // Lava Caves
+				DropItem(item_name_to_id_map["glow_stone_large"], ari_x, ari_y, Self, Other);
+			else if (floor_number < 100) // Ruins
+				DropItem(item_name_to_id_map["glow_stone_giant"], ari_x, ari_y, Self, Other);
 		}
 	}
 
@@ -3552,7 +3715,7 @@ RValue& GmlScriptGetWeatherCallback(
 	if (!game_is_active)
 	{
 		game_is_active = true;
-		MarkDungeonTutorialUnseen();
+		//MarkDungeonTutorialUnseen(); // TODO: Only do this once per save file.
 	}
 	
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_WEATHER));
@@ -3627,6 +3790,10 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	offering_chance_occurred = false;
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
+
+	// Toggle reward on seal rooms in progression mode
+	if (progression_mode && ari_current_gm_room.contains("seal"))
+		biome_reward = true;
 
 	// TODO: Confirm what "milestone" rooms are and determine if they should be removed from this conditional.
 	if (ari_current_gm_room != "rm_mines_entry" && ari_current_gm_room.find("seal") == std::string::npos && ari_current_gm_room.find("ritual") == std::string::npos && ari_current_gm_room.find("treasure") == std::string::npos && ari_current_gm_room.find("milestone") == std::string::npos)
@@ -3708,7 +3875,7 @@ RValue& GmlScriptGoToRoomCallback(
 	if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 
-	if (ari_current_location == "dungeon" && (!ari_current_gm_room.contains("rm_mines") || ari_current_gm_room == "rm_mines_entry"))
+	if (ari_current_location == "dungeon" && (!ari_current_gm_room.contains("rm_mines") || ari_current_gm_room == "rm_mines_entry")) // TODO: Don't use ari_current_location
 	{
 		// TODO: Run logic to actually undo all active floor enchantments.
 		// TOOD: Remove all buffs.
@@ -4010,6 +4177,91 @@ RValue& GmlScriptCreateItemPrototypesCallback(
 
 		item_id_to_prototype_map[i] = *array_element;
 	}
+
+	return Result;
+}
+
+// TODO: Remove this hook
+RValue& GmlScriptStopRoomTitleCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_STOP_ROOM_TITLE));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptDeserializeLiveItemCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_DESERIALIZE_LIVE_ITEM))
+		script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_LIVE_ITEM] = { Self, Other };
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_DESERIALIZE_LIVE_ITEM));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptGetTreasureFromDistributionCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{ 
+	if (Self != nullptr && StructVariableExists(Self, "object_id"))
+	{
+		int object_id = Self->GetMember("object_id").ToInt64();
+		if (object_id_to_name_map.contains(object_id))
+		{
+			std::string object_name = object_id_to_name_map[object_id];
+			if (DUNGEON_TREASURE_CHEST_NAMES.contains(object_name))
+				GenerateTreasureChestLoot(object_name, Self, Other);
+		}
+	}
+	else if (Other != nullptr && StructVariableExists(Other, "object_id"))
+	{
+		int object_id = Other->GetMember("object_id").ToInt64();
+		if (object_id_to_name_map.contains(object_id))
+		{
+			std::string object_name = object_id_to_name_map[object_id];
+			if (DUNGEON_TREASURE_CHEST_NAMES.contains(object_name))
+				GenerateTreasureChestLoot(object_name, Self, Other);
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
 
 	return Result;
 }
@@ -4843,6 +5095,87 @@ void CreateHookGmlScriptCreateItemPrototypes(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptStopRoomTitle(AurieStatus& status)
+{
+	CScript* gml_script_stop_room_title = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_STOP_ROOM_TITLE,
+		(PVOID*)&gml_script_stop_room_title
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_STOP_ROOM_TITLE);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_STOP_ROOM_TITLE,
+		gml_script_stop_room_title->m_Functions->m_ScriptFunction,
+		GmlScriptStopRoomTitleCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_STOP_ROOM_TITLE);
+	}
+}
+
+void CreateHookGmlScriptDeserializeLiveItem(AurieStatus& status)
+{
+	CScript* gml_script_deserialize_live_item = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_DESERIALIZE_LIVE_ITEM,
+		(PVOID*)&gml_script_deserialize_live_item
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DESERIALIZE_LIVE_ITEM);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_DESERIALIZE_LIVE_ITEM,
+		gml_script_deserialize_live_item->m_Functions->m_ScriptFunction,
+		GmlScriptDeserializeLiveItemCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DESERIALIZE_LIVE_ITEM);
+	}
+}
+
+void CreateHookGmlScriptGetTreasureFromDistribution(AurieStatus& status)
+{
+	CScript* gml_script_get_treasure_from_distribution = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION,
+		(PVOID*)&gml_script_get_treasure_from_distribution
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION,
+		gml_script_get_treasure_from_distribution->m_Functions->m_ScriptFunction,
+		GmlScriptGetTreasureFromDistributionCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -5075,6 +5408,27 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptCreateItemPrototypes(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptStopRoomTitle(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptDeserializeLiveItem(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptGetTreasureFromDistribution(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
