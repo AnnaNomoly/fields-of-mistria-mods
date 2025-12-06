@@ -33,6 +33,7 @@ static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_not
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
 static const char* const GML_SCRIPT_SPAWN_TUTORIAL = "gml_Script_spawn_tutorial";
 static const char* const GML_SCRIPT_UPDATE_TOOLBAR_MENU = "gml_Script_update@ToolbarMenu@ToolbarMenu";
+static const char* const GML_SCRIPT_ENTER_DUNGEON = "gml_Script_enter_dungeon";
 static const char* const GML_SCRIPT_CANCEL_STATUS_EFFECT = "gml_Script_cancel@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_REGISTER_STATUS_EFFECT = "gml_Script_register@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_GET_MAX_HEALTH = "gml_Script_get_max_health@Ari@Ari";
@@ -105,6 +106,11 @@ static const std::string TREASURE_CHEST_WOOD_NAME = "treasure_chest_wood";
 static const std::string TREASURE_CHEST_COPPER_NAME = "treasure_chest_copper";
 static const std::string TREASURE_CHEST_SILVER_NAME = "treasure_chest_silver";
 static const std::string TREASURE_CHEST_GOLD_NAME = "treasure_chest_gold";
+static const std::string TIDE_CAVERNS_KEY_NAME = "tide_caverns_key";
+static const std::string DEEP_EARTH_KEY_NAME = "deep_earth_key";
+static const std::string LAVA_CAVES_KEY_NAME = "lava_caves_key";
+static const std::string RUINS_KEY_NAME = "ruins_key";
+static const std::string LIFT_KEY_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/lift_key_restricted";
 static const std::string SIGIL_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_limit";
 static const std::string SALVE_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/salve_limit";
 static const std::string ITEM_PENALTY_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_penalty";
@@ -416,6 +422,7 @@ static bool game_is_active = false;
 static bool progression_mode = true; // TODO: Make this configurable
 static bool biome_reward = false;
 static bool sigil_item_used = false;
+static bool lift_key_used = false; // TODO
 static bool fire_breath_cast = false;
 static bool reckoning_applied = false;
 static bool fairy_buff_applied = false;
@@ -436,6 +443,7 @@ static int sigil_of_alteration_count = 0;
 
 static std::string ari_current_location = "";
 static std::string ari_current_gm_room = "";
+static std::unordered_set<int> lift_key_items = {};
 static std::unordered_set<int> restricted_items = {};
 static std::unordered_set<int> deep_dungeon_items = {};
 static std::map<Sigils, int> sigil_to_item_id_map = {};
@@ -985,6 +993,10 @@ void LoadObjectIds()
 
 void LoadItems()
 {
+	std::unordered_set<std::string> lift_keys = { TIDE_CAVERNS_KEY_NAME, DEEP_EARTH_KEY_NAME, LAVA_CAVES_KEY_NAME, RUINS_KEY_NAME };
+	std::vector<std::string> custom_potions = { SUSTAINING_POTION_NAME, HEALTH_SALVE_NAME, STAMINA_SALVE_NAME, MANA_SALVE_NAME }; // TODO: Change to unordered_set
+	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME, CURSED_BRACELET_NAME }; // TODO: Change to unordered_set
+
 	size_t array_length;
 	RValue item_data = global_instance->GetMember("__item_data");
 	g_ModuleInterface->GetArraySize(item_data, array_length);
@@ -1011,8 +1023,11 @@ void LoadItems()
 				*item->GetRefMember("health_modifier") = 0;
 			}
 
+			// Lift keys
+			if (lift_keys.contains(item_name))
+				lift_key_items.insert(item_id);
+
 			// Custom potions
-			std::vector<std::string> custom_potions = { SUSTAINING_POTION_NAME, HEALTH_SALVE_NAME, STAMINA_SALVE_NAME, MANA_SALVE_NAME };
 			for (std::string custom_potion : custom_potions)
 			{
 				if (item_name == custom_potion)
@@ -1023,7 +1038,6 @@ void LoadItems()
 			}
 
 			// Cursed armor
-			std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME, CURSED_BRACELET_NAME };
 			for (std::string cursed_armor_name : cursed_armor)
 				if (item_name == cursed_armor_name)
 					cursed_gear_to_item_id_map[cursed_armor_name] = item_id;
@@ -1519,11 +1533,37 @@ void DropItem(int item_id, double x_coord, double y_coord, CInstance* Self, CIns
 
 	gml_script_drop_item->m_Functions->m_ScriptFunction(
 		Self,
-		Self,
+		Other,
 		result,
 		4,
 		arguments
 	);
+}
+
+void EnterDungeon(double dungeon_level, CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_enter_dungeon = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_ENTER_DUNGEON,
+		(PVOID*)&gml_script_enter_dungeon
+	);
+
+	RValue result;
+	RValue level = dungeon_level;
+	RValue undefined;
+	RValue* level_ptr = &level;
+	RValue* undefined_ptr = &undefined;
+	RValue* arguments[3] = { level_ptr, undefined_ptr, undefined_ptr };
+
+	gml_script_enter_dungeon->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		3,
+		arguments
+	);
+
+	
 }
 
 bool AriCurrentGmRoomIsDungeonFloor()
@@ -2370,28 +2410,28 @@ void ObjectCallback(
 			{
 				biome_reward = false;
 				DropItem(cursed_gear_to_item_id_map[CURSED_CHESTPIECE_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-				DropItem(item_name_to_id_map["lift_key_floor_twenty"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map[TIDE_CAVERNS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 			}
 			// Tide Caverns
 			else if (ari_current_gm_room == "rm_earth_seal")
 			{
 				biome_reward = false;
 				DropItem(cursed_gear_to_item_id_map[CURSED_HELMET_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-				DropItem(item_name_to_id_map["lift_key_floor_forty"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map[DEEP_EARTH_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 			}
 			// Deep Earth
-			else if (ari_current_gm_room == "rm_fire_seal") 
+			else if (ari_current_gm_room == "rm_fire_seal")
 			{
 				biome_reward = false;
 				DropItem(cursed_gear_to_item_id_map[CURSED_GLOVES_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-				DropItem(item_name_to_id_map["lift_key_floor_sixty"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map[LAVA_CAVES_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 			}
 			// Lava Caves
 			else if (ari_current_gm_room == "rm_ruins_seal") 
 			{
 				biome_reward = false;
 				DropItem(cursed_gear_to_item_id_map[CURSED_PANTS_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-				DropItem(item_name_to_id_map["lift_key_floor_eighty"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map[RUINS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 
 			}
 			// Ruins
@@ -2437,6 +2477,7 @@ void ObjectCallback(
 		
 		ApplyOfferingPenalties(global_instance->GetRefMember("__ari")->ToInstance(), self);
 
+		// Process used items.
 		RValue ari = self->ToRValue();
 		if (StructVariableExists(ari, "fsm"))
 		{
@@ -2522,6 +2563,19 @@ void ObjectCallback(
 
 									if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 										UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+								}
+								else if (lift_key_used)
+								{
+									lift_key_used = false;
+
+									if (held_item_id == item_name_to_id_map[TIDE_CAVERNS_KEY_NAME])
+										EnterDungeon(19, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+									else if (held_item_id == item_name_to_id_map[DEEP_EARTH_KEY_NAME])
+										EnterDungeon(39, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+									else if (held_item_id == item_name_to_id_map[LAVA_CAVES_KEY_NAME])
+										EnterDungeon(59, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+									else if (held_item_id == item_name_to_id_map[RUINS_KEY_NAME])
+										EnterDungeon(79, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
 								}
 							}
 						}
@@ -3397,6 +3451,17 @@ RValue& GmlScriptUseItemCallback(
 	IN RValue** Arguments
 )
 {
+	// Lift Keys
+	if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari") && lift_key_items.contains(held_item_id))
+	{
+		if (ari_current_gm_room != "rm_mines_entry")
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are only allowed to use a lift key at the mines entrance!", MOD_NAME, VERSION);
+			CreateNotification(LIFT_KEY_RESTRICTED_NOTIFICATION_KEY, Self, Other);
+			return Result;
+		}
+	}
+
 	// Inhibiting Trap
 	if (active_traps.contains(Traps::INHIBITING))
 	{
@@ -3470,12 +3535,13 @@ RValue& GmlScriptUseItemCallback(
 
 	// Sigil Item
 	sigil_item_used = false;
-	for (const auto& item : sigil_to_item_id_map) {
-		if (item.second == held_item_id) {
-			sigil_item_used = true;
-			break;
-		}
-	}
+	if(item_id_to_sigil_map.contains(held_item_id))
+		sigil_item_used = true;
+
+	// Lift Key Item
+	lift_key_used = false;
+	if(lift_key_items.contains(held_item_id))
+		lift_key_used = true;
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_USE_ITEM));
 	original(
