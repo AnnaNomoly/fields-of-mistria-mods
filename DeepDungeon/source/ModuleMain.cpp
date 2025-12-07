@@ -94,14 +94,19 @@ static const std::string MISTPOOL_HELMET_NAME = "scrap_metal_helmet";
 static const std::string MISTPOOL_CHESTPIECE_NAME = "scrap_metal_chestpiece";
 static const std::string MISTPOOL_PANTS_NAME = "scrap_metal_pants";
 static const std::string MISTPOOL_BOOTS_NAME = "scrap_metal_boots";
-static const std::string MISTPOOL_RING_NAME = "scrap_metal_ring";
+static const std::string MISTPOOL_GLOVES_NAME = "scrap_metal_ring";
 static const std::string CURSED_HELMET_NAME = "cursed_helmet";
 static const std::string CURSED_CHESTPIECE_NAME = "cursed_chestpiece";
 static const std::string CURSED_PANTS_NAME = "cursed_pants";
 static const std::string CURSED_BOOTS_NAME = "cursed_boots";
 static const std::string CURSED_GLOVES_NAME = "cursed_gloves";
 static const std::string CURSED_BRACELET_NAME = "cursed_bracelet";
-// TODO: Cleric gear
+static const std::string CLERIC_HELMET_NAME = "cleric_helmet";
+static const std::string CLERIC_CHESTPIECE_NAME = "cleric_chestpiece";
+static const std::string CLERIC_GLOVES_NAME = "cleric_gloves";
+static const std::string CLERIC_PANTS_NAME = "cleric_pants";
+static const std::string CLERIC_BOOTS_NAME = "cleric_boots";
+// TODO: Class gear
 static const std::string TREASURE_CHEST_WOOD_NAME = "treasure_chest_wood";
 static const std::string TREASURE_CHEST_COPPER_NAME = "treasure_chest_copper";
 static const std::string TREASURE_CHEST_SILVER_NAME = "treasure_chest_silver";
@@ -110,6 +115,8 @@ static const std::string TIDE_CAVERNS_KEY_NAME = "tide_caverns_key";
 static const std::string DEEP_EARTH_KEY_NAME = "deep_earth_key";
 static const std::string LAVA_CAVES_KEY_NAME = "lava_caves_key";
 static const std::string RUINS_KEY_NAME = "ruins_key";
+static const std::string WATER_ORB_NAME = "water_orb";
+// TODO: Orbs
 static const std::string LIFT_KEY_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/lift_key_restricted";
 static const std::string SIGIL_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_limit";
 static const std::string SALVE_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/salve_limit";
@@ -152,19 +159,12 @@ static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/
 static const int TWO_MINUTES_IN_SECONDS = 120;
 static const int TRAP_ACTIVATION_DISTANCE = 16;
 
-static const std::unordered_set<std::string> DUNGEON_TREASURE_CHEST_NAMES = {
-	TREASURE_CHEST_WOOD_NAME,
-	TREASURE_CHEST_COPPER_NAME,
-	TREASURE_CHEST_SILVER_NAME,
-	TREASURE_CHEST_GOLD_NAME
-};
-
-static const std::vector<std::string> MISTPOOL_ARMOR_NAMES = {
-	MISTPOOL_HELMET_NAME,
-	MISTPOOL_CHESTPIECE_NAME,
-	MISTPOOL_PANTS_NAME,
-	MISTPOOL_BOOTS_NAME,
-	MISTPOOL_RING_NAME
+static enum class ClassArmor {
+	CLERIC,
+	WIZARD,
+	PALADIN,
+	ELDRITCH_KNIGHT,
+	ROGUE
 };
 
 static enum class AriResources {
@@ -228,6 +228,31 @@ static enum class Traps {
 	EXPLODING,
 	INHIBITING,
 	LURING
+};
+
+static const std::unordered_set<std::string> DUNGEON_TREASURE_CHEST_NAMES = {
+	TREASURE_CHEST_WOOD_NAME,
+	TREASURE_CHEST_COPPER_NAME,
+	TREASURE_CHEST_SILVER_NAME,
+	TREASURE_CHEST_GOLD_NAME
+};
+
+static const std::vector<std::string> MISTPOOL_ARMOR_NAMES = {
+	MISTPOOL_HELMET_NAME,
+	MISTPOOL_CHESTPIECE_NAME,
+	MISTPOOL_PANTS_NAME,
+	MISTPOOL_BOOTS_NAME,
+	MISTPOOL_GLOVES_NAME
+};
+
+static const std::unordered_set<std::string> CLASS_ARMOR_NAMES = {
+	// TODO: Add other class armor
+	CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME
+};
+
+static const std::map<ClassArmor, std::unordered_set<std::string>> CLASS_ARMOR_TO_NAMES_MAP = {
+	{ ClassArmor::CLERIC, { CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME } },
+	// TODO: Add other class armor
 };
 
 static const std::vector<FloorEnchantments> GROUP_ONE_FLOOR_ENCHANTMENTS = {
@@ -331,6 +356,126 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 		{ 400 + 8, 432 + 8 },
 		{ 528 + 8, 464 + 8 },
 	}},
+	{ "rm_mines_upper_ponds", {
+		{ 304 + 8, 432 + 8 },
+		{ 384 + 8, 512 + 8 },
+		{ 192 + 8, 368 + 8 },
+		{ 368 + 8, 320 + 8 },
+		{ 304 + 8, 240 + 8 },
+		{ 352 + 8, 128 + 8 },
+	}},
+	{ "rm_mines_upper_pond", {
+		{ 192 + 8, 400 + 8 },
+		{ 192 + 8, 240 + 8 },
+		{ 336 + 8, 144 + 8 },
+		{ 448 + 8, 288 + 8 },
+		{ 352 + 8, 384 + 8 },
+		{ 416 + 8, 448 + 8 },
+	}},
+	{ "rm_mines_upper_snake", {
+		{ 320 + 8, 144 + 8 },
+		{ 192 + 8, 112 + 8 },
+		{ 160 + 8, 336 + 8 },
+		{ 400 + 8, 336 + 8 },
+		{ 448 + 8, 448 + 8 },
+		{ 336 + 8, 512 + 8 },
+	}},
+	{ "rm_mines_upper_four", {
+		{ 144 + 8, 144 + 8 },
+		{ 224 + 8, 368 + 8 },
+		{ 384 + 8, 352 + 8 },
+		{ 464 + 8, 272 + 8 },
+		{ 464 + 8, 448 + 8 },
+		{ 560 + 8, 512 + 8 },
+	}},
+	{ "rm_mines_upper_amoeba", {
+		{ 272 + 8, 464 + 8 },
+		{ 352 + 8, 400 + 8 },
+		{ 512 + 8, 432 + 8 },
+		{ 496 + 8, 304 + 8 },
+		{ 528 + 8, 240 + 8 },
+		{ 640 + 8, 256 + 8 },
+	}},
+	{ "rm_mines_upper_wishbone", {
+		{ 256 + 8, 512 + 8 },
+		{ 352 + 8, 464 + 8 },
+		{ 336 + 8, 368 + 8 },
+		{ 272 + 8, 240 + 8 },
+		{ 400 + 8, 160 + 8 },
+		{ 480 + 8, 256 + 8 },
+	}},
+	{ "rm_mines_upper_canada", {
+		{ 192 + 8, 320 + 8 },
+		{ 208 + 8, 208 + 8 },
+		{ 336 + 8, 192 + 8 },
+		{ 336 + 8, 272 + 8 },
+		{ 448 + 8, 208 + 8 },
+		{ 464 + 8, 336 + 8 },
+	}},
+	{ "rm_mines_upper_staple", {
+		{ 496 + 8, 320 + 8 },
+		{ 416 + 8, 208 + 8 },
+		{ 336 + 8, 256 + 8 },
+		{ 240 + 8, 192 + 8 },
+		{ 144 + 8, 224 + 8 },
+		{ 176 + 8, 368 + 8 },
+	}},
+	{ "rm_mines_upper_pillars", {
+		{ 112 + 8, 48 + 8 },
+		{ 336 + 8, 112 + 8 },
+		{ 176 + 8, 208 + 8 },
+		{ 48 + 8, 240 + 8 },
+		{ 240 + 8, 336 + 8 },
+		{ 368 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_upper_path", {
+		{ 208 + 8, 352 + 8 },
+		{ 368 + 8, 256 + 8 },
+		{ 384 + 8, 112 + 8 },
+		{ 272 + 8, 192 + 8 },
+		{ 160 + 8, 64 + 8 },
+		{ 80 + 8, 224 + 8 },
+	}},
+	{ "rm_mines_upper_stream", {
+		{ 320 + 8, 80 + 8 },
+		{ 272 + 8, 160 + 8 },
+		{ 192 + 8, 112 + 8 },
+		{ 176 + 8, 288 + 8 },
+		{ 208 + 8, 352 + 8 },
+		{ 80 + 8, 352 + 8 },
+	}},
+	{ "rm_mines_upper_muscle", {
+		{ 192 + 8, 544 + 8 },
+		{ 272 + 8, 496 + 8 },
+		{ 320 + 8, 416 + 8 },
+		{ 400 + 8, 304 + 8 },
+		{ 416 + 8, 224 + 8 },
+		{ 336 + 8, 160 + 8 },
+	}},
+	{ "rm_mines_upper_crossroad", {
+		{ 416 + 8, 208 + 8 },
+		{ 144 + 8, 224 + 8 },
+		{ 192 + 8, 304 + 8 },
+		{ 240 + 8, 400 + 8 },
+		{ 416 + 8, 432 + 8 },
+		{ 208 + 8, 480 + 8 },
+	}},
+	{ "rm_mines_upper_pits", {
+		{ 128 + 8, 320 + 8 },
+		{ 160 + 8, 384 + 8 },
+		{ 240 + 8, 400 + 8 },
+		{ 256 + 8, 320 + 8 },
+		{ 288 + 8, 480 + 8 },
+		{ 368 + 8, 320 + 8 },
+	}},
+	{ "rm_mines_upper_formerelevator", {
+		{ 80 + 8, 224 + 8 },
+		{ 112 + 8, 64 + 8 },
+		{ 176 + 8, 304 + 8 },
+		{ 320 + 8, 96 + 8 },
+		{ 368 + 8, 320 + 8 },
+		{ 400 + 8, 192 + 8 },
+	}},
 	//{ "", {
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
@@ -371,47 +516,6 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
 	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
@@ -1067,8 +1171,8 @@ void LoadItems()
 
 					if (array_element->ToString() == "armor")
 					{
-						// TODO: Don't do this to Class armor!
-						*item->GetRefMember("defense") = 0;
+						if (!CLASS_ARMOR_NAMES.contains(item_name))
+							*item->GetRefMember("defense") = 0;
 
 						for (std::string mistpool_armor_name : MISTPOOL_ARMOR_NAMES)
 							if(item_name == mistpool_armor_name)
@@ -1279,6 +1383,77 @@ void ScaleMistpoolArmor(bool in_dungeon)
 		else
 			*mistpool_armor_piece->GetRefMember("defense") = 0;
 	}
+}
+
+std::map<ClassArmor, int> CountEquippedClassArmor()
+{
+	RValue ari = global_instance->GetMember("__ari");
+	RValue armor = ari.GetMember("armor");
+	RValue slots = armor.GetMember("slots");
+	RValue buffer = slots.GetMember("__buffer");
+
+	size_t array_length;
+	g_ModuleInterface->GetArraySize(buffer, array_length);
+
+	std::map<ClassArmor, int> class_armor_equipped = {};
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_entry;
+		g_ModuleInterface->GetArrayEntry(buffer, i, array_entry);
+
+		if (StructVariableExists(*array_entry, "item"))
+		{
+			RValue item = array_entry->GetMember("item");
+			if (StructVariableExists(item, "prototype"))
+			{
+				RValue prototype = item.GetMember("prototype");
+				if (StructVariableExists(prototype, "recipe_key"))
+				{
+					RValue recipe_key = prototype.GetMember("recipe_key");
+					for (const auto& class_armor : CLASS_ARMOR_TO_NAMES_MAP)
+					{
+						if (CLASS_ARMOR_TO_NAMES_MAP.at(class_armor.first).contains(recipe_key.ToString()))
+							class_armor_equipped[class_armor.first]++;
+					}
+				}
+			}
+		}
+	}
+
+	return class_armor_equipped;
+}
+
+std::map<int, int> GetClassArmorInfusions()
+{
+	std::map<int, int> class_armor_infusions = {};
+
+	RValue ari = global_instance->GetMember("__ari");
+	RValue armor = ari.GetMember("armor");
+	RValue slots = armor.GetMember("slots");
+	RValue buffer = slots.GetMember("__buffer");
+
+	size_t array_length;
+	g_ModuleInterface->GetArraySize(buffer, array_length);
+
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_entry;
+		g_ModuleInterface->GetArrayEntry(buffer, i, array_entry);
+
+		if (StructVariableExists(*array_entry, "item"))
+		{
+			RValue item = array_entry->GetMember("item");
+			if (StructVariableExists(item, "infusion") && StructVariableExists(item, "prototype"))
+			{
+				RValue infusion = item.GetMember("infusion");
+				RValue prototype = item.GetMember("prototype");
+				if (StructVariableExists(prototype, "recipe_key") && CLASS_ARMOR_NAMES.contains(prototype.GetMember("recipe_key").ToString()))
+					class_armor_infusions[infusion.ToInt64()]++;
+			}
+		}
+	}
+	
+	return class_armor_infusions;
 }
 
 void LoadSpells()
@@ -1562,8 +1737,6 @@ void EnterDungeon(double dungeon_level, CInstance* Self, CInstance* Other)
 		3,
 		arguments
 	);
-
-	
 }
 
 bool AriCurrentGmRoomIsDungeonFloor()
@@ -1644,6 +1817,61 @@ RValue GetDynamicItemSprite(int item_id)
 			else
 				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_tarnished_gold_sword" });
 		}
+	}
+	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_HELMET_NAME])
+	{
+		if (floor_number < 20)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_helmet_tier_1" });
+		else if (floor_number < 40)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_helmet_tier_2" });
+		else if (floor_number < 60)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_helmet_tier_3" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_helmet_tier_4" });
+	}
+	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_CHESTPIECE_NAME])
+	{
+		if (floor_number < 20)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_chestpiece_tier_1" });
+		else if (floor_number < 40)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_chestpiece_tier_2" });
+		else if (floor_number < 60)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_chestpiece_tier_3" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_chestpiece_tier_4" });
+	}
+	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_GLOVES_NAME])
+	{
+		if (floor_number < 20)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_gloves_tier_1" });
+		else if (floor_number < 40)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_gloves_tier_2" });
+		else if (floor_number < 60)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_gloves_tier_3" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_gloves_tier_4" });
+	}
+	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_PANTS_NAME])
+	{
+		if (floor_number < 20)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_pants_tier_1" });
+		else if (floor_number < 40)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_pants_tier_2" });
+		else if (floor_number < 60)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_pants_tier_3" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_pants_tier_4" });
+	}
+	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_BOOTS_NAME])
+	{
+		if (floor_number < 20)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_boots_tier_1" });
+		else if (floor_number < 40)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_boots_tier_2" });
+		else if (floor_number < 60)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_boots_tier_3" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_boots_tier_4" });
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::ALTERATION])
 	{
@@ -2584,10 +2812,10 @@ void ObjectCallback(
 			}
 		}
 
-		// Restoration
+		// Restoration & Cleric Armor Bonus
 		if (is_restoration_tracked_interval)
 		{
-			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
+			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, max(1, CountEquippedClassArmor()[ClassArmor::CLERIC]));
 			is_restoration_tracked_interval = false;
 		}
 
@@ -2663,25 +2891,43 @@ void ObjectCallback(
 					StructVariableSet(monster, "__deep_dungeon__current_floor_monsters", true);
 				}
 
-				// Beast Coin drop
-				if (!StructVariableExists(monster, "__deep_dungeon__beast_coin_drop") && StructVariableExists(monster, "hit_points"))
+				// Loot drops
+				if (!StructVariableExists(monster, "__deep_dungeon__loot_drop") && StructVariableExists(monster, "hit_points"))
 				{
 					double hit_points = monster.GetMember("hit_points").ToDouble();
 					if (std::isfinite(hit_points) && hit_points <= 0 && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
 					{
-						// TODO: Determine if the drop should have RNG
-						if (floor_number < 20) // Upper Mines
-							DropItem(item_name_to_id_map["beast_coin_tiny"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-						else if (floor_number < 40) // Tide Caverns
-							DropItem(item_name_to_id_map["beast_coin_small"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-						else if (floor_number < 60) // Deep Earth
-							DropItem(item_name_to_id_map["beast_coin_medium"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-						else if (floor_number < 80) // Lava Caves
-							DropItem(item_name_to_id_map["beast_coin_large"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-						else if (floor_number < 100) // Ruins
-							DropItem(item_name_to_id_map["beast_coin_giant"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						static thread_local std::mt19937 random_generator(std::random_device{}());
+						std::uniform_int_distribution<size_t> zero_to_nintey_nine_distribution(0, 99);
+						// TODO: Should beast coin drops have RNG?
+						bool drop_lift_key = zero_to_nintey_nine_distribution(random_generator) < 2 ? true : false; // TODO: What should the drop rate be for lift keys?
 
-						StructVariableSet(monster, "__deep_dungeon__beast_coin_drop", true);
+						if (floor_number < 20) // Upper Mines
+						{
+							DropItem(item_name_to_id_map["beast_coin_tiny"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						}
+						else if (floor_number < 40) // Tide Caverns
+						{
+							DropItem(item_name_to_id_map["beast_coin_small"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (progression_mode && drop_lift_key) DropItem(item_name_to_id_map[TIDE_CAVERNS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						}
+						else if (floor_number < 60) // Deep Earth
+						{
+							DropItem(item_name_to_id_map["beast_coin_medium"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (progression_mode && drop_lift_key) DropItem(item_name_to_id_map[DEEP_EARTH_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						}
+						else if (floor_number < 80) // Lava Caves
+						{
+							DropItem(item_name_to_id_map["beast_coin_large"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (progression_mode && drop_lift_key) DropItem(item_name_to_id_map[LAVA_CAVES_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						}
+						else if (floor_number < 100) // Ruins
+						{
+							DropItem(item_name_to_id_map["beast_coin_giant"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (progression_mode && drop_lift_key) DropItem(item_name_to_id_map[RUINS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+						}
+
+						StructVariableSet(monster, "__deep_dungeon__loot_drop", true);
 					}
 				}
 
@@ -3671,7 +3917,7 @@ RValue& GmlScriptGetMinutesCallback(
 		ApplyFloorTraps(Self, Other);
 
 		// Restoration
-		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION))
+		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION) || (AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[ClassArmor::CLERIC] > 0))
 		{
 			if (!is_restoration_tracked_interval && (current_time_in_seconds - time_of_last_restoration_tick) >= TWO_MINUTES_IN_SECONDS)
 			{
@@ -3894,6 +4140,9 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 				time_of_last_second_wind_tick = current_time_in_seconds;
 		}
 
+		if (CountEquippedClassArmor()[ClassArmor::CLERIC] > 0)
+			time_of_last_restoration_tick = current_time_in_seconds;
+
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 	}
@@ -4047,6 +4296,18 @@ RValue& GmlScriptGetEquipmentBonusFromCallback(
 		// Dungeon's Curse: Prevent infusions on armor and tools from applying.
 		if (infusion_id == infusion_name_to_id_map["fortified"] || infusion_id == infusion_name_to_id_map["hasty"] || infusion_id == infusion_name_to_id_map["lightweight"] || infusion_id == infusion_name_to_id_map["tireless"])
 			Result = 0;
+
+		// Class armor bonuses
+		std::map<int, int> class_armor_infusions = GetClassArmorInfusions();
+		if (class_armor_infusions.contains(infusion_id))
+		{
+			if (infusion_id == infusion_name_to_id_map["fortified"])
+				Result = class_armor_infusions[infusion_id] * 4; // TODO: Confirm the game returns 4 * <foritifed_count>
+			if (infusion_id == infusion_name_to_id_map["hasty"])
+				Result = class_armor_infusions[infusion_id] * 0.04; // TODO: Figure out what value the game uses here
+			if (infusion_id == infusion_name_to_id_map["tireless"])
+				Result = class_armor_infusions[infusion_id] * 4; // TODO: Confirm the game returns 4 * <tireless_count>
+		}
 	}
 
 	// Result: REAL == 0.20 // The value of the infusion bonus from all gear (0.20 for 5 Hasty armor pieces)
