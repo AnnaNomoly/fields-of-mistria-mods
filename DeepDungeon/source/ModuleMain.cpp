@@ -525,8 +525,9 @@ static bool localize_mod_text = false;
 static bool game_is_active = false;
 static bool progression_mode = true; // TODO: Make this configurable
 static bool biome_reward = false;
+static bool dread_beast_configured = false;
 static bool sigil_item_used = false;
-static bool lift_key_used = false; // TODO
+static bool lift_key_used = false;
 static bool fire_breath_cast = false;
 static bool reckoning_applied = false;
 static bool fairy_buff_applied = false;
@@ -544,6 +545,8 @@ static int time_of_last_second_wind_tick = -1;
 static int held_item_id = -1;
 static int sigil_of_silence_count = 0;
 static int sigil_of_alteration_count = 0;
+static int dread_beast_monster_id = -1;
+static int dread_beast_sapling_splits = 0;
 
 static std::string ari_current_location = "";
 static std::string ari_current_gm_room = "";
@@ -557,7 +560,9 @@ static std::map<int, int> spell_id_to_default_cost_map = {};
 static std::map<std::string, int> salve_name_to_id_map = {};
 static std::map<int, std::string> object_id_to_name_map = {};
 static std::map<std::string, int> player_state_to_id_map = {};
+static std::map<std::string, std::map<std::string, int>> monster_category_to_state_id_map = {};
 static std::map<std::string, int> monster_name_to_id_map = {};
+static std::map<int, std::string> monster_id_to_name_map = {};
 static std::map<std::string, int> tutorial_name_to_id_map = {};
 static std::map<std::string, int> infusion_name_to_id_map = {};
 static std::map<std::string, int> status_effect_name_to_id_map = {};
@@ -566,7 +571,7 @@ static std::map<std::string, int> cursed_gear_to_item_id_map = {}; // TODO: Remo
 static std::map<std::string, int> item_name_to_id_map = {};
 std::unordered_set<std::pair<int,int>, pair_hash> floor_trap_positions = {};
 static std::unordered_set<int> salves_used = {};
-static std::unordered_set<Traps> active_traps = {};
+static std::map<Traps, std::pair<int, int>> active_traps = {}; // Holds the active traps and the position they most recently triggered at.
 static std::unordered_set<Sigils> active_sigils = {};
 static std::unordered_set<Offerings> queued_offerings = {};
 static std::unordered_set<Offerings> active_offerings = {};
@@ -623,7 +628,10 @@ void ResetStaticFields(bool returned_to_title_screen)
 		script_name_to_reference_map.clear();
 	}
 
+	biome_reward = false;
+	dread_beast_configured = false;
 	sigil_item_used = false;
+	lift_key_used = false;
 	fire_breath_cast = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
@@ -632,6 +640,8 @@ void ResetStaticFields(bool returned_to_title_screen)
 	obj_dungeon_ladder_down_focused = false;
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
+	dread_beast_monster_id = -1;
+	dread_beast_sapling_splits = 0;
 	salves_used.clear();
 	active_sigils.clear();
 	queued_offerings.clear();
@@ -649,6 +659,11 @@ bool GameIsPaused()
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 	RValue paused = global_instance->GetMember("__pause_status");
 	return paused.m_i64 > 0;
+}
+
+bool IsNumeric(RValue value)
+{
+	return value.m_Kind == VALUE_INT32 || value.m_Kind == VALUE_INT64 || value.m_Kind == VALUE_REAL;
 }
 
 bool StructVariableExists(RValue the_struct, const char* variable_name)
@@ -985,6 +1000,133 @@ void LoadPlayerStates()
 	}
 }
 
+void LoadMonsterStates()
+{
+	// NOTE: Using monster category names from: __monster_category__
+
+	// Mushroom States
+	size_t shroom_states_length;
+	RValue shroom_states = global_instance->GetMember("__mushroom_state__");
+	g_ModuleInterface->GetArraySize(shroom_states, shroom_states_length);
+	for (size_t i = 0; i < shroom_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(shroom_states, i, state);
+
+		monster_category_to_state_id_map["shroom"][state->ToString()] = i;
+	}
+
+	// Rock Clod States
+	size_t rock_clod_states_length;
+	RValue rock_clod_states = global_instance->GetMember("__rockclod_state__");
+	g_ModuleInterface->GetArraySize(rock_clod_states, rock_clod_states_length);
+	for (size_t i = 0; i < rock_clod_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(rock_clod_states, i, state);
+
+		monster_category_to_state_id_map["clod"][state->ToString()] = i;
+	}
+
+	// Sapling States
+	size_t sapling_states_length;
+	RValue sapling_states = global_instance->GetMember("__sapling_state__");
+	g_ModuleInterface->GetArraySize(sapling_states, sapling_states_length);
+	for (size_t i = 0; i < sapling_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(sapling_states, i, state);
+
+		monster_category_to_state_id_map["sap"][state->ToString()] = i;
+	}
+
+	// Enchantern States
+	size_t enchantern_states_length;
+	RValue enchantern_states = global_instance->GetMember("__enchantern_state__");
+	g_ModuleInterface->GetArraySize(enchantern_states, enchantern_states_length);
+	for (size_t i = 0; i < enchantern_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(enchantern_states, i, state);
+
+		monster_category_to_state_id_map["enchantern"][state->ToString()] = i;
+	}
+
+	// Stalagmite States
+	size_t mite_states_length;
+	RValue mite_states = global_instance->GetMember("__mite_state__");
+	g_ModuleInterface->GetArraySize(mite_states, mite_states_length);
+	for (size_t i = 0; i < mite_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(mite_states, i, state);
+
+		monster_category_to_state_id_map["mite"][state->ToString()] = i;
+	}
+
+	// Bat States
+	size_t bat_states_length;
+	RValue bat_states = global_instance->GetMember("__bat_state__");
+	g_ModuleInterface->GetArraySize(bat_states, bat_states_length);
+	for (size_t i = 0; i < bat_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(bat_states, i, state);
+
+		monster_category_to_state_id_map["bat"][state->ToString()] = i;
+	}
+
+	// Mimic States
+	size_t mimic_states_length;
+	RValue mimic_states = global_instance->GetMember("__mimic_state__");
+	g_ModuleInterface->GetArraySize(mimic_states, mimic_states_length);
+	for (size_t i = 0; i < mimic_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(mimic_states, i, state);
+
+		monster_category_to_state_id_map["mimic"][state->ToString()] = i;
+	}
+
+	// Spirit States
+	size_t spirit_states_length;
+	RValue spirit_states = global_instance->GetMember("__spirit_state__");
+	g_ModuleInterface->GetArraySize(spirit_states, spirit_states_length);
+	for (size_t i = 0; i < spirit_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(spirit_states, i, state);
+
+		monster_category_to_state_id_map["spirit"][state->ToString()] = i;
+	}
+
+	// Cat States
+	size_t cat_states_length;
+	RValue cat_states = global_instance->GetMember("__cat_state__");
+	g_ModuleInterface->GetArraySize(cat_states, cat_states_length);
+	for (size_t i = 0; i < cat_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(cat_states, i, state);
+
+		monster_category_to_state_id_map["cat"][state->ToString()] = i;
+	}
+
+	// Rock Stack States
+	size_t rock_stack_states_length;
+	RValue rock_stack_states = global_instance->GetMember("__rock_stack_state__");
+	g_ModuleInterface->GetArraySize(rock_stack_states, rock_stack_states_length);
+	for (size_t i = 0; i < rock_stack_states_length; i++)
+	{
+		RValue* state;
+		g_ModuleInterface->GetArrayEntry(rock_stack_states, i, state);
+
+		monster_category_to_state_id_map["rock_stack"][state->ToString()] = i;
+	}
+
+	// TODO: New monsters as added.
+}
+
 void LoadStatusEffects()
 {
 	size_t array_length;
@@ -1027,6 +1169,7 @@ void LoadMonsters()
 		g_ModuleInterface->GetArrayEntry(monster_names, i, monster_name);
 
 		monster_name_to_id_map[monster_name->ToString()] = i;
+		monster_id_to_name_map[i] = monster_name->ToString();
 	}
 }
 
@@ -1060,7 +1203,7 @@ void LoadDungeonBiomeCandidateMonsters()
 			if (monster_name_to_id_map.contains(enemy_name))
 				dungeon_biome_to_candidate_monsters_map[biome_name].insert(monster_name_to_id_map[enemy_name]);
 			else
-				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] Failed to look up enemy name: %s", MOD_NAME, VERSION, enemy_name.c_str());
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to look up enemy name: %s", MOD_NAME, VERSION, enemy_name.c_str());
 		}
 
 		if (i < biomes_length - 1)
@@ -1404,7 +1547,7 @@ std::map<ClassArmor, int> CountEquippedClassArmor()
 		if (StructVariableExists(*array_entry, "item"))
 		{
 			RValue item = array_entry->GetMember("item");
-			if (StructVariableExists(item, "prototype"))
+			if (item.m_Kind == VALUE_OBJECT && StructVariableExists(item, "prototype"))
 			{
 				RValue prototype = item.GetMember("prototype");
 				if (StructVariableExists(prototype, "recipe_key"))
@@ -1443,7 +1586,7 @@ std::map<int, int> GetClassArmorInfusions()
 		if (StructVariableExists(*array_entry, "item"))
 		{
 			RValue item = array_entry->GetMember("item");
-			if (StructVariableExists(item, "infusion") && StructVariableExists(item, "prototype"))
+			if (item.m_Kind == VALUE_OBJECT && StructVariableExists(item, "infusion") && StructVariableExists(item, "prototype"))
 			{
 				RValue infusion = item.GetMember("infusion");
 				RValue prototype = item.GetMember("prototype");
@@ -1554,6 +1697,340 @@ void SpawnMonster(CInstance* Self, CInstance* Other, int room_x, int room_y, int
 		3,
 		arguments
 	);
+}
+
+void ModifyRockClodAttackPatterns(RValue monster)
+{
+	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
+	if (!wait_to_change_attack_pattern_exists.ToBoolean())
+		StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
+	RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
+
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = *monster.GetRefMember("config");
+			*config.GetRefMember("attack_sequence") = 5.0;
+			*config.GetRefMember("attack_legion") = 10.0;
+			*config.GetRefMember("attack_sequence_turn") = -1.0;
+			*config.GetRefMember("attack_sequence_image_speed") = -1.0;
+			*config.GetRefMember("projectile_speed") = 3.0;
+			*config.GetRefMember("split_distance") = -1.0;
+			*config.GetRefMember("split_depth") = -1.0;
+			*config.GetRefMember("split_angle") = -1.0;
+		}
+	}
+
+	if (StructVariableExists(monster, "fsm"))
+	{
+		RValue state_id = monster.GetMember("fsm").GetMember("state").GetMember("state_id");
+		if (state_id.ToInt64() == monster_category_to_state_id_map["clod"]["attack"])
+			*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = false;
+
+		if (state_id.ToInt64() == monster_category_to_state_id_map["clod"]["tired"] && !wait_to_change_attack_pattern.ToBoolean())
+		{
+			*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = true;
+
+			int custom_attack_pattern = monster.GetMember("__deep_dungeon__custom_attack_pattern").ToInt64() + 1;
+			if (custom_attack_pattern > 2)
+				custom_attack_pattern = 0;
+
+			if (custom_attack_pattern == 0)
+			{
+				if (StructVariableExists(monster, "config"))
+				{
+					// Shoots a wall of 10 pellets repeatedly 5 times
+					RValue config = *monster.GetRefMember("config");
+					*config.GetRefMember("attack_sequence") = 5.0;
+					*config.GetRefMember("attack_legion") = 10.0;
+					*config.GetRefMember("attack_sequence_turn") = -1.0;
+					*config.GetRefMember("attack_sequence_image_speed") = -1.0;
+					*config.GetRefMember("projectile_speed") = 3.0;
+					*config.GetRefMember("split_distance") = -1.0;
+					*config.GetRefMember("split_depth") = -1.0;
+					*config.GetRefMember("split_angle") = -1.0;
+				}
+			}
+			if (custom_attack_pattern == 1)
+			{
+				if (StructVariableExists(monster, "config"))
+				{
+					// Rotates 18-degrees at a time while shooting 5 pellets in a small cone
+					RValue config = *monster.GetRefMember("config");
+					*config.GetRefMember("attack_sequence") = 20.0;
+					*config.GetRefMember("attack_legion") = 5.0;
+					*config.GetRefMember("attack_sequence_turn") = 18.0;
+					*config.GetRefMember("attack_sequence_image_speed") = 2.0;
+					*config.GetRefMember("projectile_speed") = 3.0;
+					*config.GetRefMember("split_distance") = -1.0;
+					*config.GetRefMember("split_depth") = -1.0;
+					*config.GetRefMember("split_angle") = -1.0;
+				}
+			}
+			if (custom_attack_pattern == 2)
+			{
+				if (StructVariableExists(monster, "config"))
+				{
+					// Shoots a single pellet that then splits into many that repeatedly split
+					RValue config = *monster.GetRefMember("config");
+					*config.GetRefMember("attack_sequence") = 5.0;
+					*config.GetRefMember("attack_legion") = 1.0;
+					*config.GetRefMember("attack_sequence_turn") = -1.0;
+					*config.GetRefMember("attack_sequence_image_speed") = -1.0;
+					*config.GetRefMember("projectile_speed") = 3.0;
+					*config.GetRefMember("split_distance") = 20.0;
+					*config.GetRefMember("split_depth") = 5.0;
+					*config.GetRefMember("split_angle") = 20.0;
+				}
+			}
+
+			*monster.GetRefMember("__deep_dungeon__custom_attack_pattern") = custom_attack_pattern;
+		}
+	}
+}
+
+void ModifyStalagmiteAttackPatterns(RValue monster)
+{
+	const enum class Modes {
+		DONUT_PB,
+		CROSS_X,
+		//CHECKBOARD // TODO
+	};
+
+	static thread_local std::mt19937 random_generator(std::random_device{}());
+	std::uniform_int_distribution<size_t> zero_to_one_distribution(0, 1);
+	std::uniform_int_distribution<size_t> random_mode_distribution(0, magic_enum::enum_count<Modes>() - 1);
+
+	const std::vector<std::vector<RValue>> donut_aoe_points = { {-56.0, 0.0}, {-55.65, -6.27}, {-54.6, -12.46}, {-52.86, -18.5}, {-50.45, -24.3}, {-47.42, -29.79}, {-43.78, -34.92}, {-39.6, -39.6}, {-34.92, -43.78}, {-29.79, -47.42}, {-24.3, -50.45}, {-18.5, -52.86}, {-12.46, -54.6}, {-6.27, -55.65}, {-0.0, -56.0}, {6.27, -55.65}, {12.46, -54.6}, {18.5, -52.86}, {24.3, -50.45}, {29.79, -47.42}, {34.92, -43.78}, {39.6, -39.6}, {43.78, -34.92}, {47.42, -29.79}, {50.45, -24.3}, {52.86, -18.5}, {54.6, -12.46}, {55.65, -6.27}, {56.0, -0.0}, {55.65, 6.27}, {54.6, 12.46}, {52.86, 18.5}, {50.45, 24.3}, {47.42, 29.79}, {43.78, 34.92}, {39.6, 39.6}, {34.92, 43.78}, {29.79, 47.42}, {24.3, 50.45}, {18.5, 52.86}, {12.46, 54.6}, {6.27, 55.65}, {0.0, 56.0}, {-6.27, 55.65}, {-12.46, 54.6}, {-18.5, 52.86}, {-24.3, 50.45}, {-29.79, 47.42}, {-34.92, 43.78}, {-39.6, 39.6}, {-43.78, 34.92}, {-47.42, 29.79}, {-50.45, 24.3}, {-52.86, 18.5}, {-54.6, 12.46}, {-55.65, 6.27}, {-56.0, 0.0}, {-64.0, 0.0}, {-63.69, -6.27}, {-62.77, -12.49}, {-61.24, -18.58}, {-59.13, -24.49}, {-56.44, -30.17}, {-53.21, -35.56}, {-49.47, -40.6}, {-45.25, -45.25}, {-40.6, -49.47}, {-35.56, -53.21}, {-30.17, -56.44}, {-24.49, -59.13}, {-18.58, -61.24}, {-12.49, -62.77}, {-6.27, -63.69}, {-0.0, -64.0}, {6.27, -63.69}, {12.49, -62.77}, {18.58, -61.24}, {24.49, -59.13}, {30.17, -56.44}, {35.56, -53.21}, {40.6, -49.47}, {45.25, -45.25}, {49.47, -40.6}, {53.21, -35.56}, {56.44, -30.17}, {59.13, -24.49}, {61.24, -18.58}, {62.77, -12.49}, {63.69, -6.27}, {64.0, -0.0}, {63.69, 6.27}, {62.77, 12.49}, {61.24, 18.58}, {59.13, 24.49}, {56.44, 30.17}, {53.21, 35.56}, {49.47, 40.6}, {45.25, 45.25}, {40.6, 49.47}, {35.56, 53.21}, {30.17, 56.44}, {24.49, 59.13}, {18.58, 61.24}, {12.49, 62.77}, {6.27, 63.69}, {0.0, 64.0}, {-6.27, 63.69}, {-12.49, 62.77}, {-18.58, 61.24}, {-24.49, 59.13}, {-30.17, 56.44}, {-35.56, 53.21}, {-40.6, 49.47}, {-45.25, 45.25}, {-49.47, 40.6}, {-53.21, 35.56}, {-56.44, 30.17}, {-59.13, 24.49}, {-61.24, 18.58}, {-62.77, 12.49}, {-63.69, 6.27}, {-64.0, 0.0}, {-72.0, 0.0}, {-71.73, -6.28}, {-70.91, -12.5}, {-69.55, -18.63}, {-67.66, -24.63}, {-65.25, -30.43}, {-62.35, -36.0}, {-58.98, -41.3}, {-55.16, -46.28}, {-50.91, -50.91}, {-46.28, -55.16}, {-41.3, -58.98}, {-36.0, -62.35}, {-30.43, -65.25}, {-24.63, -67.66}, {-18.63, -69.55}, {-12.5, -70.91}, {-6.28, -71.73}, {-0.0, -72.0}, {6.28, -71.73}, {12.5, -70.91}, {18.63, -69.55}, {24.63, -67.66}, {30.43, -65.25}, {36.0, -62.35}, {41.3, -58.98}, {46.28, -55.16}, {50.91, -50.91}, {55.16, -46.28}, {58.98, -41.3}, {62.35, -36.0}, {65.25, -30.43}, {67.66, -24.63}, {69.55, -18.63}, {70.91, -12.5}, {71.73, -6.28}, {72.0, -0.0}, {71.73, 6.28}, {70.91, 12.5}, {69.55, 18.63}, {67.66, 24.63}, {65.25, 30.43}, {62.35, 36.0}, {58.98, 41.3}, {55.16, 46.28}, {50.91, 50.91}, {46.28, 55.16}, {41.3, 58.98}, {36.0, 62.35}, {30.43, 65.25}, {24.63, 67.66}, {18.63, 69.55}, {12.5, 70.91}, {6.28, 71.73}, {0.0, 72.0}, {-6.28, 71.73}, {-12.5, 70.91}, {-18.63, 69.55}, {-24.63, 67.66}, {-30.43, 65.25}, {-36.0, 62.35}, {-41.3, 58.98}, {-46.28, 55.16}, {-50.91, 50.91}, {-55.16, 46.28}, {-58.98, 41.3}, {-62.35, 36.0}, {-65.25, 30.43}, {-67.66, 24.63}, {-69.55, 18.63}, {-70.91, 12.5}, {-71.73, 6.28}, {-72.0, 0.0}, {-80.0, 0.0}, {-79.75, -6.28}, {-79.02, -12.51}, {-77.79, -18.68}, {-76.08, -24.72}, {-73.91, -30.61}, {-71.28, -36.32}, {-68.21, -41.8}, {-64.72, -47.02}, {-60.83, -51.96}, {-56.57, -56.57}, {-51.96, -60.83}, {-47.02, -64.72}, {-41.8, -68.21}, {-36.32, -71.28}, {-30.61, -73.91}, {-24.72, -76.08}, {-18.68, -77.79}, {-12.51, -79.02}, {-6.28, -79.75}, {-0.0, -80.0}, {6.28, -79.75}, {12.51, -79.02}, {18.68, -77.79}, {24.72, -76.08}, {30.61, -73.91}, {36.32, -71.28}, {41.8, -68.21}, {47.02, -64.72}, {51.96, -60.83}, {56.57, -56.57}, {60.83, -51.96}, {64.72, -47.02}, {68.21, -41.8}, {71.28, -36.32}, {73.91, -30.61}, {76.08, -24.72}, {77.79, -18.68}, {79.02, -12.51}, {79.75, -6.28}, {80.0, -0.0}, {79.75, 6.28}, {79.02, 12.51}, {77.79, 18.68}, {76.08, 24.72}, {73.91, 30.61}, {71.28, 36.32}, {68.21, 41.8}, {64.72, 47.02}, {60.83, 51.96}, {56.57, 56.57}, {51.96, 60.83}, {47.02, 64.72}, {41.8, 68.21}, {36.32, 71.28}, {30.61, 73.91}, {24.72, 76.08}, {18.68, 77.79}, {12.51, 79.02}, {6.28, 79.75}, {0.0, 80.0}, {-6.28, 79.75}, {-12.51, 79.02}, {-18.68, 77.79}, {-24.72, 76.08}, {-30.61, 73.91}, {-36.32, 71.28}, {-41.8, 68.21}, {-47.02, 64.72}, {-51.96, 60.83}, {-56.57, 56.57}, {-60.83, 51.96}, {-64.72, 47.02}, {-68.21, 41.8}, {-71.28, 36.32}, {-73.91, 30.61}, {-76.08, 24.72}, {-77.79, 18.68}, {-79.02, 12.51}, {-79.75, 6.28}, {-80.0, 0.0}, {-88.0, 0.0}, {-87.78, -6.28}, {-87.1, -12.52}, {-85.99, -18.71}, {-84.44, -24.79}, {-82.45, -30.75}, {-80.05, -36.56}, {-77.24, -42.17}, {-74.03, -47.58}, {-70.45, -52.74}, {-66.51, -57.63}, {-62.23, -62.23}, {-57.63, -66.51}, {-52.74, -70.45}, {-47.58, -74.03}, {-42.17, -77.24}, {-36.56, -80.05}, {-30.75, -82.45}, {-24.79, -84.44}, {-18.71, -85.99}, {-12.52, -87.1}, {-6.28, -87.78}, {-0.0, -88.0}, {6.28, -87.78}, {12.52, -87.1}, {18.71, -85.99}, {24.79, -84.44}, {30.75, -82.45}, {36.56, -80.05}, {42.17, -77.24}, {47.58, -74.03}, {52.74, -70.45}, {57.63, -66.51}, {62.23, -62.23}, {66.51, -57.63}, {70.45, -52.74}, {74.03, -47.58}, {77.24, -42.17}, {80.05, -36.56}, {82.45, -30.75}, {84.44, -24.79}, {85.99, -18.71}, {87.1, -12.52}, {87.78, -6.28}, {88.0, -0.0}, {87.78, 6.28}, {87.1, 12.52}, {85.99, 18.71}, {84.44, 24.79}, {82.45, 30.75}, {80.05, 36.56}, {77.24, 42.17}, {74.03, 47.58}, {70.45, 52.74}, {66.51, 57.63}, {62.23, 62.23}, {57.63, 66.51}, {52.74, 70.45}, {47.58, 74.03}, {42.17, 77.24}, {36.56, 80.05}, {30.75, 82.45}, {24.79, 84.44}, {18.71, 85.99}, {12.52, 87.1}, {6.28, 87.78}, {0.0, 88.0}, {-6.28, 87.78}, {-12.52, 87.1}, {-18.71, 85.99}, {-24.79, 84.44}, {-30.75, 82.45}, {-36.56, 80.05}, {-42.17, 77.24}, {-47.58, 74.03}, {-52.74, 70.45}, {-57.63, 66.51}, {-62.23, 62.23}, {-66.51, 57.63}, {-70.45, 52.74}, {-74.03, 47.58}, {-77.24, 42.17}, {-80.05, 36.56}, {-82.45, 30.75}, {-84.44, 24.79}, {-85.99, 18.71}, {-87.1, 12.52}, {-87.78, 6.28}, {-88.0, 0.0}, {-96.0, 0.0}, {-95.79, -6.28}, {-95.18, -12.53}, {-94.16, -18.73}, {-92.73, -24.85}, {-90.91, -30.86}, {-88.69, -36.74}, {-86.1, -42.46}, {-83.14, -48.0}, {-79.82, -53.33}, {-76.16, -58.44}, {-72.18, -63.3}, {-67.88, -67.88}, {-63.3, -72.18}, {-58.44, -76.16}, {-53.33, -79.82}, {-48.0, -83.14}, {-42.46, -86.1}, {-36.74, -88.69}, {-30.86, -90.91}, {-24.85, -92.73}, {-18.73, -94.16}, {-12.53, -95.18}, {-6.28, -95.79}, {-0.0, -96.0}, {6.28, -95.79}, {12.53, -95.18}, {18.73, -94.16}, {24.85, -92.73}, {30.86, -90.91}, {36.74, -88.69}, {42.46, -86.1}, {48.0, -83.14}, {53.33, -79.82}, {58.44, -76.16}, {63.3, -72.18}, {67.88, -67.88}, {72.18, -63.3}, {76.16, -58.44}, {79.82, -53.33}, {83.14, -48.0}, {86.1, -42.46}, {88.69, -36.74}, {90.91, -30.86}, {92.73, -24.85}, {94.16, -18.73}, {95.18, -12.53}, {95.79, -6.28}, {96.0, -0.0}, {95.79, 6.28}, {95.18, 12.53}, {94.16, 18.73}, {92.73, 24.85}, {90.91, 30.86}, {88.69, 36.74}, {86.1, 42.46}, {83.14, 48.0}, {79.82, 53.33}, {76.16, 58.44}, {72.18, 63.3}, {67.88, 67.88}, {63.3, 72.18}, {58.44, 76.16}, {53.33, 79.82}, {48.0, 83.14}, {42.46, 86.1}, {36.74, 88.69}, {30.86, 90.91}, {24.85, 92.73}, {18.73, 94.16}, {12.53, 95.18}, {6.28, 95.79}, {0.0, 96.0}, {-6.28, 95.79}, {-12.53, 95.18}, {-18.73, 94.16}, {-24.85, 92.73}, {-30.86, 90.91}, {-36.74, 88.69}, {-42.46, 86.1}, {-48.0, 83.14}, {-53.33, 79.82}, {-58.44, 76.16}, {-63.3, 72.18}, {-67.88, 67.88}, {-72.18, 63.3}, {-76.16, 58.44}, {-79.82, 53.33}, {-83.14, 48.0}, {-86.1, 42.46}, {-88.69, 36.74}, {-90.91, 30.86}, {-92.73, 24.85}, {-94.16, 18.73}, {-95.18, 12.53}, {-95.79, 6.28}, {-96.0, 0.0} };
+	const std::vector<std::vector<RValue>> pb_aoe_points = { {-10.0, 0.0}, {-8.09, -5.88}, {-3.09, -9.51}, {3.09, -9.51}, {8.09, -5.88}, {10.0, -0.0}, {8.09, 5.88}, {3.09, 9.51}, {-3.09, 9.51}, {-8.09, 5.88}, {-10.0, 0.0}, {-16.0, 0.0}, {-14.78, -6.12}, {-11.31, -11.31}, {-6.12, -14.78}, {-0.0, -16.0}, {6.12, -14.78}, {11.31, -11.31}, {14.78, -6.12}, {16.0, -0.0}, {14.78, 6.12}, {11.31, 11.31}, {6.12, 14.78}, {0.0, 16.0}, {-6.12, 14.78}, {-11.31, 11.31}, {-14.78, 6.12}, {-16.0, 0.0}, {-24.0, 0.0}, {-23.18, -6.21}, {-20.78, -12.0}, {-16.97, -16.97}, {-12.0, -20.78}, {-6.21, -23.18}, {-0.0, -24.0}, {6.21, -23.18}, {12.0, -20.78}, {16.97, -16.97}, {20.78, -12.0}, {23.18, -6.21}, {24.0, -0.0}, {23.18, 6.21}, {20.78, 12.0}, {16.97, 16.97}, {12.0, 20.78}, {6.21, 23.18}, {0.0, 24.0}, {-6.21, 23.18}, {-12.0, 20.78}, {-16.97, 16.97}, {-20.78, 12.0}, {-23.18, 6.21}, {-24.0, 0.0}, {-32.0, 0.0}, {-31.39, -6.24}, {-29.56, -12.25}, {-26.61, -17.78}, {-22.63, -22.63}, {-17.78, -26.61}, {-12.25, -29.56}, {-6.24, -31.39}, {-0.0, -32.0}, {6.24, -31.39}, {12.25, -29.56}, {17.78, -26.61}, {22.63, -22.63}, {26.61, -17.78}, {29.56, -12.25}, {31.39, -6.24}, {32.0, -0.0}, {31.39, 6.24}, {29.56, 12.25}, {26.61, 17.78}, {22.63, 22.63}, {17.78, 26.61}, {12.25, 29.56}, {6.24, 31.39}, {0.0, 32.0}, {-6.24, 31.39}, {-12.25, 29.56}, {-17.78, 26.61}, {-22.63, 22.63}, {-26.61, 17.78}, {-29.56, 12.25}, {-31.39, 6.24}, {-32.0, 0.0}, {-40.0, 0.0}, {-39.51, -6.26}, {-38.04, -12.36}, {-35.64, -18.16}, {-32.36, -23.51}, {-28.28, -28.28}, {-23.51, -32.36}, {-18.16, -35.64}, {-12.36, -38.04}, {-6.26, -39.51}, {-0.0, -40.0}, {6.26, -39.51}, {12.36, -38.04}, {18.16, -35.64}, {23.51, -32.36}, {28.28, -28.28}, {32.36, -23.51}, {35.64, -18.16}, {38.04, -12.36}, {39.51, -6.26}, {40.0, -0.0}, {39.51, 6.26}, {38.04, 12.36}, {35.64, 18.16}, {32.36, 23.51}, {28.28, 28.28}, {23.51, 32.36}, {18.16, 35.64}, {12.36, 38.04}, {6.26, 39.51}, {0.0, 40.0}, {-6.26, 39.51}, {-12.36, 38.04}, {-18.16, 35.64}, {-23.51, 32.36}, {-28.28, 28.28}, {-32.36, 23.51}, {-35.64, 18.16}, {-38.04, 12.36}, {-39.51, 6.26}, {-40.0, 0.0}, {-48.0, 0.0}, {-47.59, -6.27}, {-46.36, -12.42}, {-44.35, -18.37}, {-41.57, -24.0}, {-38.08, -29.22}, {-33.94, -33.94}, {-29.22, -38.08}, {-24.0, -41.57}, {-18.37, -44.35}, {-12.42, -46.36}, {-6.27, -47.59}, {-0.0, -48.0}, {6.27, -47.59}, {12.42, -46.36}, {18.37, -44.35}, {24.0, -41.57}, {29.22, -38.08}, {33.94, -33.94}, {38.08, -29.22}, {41.57, -24.0}, {44.35, -18.37}, {46.36, -12.42}, {47.59, -6.27}, {48.0, -0.0}, {47.59, 6.27}, {46.36, 12.42}, {44.35, 18.37}, {41.57, 24.0}, {38.08, 29.22}, {33.94, 33.94}, {29.22, 38.08}, {24.0, 41.57}, {18.37, 44.35}, {12.42, 46.36}, {6.27, 47.59}, {0.0, 48.0}, {-6.27, 47.59}, {-12.42, 46.36}, {-18.37, 44.35}, {-24.0, 41.57}, {-29.22, 38.08}, {-33.94, 33.94}, {-38.08, 29.22}, {-41.57, 24.0}, {-44.35, 18.37}, {-46.36, 12.42}, {-47.59, 6.27}, {-48.0, 0.0} };
+	const std::vector<std::vector<RValue>> cross_aoe_points = { {-16.0, -48.0}, {-8.0, -48.0}, {0.0, -48.0}, {8.0, -48.0}, {16.0, -48.0}, {-16.0, -40.0}, {-8.0, -40.0}, {0.0, -40.0}, {8.0, -40.0}, {16.0, -40.0}, {-16.0, -32.0}, {-8.0, -32.0}, {0.0, -32.0}, {8.0, -32.0}, {16.0, -32.0}, {-16.0, -24.0}, {-8.0, -24.0}, {0.0, -24.0}, {8.0, -24.0}, {16.0, -24.0}, {-48.0, -16.0}, {-40.0, -16.0}, {-32.0, -16.0}, {-24.0, -16.0}, {-16.0, -16.0}, {-8.0, -16.0}, {0.0, -16.0}, {8.0, -16.0}, {16.0, -16.0}, {24.0, -16.0}, {32.0, -16.0}, {40.0, -16.0}, {48.0, -16.0}, {-48.0, -8.0}, {-40.0, -8.0}, {-32.0, -8.0}, {-24.0, -8.0}, {-16.0, -8.0}, {-8.0, -8.0}, {0.0, -8.0}, {8.0, -8.0}, {16.0, -8.0}, {24.0, -8.0}, {32.0, -8.0}, {40.0, -8.0}, {48.0, -8.0}, {-48.0, 0.0}, {-40.0, 0.0}, {-32.0, 0.0}, {-24.0, 0.0}, {-16.0, 0.0}, {-8.0, 0.0}, {8.0, 0.0}, {16.0, 0.0}, {24.0, 0.0}, {32.0, 0.0}, {40.0, 0.0}, {48.0, 0.0}, {-48.0, 8.0}, {-40.0, 8.0}, {-32.0, 8.0}, {-24.0, 8.0}, {-16.0, 8.0}, {-8.0, 8.0}, {0.0, 8.0}, {8.0, 8.0}, {16.0, 8.0}, {24.0, 8.0}, {32.0, 8.0}, {40.0, 8.0}, {48.0, 8.0}, {-48.0, 16.0}, {-40.0, 16.0}, {-32.0, 16.0}, {-24.0, 16.0}, {-16.0, 16.0}, {-8.0, 16.0}, {0.0, 16.0}, {8.0, 16.0}, {16.0, 16.0}, {24.0, 16.0}, {32.0, 16.0}, {40.0, 16.0}, {48.0, 16.0}, {-16.0, 24.0}, {-8.0, 24.0}, {0.0, 24.0}, {8.0, 24.0}, {16.0, 24.0}, {-16.0, 32.0}, {-8.0, 32.0}, {0.0, 32.0}, {8.0, 32.0}, {16.0, 32.0}, {-16.0, 40.0}, {-8.0, 40.0}, {0.0, 40.0}, {8.0, 40.0}, {16.0, 40.0}, {-16.0, 48.0}, {-8.0, 48.0}, {0.0, 48.0}, {8.0, 48.0}, {16.0, 48.0} };
+	const std::vector<std::vector<RValue>> x_aoe_points = { {22.63, -45.25}, {28.28, -39.6}, {33.94, -33.94}, {39.6, -28.28}, {45.25, -22.63}, {16.97, -39.6}, {22.63, -33.94}, {28.28, -28.28}, {33.94, -22.63}, {39.6, -16.97}, {11.31, -33.94}, {16.97, -28.28}, {22.63, -22.63}, {28.28, -16.97}, {33.94, -11.31}, {5.66, -28.28}, {11.31, -22.63}, {16.97, -16.97}, {22.63, -11.31}, {28.28, -5.66}, {-22.63, -45.25}, {-16.97, -39.6}, {-11.31, -33.94}, {-5.66, -28.28}, {0.0, -22.63}, {5.66, -16.97}, {11.31, -11.31}, {16.97, -5.66}, {22.63, 0.0}, {28.28, 5.66}, {33.94, 11.31}, {39.6, 16.97}, {45.25, 22.63}, {-28.28, -39.6}, {-22.63, -33.94}, {-16.97, -28.28}, {-11.31, -22.63}, {-5.66, -16.97}, {0.0, -11.31}, {5.66, -5.66}, {11.31, 0.0}, {16.97, 5.66}, {22.63, 11.31}, {28.28, 16.97}, {33.94, 22.63}, {39.6, 28.28}, {-33.94, -33.94}, {-28.28, -28.28}, {-22.63, -22.63}, {-16.97, -16.97}, {-11.31, -11.31}, {-5.66, -5.66}, {5.66, 5.66}, {11.31, 11.31}, {16.97, 16.97}, {22.63, 22.63}, {28.28, 28.28}, {33.94, 33.94}, {-39.6, -28.28}, {-33.94, -22.63}, {-28.28, -16.97}, {-22.63, -11.31}, {-16.97, -5.66}, {-11.31, 0.0}, {-5.66, 5.66}, {0.0, 11.31}, {5.66, 16.97}, {11.31, 22.63}, {16.97, 28.28}, {22.63, 33.94}, {28.28, 39.6}, {-45.25, -22.63}, {-39.6, -16.97}, {-33.94, -11.31}, {-28.28, -5.66}, {-22.63, 0.0}, {-16.97, 5.66}, {-11.31, 11.31}, {-5.66, 16.97}, {0.0, 22.63}, {5.66, 28.28}, {11.31, 33.94}, {16.97, 39.6}, {22.63, 45.25}, {-28.28, 5.66}, {-22.63, 11.31}, {-16.97, 16.97}, {-11.31, 22.63}, {-5.66, 28.28}, {-33.94, 11.31}, {-28.28, 16.97}, {-22.63, 22.63}, {-16.97, 28.28}, {-11.31, 33.94}, {-39.6, 16.97}, {-33.94, 22.63}, {-28.28, 28.28}, {-22.63, 33.94}, {-16.97, 39.6}, {-45.25, 22.63}, {-39.6, 28.28}, {-33.94, 33.94}, {-28.28, 39.6}, {-22.63, 45.25} };
+
+	// Setup the state tracker variable.
+	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
+	if (!wait_to_change_attack_pattern_exists.ToBoolean())
+		StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
+	RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
+
+	// Setup the attack pattern mode.
+	RValue attack_pattern_mode_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__attack_pattern_mode" });
+	if (!attack_pattern_mode_exists.ToBoolean())
+	{
+		Modes mode = magic_enum::enum_value<Modes>(random_mode_distribution(random_generator));
+		StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+	}
+	Modes attack_pattern_mode = Modes::CROSS_X; //Modes attack_pattern_mode = magic_enum::enum_cast<Modes>(monster.GetMember("__deep_dungeon__attack_pattern_mode").ToString()).value();
+
+	// Control the attack patterns.
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		// Randomly choose starting attack. Each pattern has two alternating attacks.
+		int starting_pattern = zero_to_one_distribution(random_generator);
+
+		StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", starting_pattern);
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = *monster.GetRefMember("config");
+
+			if (attack_pattern_mode == Modes::DONUT_PB)
+			{
+				if (starting_pattern == 0) // Donut AOE
+				{
+					RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { donut_aoe_points.size() });
+					for (int i = 0; i < donut_aoe_points.size(); i++)
+					{
+						RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 0, donut_aoe_points[i][0] });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 1, donut_aoe_points[i][1] });
+						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+					}
+
+					*config.GetRefMember("secondary_spikes") = secondary_spikes;
+				}
+				else if (starting_pattern == 1) // PB AOE
+				{
+					RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { pb_aoe_points.size() });
+					for (int i = 0; i < pb_aoe_points.size(); i++)
+					{
+						RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 0, pb_aoe_points[i][0] });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 1, pb_aoe_points[i][1] });
+						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+					}
+
+					*config.GetRefMember("secondary_spikes") = secondary_spikes;
+				}
+			}
+			else if (attack_pattern_mode == Modes::CROSS_X)
+			{
+				if (starting_pattern == 0) // Cross AOE
+				{
+					RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { cross_aoe_points.size() });
+					for (int i = 0; i < cross_aoe_points.size(); i++)
+					{
+						RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 0, cross_aoe_points[i][0] });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 1, cross_aoe_points[i][1] });
+						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+					}
+
+					*config.GetRefMember("secondary_spikes") = secondary_spikes;
+				}
+				else if (starting_pattern == 1) // X AOE
+				{
+					RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { x_aoe_points.size() });
+					for (int i = 0; i < x_aoe_points.size(); i++)
+					{
+						RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 0, x_aoe_points[i][0] });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 1, x_aoe_points[i][1] });
+						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+					}
+
+					*config.GetRefMember("secondary_spikes") = secondary_spikes;
+				}
+			}
+			// TODO: else if (attack_pattern_mode == Modes::CHECKERBOARD
+		}
+	}
+
+	if (StructVariableExists(monster, "fsm"))
+	{
+		RValue state_id = monster.GetMember("fsm").GetMember("state").GetMember("state_id");
+		if (state_id.ToInt64() == monster_category_to_state_id_map["mite"]["attack"])
+			*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = false;
+
+		if (state_id.ToInt64() == monster_category_to_state_id_map["mite"]["tired"] && !wait_to_change_attack_pattern.ToBoolean())
+		{
+			*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = true;
+
+			int custom_attack_pattern = monster.GetMember("__deep_dungeon__custom_attack_pattern").ToInt64() + 1;
+			if (custom_attack_pattern > 1)
+				custom_attack_pattern = 0;
+
+			if (attack_pattern_mode == Modes::DONUT_PB)
+			{
+				if (custom_attack_pattern == 0) // Donut AOE
+				{
+					if (StructVariableExists(monster, "config"))
+					{
+						RValue config = *monster.GetRefMember("config");
+						RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { donut_aoe_points.size() });
+						for (int i = 0; i < donut_aoe_points.size(); i++)
+						{
+							RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 0, donut_aoe_points[i][0] });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 1, donut_aoe_points[i][1] });
+							g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+						}
+
+						*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					}
+				}
+				if (custom_attack_pattern == 1) // PB AOE
+				{
+					if (StructVariableExists(monster, "config"))
+					{
+						RValue config = *monster.GetRefMember("config");
+						RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { pb_aoe_points.size() });
+						for (int i = 0; i < pb_aoe_points.size(); i++)
+						{
+							RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 0, pb_aoe_points[i][0] });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 1, pb_aoe_points[i][1] });
+							g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+						}
+
+						*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					}
+				}
+			}
+			else if (attack_pattern_mode == Modes::CROSS_X)
+			{
+				if (custom_attack_pattern == 0) // Cross AOE
+				{
+					if (StructVariableExists(monster, "config"))
+					{
+						RValue config = *monster.GetRefMember("config");
+						RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { cross_aoe_points.size() });
+						for (int i = 0; i < cross_aoe_points.size(); i++)
+						{
+							RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 0, cross_aoe_points[i][0] });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 1, cross_aoe_points[i][1] });
+							g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+						}
+
+						*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					}
+				}
+				if (custom_attack_pattern == 1) // X AOE
+				{
+					if (StructVariableExists(monster, "config"))
+					{
+						RValue config = *monster.GetRefMember("config");
+						RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { x_aoe_points.size() });
+						for (int i = 0; i < x_aoe_points.size(); i++)
+						{
+							RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 0, x_aoe_points[i][0] });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 1, x_aoe_points[i][1] });
+							g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+						}
+
+						*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					}
+				}
+			}
+			// TODO: else if (attack_pattern_mode == Modes::CHECKERBOARD
+
+			*monster.GetRefMember("__deep_dungeon__custom_attack_pattern") = custom_attack_pattern;
+		}
+	}
+}
+
+void ModifySaplingAttackPatterns(RValue monster)
+{
+	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
+	if (!wait_to_change_attack_pattern_exists.ToBoolean())
+		StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
+	RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
+
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = *monster.GetRefMember("config");
+			StructVariableSet(config, "sticky", true);
+			StructVariableSet(config, "free_fly", true);
+			StructVariableSet(config, "air_speed_modifier", 0.6);
+			StructVariableSet(config, "use_circle", true);
+			StructVariableSet(config, "attack_radius", 624);
+			StructVariableSet(config, "max_jump_radius", 624);
+			StructVariableSet(config, "aggro_radius", 624);
+			StructVariableSet(config, "sap_children_birth_timer", 30);
+			StructVariableSet(config, "sap_children_birth_distance", 15);
+			StructVariableSet(config, "sap_children", 2);
+			StructVariableSet(config, "sap_children_species", "sapling_orange_mini");
+		}
+	}
+}
+
+void ModifyDreadBeastAttackPatterns(RValue monster)
+{
+	RValue monster_id = monster.GetMember("monster_id");
+	if (monster_id.ToInt64() == monster_name_to_id_map["rockclod"] || monster_id.ToInt64() == monster_name_to_id_map["rockclod_blue"] || monster_id.ToInt64() == monster_name_to_id_map["rockclod_green"] || monster_id.ToInt64() == monster_name_to_id_map["rockclod_red"])
+		ModifyRockClodAttackPatterns(monster);
+	if (monster_id.ToInt64() == monster_name_to_id_map["stalagmite"] || monster_id.ToInt64() == monster_name_to_id_map["stalagmite_green"] || monster_id.ToInt64() == monster_name_to_id_map["stalagmite_purple"])
+		ModifyStalagmiteAttackPatterns(monster);
+	if (monster_id.ToInt64() == monster_name_to_id_map["sapling"]) // TODO
+		ModifySaplingAttackPatterns(monster);
 }
 
 void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
@@ -2198,6 +2675,46 @@ std::vector<int> GenerateRandomMonstersIdsForCurrentFloor(int min, int max)
 	return random_monsters;
 }
 
+void SpawnDreadBeast(CInstance* Self, CInstance* Other)
+{
+	if (TRAP_SPAWN_POINTS.contains(ari_current_gm_room))
+	{
+		static thread_local std::mt19937 random_generator(std::random_device{}());
+		std::vector<std::pair<int, int>> spawn_points = TRAP_SPAWN_POINTS.at(ari_current_gm_room);
+
+		if (spawn_points.empty())
+			return;
+
+		std::uniform_int_distribution<size_t> trap_spawn_points_distribution(0, spawn_points.size() - 1);
+		int random_index = trap_spawn_points_distribution(random_generator);
+		std::pair<int, int> spawn_point = spawn_points[random_index];
+
+		// TODO: Update this as dread beast logic is implemented
+		std::vector<std::string> possible_dread_beast_monsters = {};
+		if (floor_number < 20)
+			possible_dread_beast_monsters = { "rockclod" };
+		else if (floor_number < 40)
+			possible_dread_beast_monsters = { "rockclod_blue", "stalagmite" };
+		else if (floor_number < 60)
+			possible_dread_beast_monsters = { "rockclod_green", "stalagmite_green" };
+		else if (floor_number < 80)
+			possible_dread_beast_monsters = { "rockclod_red", "stalagmite_purple" };
+		else
+			return; // TODO
+
+		std::uniform_int_distribution<size_t> random_dread_beast_distribution(0, possible_dread_beast_monsters.size() - 1);
+		random_index = random_dread_beast_distribution(random_generator);
+		// int dread_beast_monster_id = monster_name_to_id_map[possible_dread_beast_monsters[random_index]];
+		//SpawnMonster(Self, Other, spawn_point.first, spawn_point.second, dread_beast_monster_id);
+		//dread_beast_monster_id = dread_beast_monster_id;
+
+		int monster_id = monster_name_to_id_map["sapling"]; // TESTING
+		//int dread_beast_monster_id = GenerateRandomMonstersIdsForCurrentFloor(1, 1)[0];
+		SpawnMonster(Self, Other, spawn_point.first, spawn_point.second, monster_id);
+		dread_beast_monster_id = monster_id;
+	}
+}
+
 void CancelStatusEffect(CInstance* Self, CInstance* Other, RValue status_effect_id)
 {
 	CScript* gml_script_cancel_status_effect = nullptr;
@@ -2440,19 +2957,19 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 	// Prune traps that have fully applied.
 	if (active_traps.contains(Traps::CONFUSING) && active_traps_to_value_map[Traps::CONFUSING] < current_time_in_seconds)
 	{
-		g_ModuleInterface->Print(CM_LIGHTPURPLE, "Confusing Trap Ended: %d", current_time_in_seconds);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Confusing Trap effect ended at: %d", MOD_NAME, VERSION, current_time_in_seconds);
 		active_traps.erase(Traps::CONFUSING);
 		active_traps_to_value_map.erase(Traps::CONFUSING);
 	}
 	if (active_traps.contains(Traps::DISORIENTING) && active_traps_to_value_map[Traps::DISORIENTING] < current_time_in_seconds)
 	{
-		g_ModuleInterface->Print(CM_LIGHTPURPLE, "Disorienting Trap Ended: %d", current_time_in_seconds);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Disorienting Trap effect ended at: %d", MOD_NAME, VERSION, current_time_in_seconds);
 		active_traps.erase(Traps::DISORIENTING);
 		active_traps_to_value_map.erase(Traps::DISORIENTING);
 	}
 	if (active_traps.contains(Traps::INHIBITING) && active_traps_to_value_map[Traps::INHIBITING] < current_time_in_seconds)
 	{
-		g_ModuleInterface->Print(CM_LIGHTPURPLE, "Inhibiting Trap Ended: %d", current_time_in_seconds);
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Inhibiting Trap effect ended at: %d", MOD_NAME, VERSION, current_time_in_seconds);
 		active_traps.erase(Traps::INHIBITING);
 		active_traps_to_value_map.erase(Traps::INHIBITING);
 
@@ -2469,29 +2986,41 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			std::uniform_int_distribution<size_t> random_trap_distribution(0, magic_enum::enum_count<Traps>() - 1);
 			
 			Traps trap = magic_enum::enum_value<Traps>(random_trap_distribution(random_generator));
-			active_traps.insert(trap);
+			active_traps.insert({trap, { floor_trap->first, floor_trap->second } });
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Trap Triggered: %s", MOD_NAME, VERSION, magic_enum::enum_name(trap));
 			
 			if (trap == Traps::CONFUSING)
 			{
 				PlaySoundEffect("snd_bark_o_o", 100);
 				CreateNotification(CONFUSING_TRAP_NOTIFICATION_KEY, Self, Other);
-				g_ModuleInterface->Print(CM_LIGHTPURPLE, "Confusing Trap Started: %d", current_time_in_seconds);
 
 				if (!active_traps_to_value_map.contains(Traps::CONFUSING))
+				{
 					active_traps_to_value_map[Traps::CONFUSING] = current_time_in_seconds + 1200; // 20m
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Confusing Trap effect started at: %d", MOD_NAME, VERSION, current_time_in_seconds);
+				}
 				else
+				{
 					active_traps_to_value_map[Traps::CONFUSING] += 1200;
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Confusing Trap effect extended by: %d", MOD_NAME, VERSION, 1200);
+				}
+					
 			}
 			if (trap == Traps::DISORIENTING)
 			{
 				PlaySoundEffect("snd_interactable_scan", 100);
 				CreateNotification(DISORIENTING_TRAP_NOTIFICATION_KEY, Self, Other);
-				g_ModuleInterface->Print(CM_LIGHTPURPLE, "Disorienting Trap Started: %d", current_time_in_seconds);
 
 				if (!active_traps_to_value_map.contains(Traps::DISORIENTING))
+				{
 					active_traps_to_value_map[Traps::DISORIENTING] = current_time_in_seconds + 600; // 10m
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Disorienting Trap effect started at: %d", MOD_NAME, VERSION, current_time_in_seconds);
+				}
 				else
+				{
 					active_traps_to_value_map[Traps::DISORIENTING] += 600;
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Disorienting Trap effect extended by: %d", MOD_NAME, VERSION, 600);
+				}
 			}
 			if (trap == Traps::EXPLODING)
 			{
@@ -2502,15 +3031,20 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			{
 				PlaySoundEffect("snd_bark_surprised", 100);
 				CreateNotification(INHIBITING_TRAP_NOTIFICATION_KEY, Self, Other);
-				g_ModuleInterface->Print(CM_LIGHTPURPLE, "Inhibiting Trap Started: %d", current_time_in_seconds);
 
 				if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 					UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 
 				if (!active_traps_to_value_map.contains(Traps::INHIBITING))
+				{
 					active_traps_to_value_map[Traps::INHIBITING] = current_time_in_seconds + 900; // 15m
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Inhibiting Trap effect started at: %d", MOD_NAME, VERSION, current_time_in_seconds);
+				}
 				else
+				{
 					active_traps_to_value_map[Traps::INHIBITING] += 900;
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Inhibiting Trap effect extended by: %d", MOD_NAME, VERSION, 900);
+				}
 			}
 			if (trap == Traps::LURING)
 			{
@@ -2674,11 +3208,12 @@ void ObjectCallback(
 		// Floor Traps
 		if (active_traps.contains(Traps::EXPLODING))
 		{
+			// Apply damage to Ari
 			RValue health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
 			int penalty = std::trunc(health.ToDouble() * 0.8);
 			SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, health.ToDouble() - penalty);
-			active_traps.erase(Traps::EXPLODING);
 
+			// Apply damage to monsters
 			for (CInstance* monster : current_floor_monsters)
 			{
 				if (StructVariableExists(monster, "hit_points") && StructVariableExists(monster, "move"))
@@ -2688,8 +3223,7 @@ void ObjectCallback(
 					g_ModuleInterface->GetBuiltin("x", monster, NULL_INDEX, monster_x);
 					g_ModuleInterface->GetBuiltin("y", monster, NULL_INDEX, monster_y);
 
-					// TODO: See if it's possible to directly check the distance between the trap and the monsters.
-					double distance = GetDistance(ari_x, ari_y, monster_x.ToInt64(), monster_y.ToInt64());
+					double distance = GetDistance(active_traps[Traps::EXPLODING].first, active_traps[Traps::EXPLODING].second, monster_x.ToInt64(), monster_y.ToInt64());
 					if (distance <= 32)
 					{
 						double hit_points = monster->GetMember("hit_points").ToDouble();
@@ -2697,10 +3231,19 @@ void ObjectCallback(
 						{
 							int monster_hp_penalty = std::trunc(hit_points * 0.8);
 							*monster->GetRefMember("hit_points") = max(0, hit_points - monster_hp_penalty);
-						}						
+
+							if (StructVariableExists(monster, "monster_id"))
+							{
+								RValue monster_id = monster->GetMember("monster_id");
+								if (IsNumeric(monster_id))
+									g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - The Exploding Trap damaged the monster: %s", MOD_NAME, VERSION, monster_id_to_name_map[monster_id.ToInt64()].c_str());
+							}
+						}
 					}
 				}
 			}
+
+			active_traps.erase(Traps::EXPLODING);
 		}
 		
 		ApplyOfferingPenalties(global_instance->GetRefMember("__ari")->ToInstance(), self);
@@ -2724,7 +3267,7 @@ void ObjectCallback(
 							RValue did_action = state.GetMember("did_action");
 							if (did_action.ToBoolean())
 							{
-								if (sigil_item_used) // TODO: This might not be neccessary
+								if (sigil_item_used) // Necessary since did_action==true will get called a few times when the item is used.
 								{
 									sigil_item_used = false;
 
@@ -2815,7 +3358,11 @@ void ObjectCallback(
 		// Restoration & Cleric Armor Bonus
 		if (is_restoration_tracked_interval)
 		{
-			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, max(1, CountEquippedClassArmor()[ClassArmor::CLERIC]));
+			int recovery = 1;
+			if (!GameIsPaused())
+				recovery = max(recovery, CountEquippedClassArmor()[ClassArmor::CLERIC]);
+
+			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery);
 			is_restoration_tracked_interval = false;
 		}
 
@@ -2884,10 +3431,26 @@ void ObjectCallback(
 
 			if (is_valid_monster_object)
 			{
+				// Dread Beasts
+				if (!dread_beast_configured && monster_id.ToInt64() == dread_beast_monster_id && !StructVariableExists(monster, "__deep_dungeon__dread_beast") && StructVariableExists(monster, "hit_points"))
+				{
+					double hit_points = monster.GetMember("hit_points").ToDouble();
+					if (std::isfinite(hit_points))
+					{
+						*monster.GetRefMember("hit_points") = hit_points * 3; // TODO: Tune this.
+
+						dread_beast_configured = true;
+						StructVariableSet(monster, "__deep_dungeon__dread_beast", true);
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Spawned Dread Beast: %s", MOD_NAME, VERSION, monster_id_to_name_map[monster_id.ToInt64()].c_str());
+					}
+				}
+				else if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
+					ModifyDreadBeastAttackPatterns(monster);
+
 				// Track the monster
 				if (!StructVariableExists(monster, "__deep_dungeon__current_floor_monsters") && StructVariableExists(monster, "hit_points"))
 				{
-					current_floor_monsters.push_back(self); // TESTING
+					current_floor_monsters.push_back(self);
 					StructVariableSet(monster, "__deep_dungeon__current_floor_monsters", true);
 				}
 
@@ -2899,32 +3462,65 @@ void ObjectCallback(
 					{
 						static thread_local std::mt19937 random_generator(std::random_device{}());
 						std::uniform_int_distribution<size_t> zero_to_nintey_nine_distribution(0, 99);
-						// TODO: Should beast coin drops have RNG?
 						bool drop_lift_key = zero_to_nintey_nine_distribution(random_generator) < 2 ? true : false; // TODO: What should the drop rate be for lift keys?
 
 						if (floor_number < 20) // Upper Mines
 						{
 							DropItem(item_name_to_id_map["beast_coin_tiny"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
+							{
+								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								if (drop_soul_stone)
+									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+							}
 						}
 						else if (floor_number < 40) // Tide Caverns
 						{
 							DropItem(item_name_to_id_map["beast_coin_small"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-							if (progression_mode && drop_lift_key) DropItem(item_name_to_id_map[TIDE_CAVERNS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (progression_mode && drop_lift_key)
+								DropItem(item_name_to_id_map[TIDE_CAVERNS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
+							{
+								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								if (drop_soul_stone)
+									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+							}
 						}
 						else if (floor_number < 60) // Deep Earth
 						{
 							DropItem(item_name_to_id_map["beast_coin_medium"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-							if (progression_mode && drop_lift_key) DropItem(item_name_to_id_map[DEEP_EARTH_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (progression_mode && drop_lift_key)
+								DropItem(item_name_to_id_map[DEEP_EARTH_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
+							{
+								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								if (drop_soul_stone)
+									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+							}
 						}
 						else if (floor_number < 80) // Lava Caves
 						{
 							DropItem(item_name_to_id_map["beast_coin_large"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-							if (progression_mode && drop_lift_key) DropItem(item_name_to_id_map[LAVA_CAVES_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (progression_mode && drop_lift_key)
+								DropItem(item_name_to_id_map[LAVA_CAVES_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
+							{
+								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								if (drop_soul_stone)
+									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+							}
 						}
 						else if (floor_number < 100) // Ruins
 						{
 							DropItem(item_name_to_id_map["beast_coin_giant"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-							if (progression_mode && drop_lift_key) DropItem(item_name_to_id_map[RUINS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (progression_mode && drop_lift_key)
+								DropItem(item_name_to_id_map[RUINS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
+							{
+								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								if (drop_soul_stone)
+									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+							}
 						}
 
 						StructVariableSet(monster, "__deep_dungeon__loot_drop", true);
@@ -2939,9 +3535,19 @@ void ObjectCallback(
 						double hit_points = monster.GetMember("hit_points").ToDouble();
 						if (std::isfinite(hit_points))
 						{
-							*monster.GetRefMember("hit_points") = hit_points * 2;
+							*monster.GetRefMember("hit_points") = std::trunc(hit_points * 1.5); // TODO: Tune this.
 							StructVariableSet(monster, "__deep_dungeon__gloom_applied", true);
 						}
+					}
+				}
+
+				// Reckoning
+				if (active_offerings.contains(Offerings::RECKONING))
+				{
+					if (!StructVariableExists(monster, "__deep_dungeon__reckoning_applied") && StructVariableExists(monster, "hit_points"))
+					{
+						*monster.GetRefMember("hit_points") = 1;
+						StructVariableSet(monster, "__deep_dungeon__reckoning_applied", true);
 					}
 				}
 
@@ -2984,121 +3590,9 @@ void ObjectCallback(
 							*monster.GetRefMember("hit_points") = 0;
 					}
 				}
-
-				// Reckoning
-				if (active_offerings.contains(Offerings::RECKONING))
-				{
-					if (!StructVariableExists(monster, "__deep_dungeon__reckoning_applied") && StructVariableExists(monster, "hit_points"))
-					{
-						*monster.GetRefMember("hit_points") = 1;
-						StructVariableSet(monster, "__deep_dungeon__reckoning_applied", true);
-					}
-				}
 			}
 		}
 	}
-
-	/*
-	std::string name = self->m_Object->m_Name;
-	if (name == "obj_monster_clod")
-	{
-		RValue monster = self->ToRValue();
-		RValue monster_id = monster.GetMember("monster_id");
-		if (monster_id.ToInt64() == 17)
-		{
-			RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
-			if (!wait_to_change_attack_pattern_exists.ToBoolean())
-				StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
-			RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
-
-			RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
-			if (!custom_attack_pattern_exists.ToBoolean())
-			{
-				StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
-				if (StructVariableExists(monster, "config"))
-				{
-					RValue config = *monster.GetRefMember("config");
-					*config.GetRefMember("attack_sequence") = 20.0;
-					*config.GetRefMember("attack_legion") = 10.0;
-					*config.GetRefMember("projectile_speed") = 3.5;
-				}
-			}
-
-			if (StructVariableExists(monster, "aggro"))
-			{
-				RValue aggro = monster.GetMember("aggro"); // BOOL
-				int temp = 5;
-			}
-
-			if (StructVariableExists(monster, "fsm"))
-			{
-				RValue state_id = monster.GetMember("fsm").GetMember("state").GetMember("state_id"); // TODO: Don't hard-code these. Get them from the monster's __rockclod_state__ global.
-				if (state_id.ToInt64() == 4) // Attack
-					*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = false;
-
-				if (state_id.ToInt64() == 5 && !wait_to_change_attack_pattern.ToBoolean()) // Tired
-				{
-					*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = true;
-
-					int custom_attack_pattern = monster.GetMember("__deep_dungeon__custom_attack_pattern").ToInt64() + 1;
-					if (custom_attack_pattern > 2)
-						custom_attack_pattern = 0;
-
-					if (custom_attack_pattern == 0)
-					{
-						if (StructVariableExists(monster, "config"))
-						{
-							// Shoots a wall of 10 pellets repeatedly 5 times
-							RValue config = *monster.GetRefMember("config");
-							*config.GetRefMember("attack_sequence") = 5.0;
-							*config.GetRefMember("attack_legion") = 10.0;
-							*config.GetRefMember("attack_sequence_turn") = -1.0;
-							*config.GetRefMember("attack_sequence_image_speed") = -1.0;
-							*config.GetRefMember("projectile_speed") = 3.0;
-							*config.GetRefMember("split_distance") = -1.0;
-							*config.GetRefMember("split_depth") = -1.0;
-							*config.GetRefMember("split_angle") = -1.0;
-						}
-					}
-					if (custom_attack_pattern == 1)
-					{
-						if (StructVariableExists(monster, "config"))
-						{
-							// Rotates 18-degrees at a time while shooting 5 pellets in a small cone
-							RValue config = *monster.GetRefMember("config");
-							*config.GetRefMember("attack_sequence") = 20.0;
-							*config.GetRefMember("attack_legion") = 5.0;
-							*config.GetRefMember("attack_sequence_turn") = 18.0;
-							*config.GetRefMember("attack_sequence_image_speed") = 2.0;
-							*config.GetRefMember("projectile_speed") = 3.0;
-							*config.GetRefMember("split_distance") = -1.0;
-							*config.GetRefMember("split_depth") = -1.0;
-							*config.GetRefMember("split_angle") = -1.0;
-						}
-					}
-					if (custom_attack_pattern == 2)
-					{
-						if (StructVariableExists(monster, "config"))
-						{
-							// Shoots a single pellet that then splits into many that repeatedly split
-							RValue config = *monster.GetRefMember("config");
-							*config.GetRefMember("attack_sequence") = 5.0;
-							*config.GetRefMember("attack_legion") = 1.0;
-							*config.GetRefMember("attack_sequence_turn") = -1.0;
-							*config.GetRefMember("attack_sequence_image_speed") = -1.0;
-							*config.GetRefMember("projectile_speed") = 3.0;
-							*config.GetRefMember("split_distance") = 20.0;
-							*config.GetRefMember("split_depth") = 5.0;
-							*config.GetRefMember("split_angle") = 20.0;
-						}
-					}
-
-					*monster.GetRefMember("__deep_dungeon__custom_attack_pattern") = custom_attack_pattern;
-				}
-			}
-		}
-	}
-	*/
 }
 
 RValue& GmlScriptCancelStatusEffectCallback(
@@ -3209,7 +3703,39 @@ RValue& GmlScriptSpawnMonsterCallback(
 	static thread_local std::mt19937 random_generator(std::random_device{}());
 	std::uniform_int_distribution<size_t> zero_to_nintey_nine_distribution(0, 99);
 
+	// Sapling Dread Beasts - Duplicate on Death
+	if (Arguments[2]->ToInt64() == monster_name_to_id_map["sapling_orange_mini"] && (dread_beast_monster_id == monster_name_to_id_map["sapling"] || dread_beast_monster_id == monster_name_to_id_map["sapling_blue"] || dread_beast_monster_id == monster_name_to_id_map["sapling_purple"] || dread_beast_monster_id == monster_name_to_id_map["sapling_orange"]))
+	{
+		bool dread_beast_slain = false;
+		for (CInstance* monster : current_floor_monsters)
+		{
+			if (monster != nullptr && StructVariableExists(monster, "__deep_dungeon__dread_beast") && StructVariableExists(monster, "hit_points"))
+			{
+				RValue monster_hp = monster->GetMember("hit_points");
+				if (IsNumeric(monster_hp) && std::isfinite(monster_hp.ToDouble()) && monster_hp.ToInt64() <= 0)
+					dread_beast_slain = true;
+			}
+		}
+
+		if (dread_beast_slain && dread_beast_sapling_splits < 2) // TODO: Make sure this matches the value set in ModifySaplingAttackPatterns()
+		{
+			dread_beast_sapling_splits++;
+
+			if (floor_number < 20)
+				*Arguments[2] = monster_name_to_id_map["sapling"];
+			else if (floor_number < 40)
+				*Arguments[2] = monster_name_to_id_map["sapling_blue"];
+			else if (floor_number < 60)
+				*Arguments[2] = monster_name_to_id_map["sapling_purple"];
+			else if (floor_number < 80)
+				*Arguments[2] = monster_name_to_id_map["sapling_orange"];
+			//else if (floor_number < 100)
+			// TODO: When more mines levels are added
+		}
+	}
+
 	// Sigil of Silence
+	// TODO: Don't override a Dread Beast
 	if (active_sigils.contains(Sigils::SILENCE))
 	{
 		int chance_to_activate = zero_to_nintey_nine_distribution(random_generator);
@@ -3231,6 +3757,7 @@ RValue& GmlScriptSpawnMonsterCallback(
 	}
 		
 	// Sigil of Alteration
+	// TODO: Don't override a Dread Beast
 	if (active_sigils.contains(Sigils::ALTERATION))
 	{
 		int chance_to_activate = zero_to_nintey_nine_distribution(random_generator);
@@ -3337,6 +3864,46 @@ RValue& GmlScriptDamageCallback(
 	static thread_local std::mt19937 random_generator(std::random_device{}());
 	std::uniform_int_distribution<size_t> zero_to_one_distribution(0, 1);
 
+	// Dread Beasts
+	if (active_offerings.contains(Offerings::DREAD))
+	{
+		RValue target = Arguments[0]->GetMember("target");
+		if (target.ToInt64() == 1 && StructVariableExists(*Arguments[0], "parent_id"))
+		{
+			RValue parent_id = Arguments[0]->GetMember("parent_id");
+
+			bool source_is_dread_beast = false;
+			// TODO: This is working on most enemies. But for some reason not the attacks bats create. 
+			if (parent_id.m_Kind == VALUE_OBJECT && StructVariableExists(parent_id, "hit_points"))
+			{
+				RValue hit_points = parent_id.GetMember("hit_points");
+				if (IsNumeric(hit_points) && std::isfinite(hit_points.ToDouble()))
+				{
+					for (CInstance* monster : current_floor_monsters)
+					{
+						if (monster != nullptr && StructVariableExists(monster, "__deep_dungeon__dread_beast") && StructVariableExists(monster, "hit_points"))
+						{
+							RValue monster_hp = monster->GetMember("hit_points");
+							if (IsNumeric(monster_hp) && std::isfinite(monster_hp.ToDouble()) && hit_points.ToInt64() == monster_hp.ToInt64())
+								source_is_dread_beast = true;
+						}
+					}
+				}
+			}
+
+			if (source_is_dread_beast && !StructVariableExists(*Arguments[0], "__deep_dungeon__dread_beast") && StructVariableExists(*Arguments[0], "damage"))
+			{
+				RValue damage = Arguments[0]->GetMember("damage");
+				if (IsNumeric(damage) && std::isfinite(damage.ToDouble()))
+				{
+					double modified_damage = std::trunc(damage.ToDouble() * 2); // 2x increased damage
+					*Arguments[0]->GetRefMember("damage") = modified_damage;
+					StructVariableSet(*Arguments[0], "__deep_dungeon__dread_beast", true);
+				}
+			}
+		}
+	}
+
 	// Distortion
 	if (active_floor_enchantments.contains(FloorEnchantments::DISTORTION))
 	{
@@ -3349,11 +3916,6 @@ RValue& GmlScriptDamageCallback(
 				*Arguments[0]->GetRefMember("damage") = 0.0;
 				*Arguments[0]->GetRefMember("critical") = false;
 				*Arguments[0]->GetRefMember("knockback") = false;
-				//*Arguments[0]->GetRefMember("frozen") = true; // Frozen debuff
-				//*Arguments[0]->GetRefMember("venomous") = true; // Poison debuff
-				//*Arguments[0]->GetRefMember("electrocute_kind") = 0; // Paralysis debuff (doesn't seem to affect monsters)
-				//*Arguments[0]->GetRefMember("can_pick_grid_objects") = true; // Pick node objects
-				//*Arguments[0]->GetRefMember("can_chop_grid_objects") = true; // Chop node objects
 			}
 		}
 	}
@@ -3399,7 +3961,7 @@ RValue& GmlScriptDamageCallback(
 	// Sigil of Fortification
 	if (active_sigils.contains(Sigils::FORTIFICATION))
 	{
-		if (!StructVariableExists(*Arguments[0], "__deep_dungeon__fortification_applied")) // Prevents monster attacks that "persist" from repeatedly getting Gloom applied
+		if (!StructVariableExists(*Arguments[0], "__deep_dungeon__fortification_applied")) // Prevents monster attacks that "persist" from repeatedly getting Fortification applied
 		{
 			RValue target = Arguments[0]->GetMember("target");
 			if (target.ToInt64() == 1) // Ari
@@ -3518,18 +4080,18 @@ RValue& GmlScriptTakePressCallback(
 	if (game_is_active && obj_dungeon_ladder_down_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean() && !offering_chance_occurred)
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
-		std::uniform_int_distribution<size_t> zero_to_nine_distribution(0, 9);
+		std::uniform_int_distribution<size_t> zero_to_fourteen_distribution(0, 14); // TODO: Tune this. 15% chance for an Offering event
 		
-		int roll = zero_to_nine_distribution(random_generator); // 10% chance for an Offering event
+		int roll = zero_to_fourteen_distribution(random_generator);
 		if (active_sigils.contains(Sigils::TEMPTATION) || roll == 0)
 		{ 
 			std::uniform_int_distribution<size_t> random_ari_resource_distribution(0, magic_enum::enum_count<AriResources>() - 1);
 			AriResources resource = magic_enum::enum_value<AriResources>(random_ari_resource_distribution(random_generator));
-			if (resource == AriResources::HEALTH && ari_resource_to_value_map[AriResources::HEALTH] > 25)
+			if (resource == AriResources::HEALTH && ari_resource_to_value_map[AriResources::HEALTH] > 25) // TODO: Tune this. Health requirement.
 				PlayConversation("Conversations/Mods/Deep Dungeon/offering/health", Self, Other);
-			if (resource == AriResources::STAMINA && ari_resource_to_value_map[AriResources::STAMINA] > 20)
+			if (resource == AriResources::STAMINA && ari_resource_to_value_map[AriResources::STAMINA] > 20) // TODO: Tune this. Stamina requirement.
 				PlayConversation("Conversations/Mods/Deep Dungeon/offering/stamina", Self, Other);
-			if (resource == AriResources::MANA && ari_resource_to_value_map[AriResources::MANA] > 1)
+			if (resource == AriResources::MANA && ari_resource_to_value_map[AriResources::MANA] > 1) // TODO: Tune this. Mana requirement.
 				PlayConversation("Conversations/Mods/Deep Dungeon/offering/mana", Self, Other);
 
 			Result = false;
@@ -3917,7 +4479,7 @@ RValue& GmlScriptGetMinutesCallback(
 		ApplyFloorTraps(Self, Other);
 
 		// Restoration
-		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION) || (AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[ClassArmor::CLERIC] > 0))
+		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION) || (!GameIsPaused() && AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[ClassArmor::CLERIC] > 0))
 		{
 			if (!is_restoration_tracked_interval && (current_time_in_seconds - time_of_last_restoration_tick) >= TWO_MINUTES_IN_SECONDS)
 			{
@@ -4081,15 +4643,30 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	active_floor_enchantments.clear();
 	active_offerings = queued_offerings;
 	queued_offerings.clear();
+	current_floor_monsters.clear();
 
-	// TESTING - reset trap vars
+	// Floor Trap controls
 	active_traps.clear();
 	active_traps_to_value_map.clear();
 	floor_trap_positions.clear();
-	current_floor_monsters.clear();
-
+	
+	// Dread Beast controls
+	dread_beast_configured = false;
+	dread_beast_monster_id = -1;
+	dread_beast_sapling_splits = 0;
 	show_dashes = active_offerings.contains(Offerings::DREAD);
 	show_danger_banner = active_offerings.contains(Offerings::DREAD);
+	if (!active_offerings.contains(Offerings::DREAD))
+	{
+		static thread_local std::mt19937 random_generator(std::random_device{}());
+		std::uniform_int_distribution<size_t> zero_to_nineteen(0, 19);
+
+		int random = zero_to_nineteen(random_generator);
+		if (true/*random == 13*/) // TESTING - REMOVE THIS
+			active_offerings.insert(Offerings::DREAD);
+	}
+	if(active_offerings.contains(Offerings::DREAD))
+		SpawnDreadBeast(Self, Other); // TODO: Store the ID of the spawned monster for use in ObjectCallback
 	
 	DisableAllPerks();
 	ModifySpellCosts(true);
@@ -4097,6 +4674,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	ScaleMistpoolWeapon(true);
 	CancelAllStatusEffects();
 	SetInvulnerabilityHits(0);
+	biome_reward = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
 	offering_chance_occurred = false;
@@ -4176,7 +4754,7 @@ RValue& GmlScriptGoToRoomCallback(
 		Arguments
 	);
 
-	RValue gm_room = Result.GetMember("gm_room"); //StructVariableGet(Result, "gm_room"); 
+	RValue gm_room = Result.GetMember("gm_room");
 	RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
 	ari_current_gm_room = room_name.ToString();
 
@@ -4209,12 +4787,16 @@ RValue& GmlScriptGoToRoomCallback(
 		ScaleMistpoolWeapon(true);
 		CancelAllStatusEffects();
 		SetInvulnerabilityHits(0);
+		biome_reward = false;
+		dread_beast_configured = false;
 		fire_breath_cast = false; // Different than OnDungeonRoomStart
 		reckoning_applied = false;
 		fairy_buff_applied = false;
 		offering_chance_occurred = false;
 		sigil_of_silence_count = 0;
 		sigil_of_alteration_count = 0;
+		dread_beast_monster_id = -1;
+		dread_beast_sapling_splits = 0;
 	}
 	else
 		active_offerings.clear(); // TESTING -- Confirm this clears stuff like Reckoning before new monsters spawn and get modified
@@ -4247,6 +4829,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		LoadMonsters();
 		LoadDungeonBiomeCandidateMonsters();
 		LoadPlayerStates();
+		LoadMonsterStates();
 		LoadTutorials();
 		// TODO: Load other stuff
 	}
@@ -4285,7 +4868,7 @@ RValue& GmlScriptGetEquipmentBonusFromCallback(
 		Arguments
 	);
 
-	if (AriCurrentGmRoomIsDungeonFloor())
+	if (AriCurrentGmRoomIsDungeonFloor() && !GameIsPaused())
 	{
 		int infusion_id = Arguments[0]->ToInt64();
 
@@ -4445,7 +5028,14 @@ RValue& GmlScriptGetUiIconCallback(
 		if (StructVariableExists(self, "item_id"))
 		{
 			int item_id = self.GetMember("item_id").ToInt64();
-			if(deep_dungeon_items.contains(item_id))
+
+			bool modify_icon = false;
+			if (deep_dungeon_items.contains(item_id))
+				modify_icon = true;
+			if(item_id == item_name_to_id_map[MISTPOOL_HELMET_NAME] || item_id == item_name_to_id_map[MISTPOOL_CHESTPIECE_NAME] || item_id == item_name_to_id_map[MISTPOOL_GLOVES_NAME] || item_id == item_name_to_id_map[MISTPOOL_PANTS_NAME] || item_id == item_name_to_id_map[MISTPOOL_BOOTS_NAME])
+				modify_icon = true;
+
+			if(modify_icon)
 				Result = GetDynamicItemSprite(item_id);
 		}
 	}
