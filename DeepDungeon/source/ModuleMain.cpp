@@ -524,7 +524,8 @@ static bool load_on_start = true;
 static bool localize_mod_text = false;
 static bool game_is_active = false;
 static bool progression_mode = true; // TODO: Make this configurable
-static bool biome_reward = false;
+static bool drop_biome_reward = false;
+static bool biome_reward_disabled = false;
 static bool dread_beast_configured = false;
 static bool sigil_item_used = false;
 static bool lift_key_used = false;
@@ -628,7 +629,8 @@ void ResetStaticFields(bool returned_to_title_screen)
 		script_name_to_reference_map.clear();
 	}
 
-	biome_reward = false;
+	drop_biome_reward = false;
+	biome_reward_disabled = false;
 	dread_beast_configured = false;
 	sigil_item_used = false;
 	lift_key_used = false;
@@ -1709,22 +1711,27 @@ void ModifyRockClodAttackPatterns(RValue monster)
 	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
 	if (!custom_attack_pattern_exists.ToBoolean())
 	{
-		StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 		if (StructVariableExists(monster, "config"))
 		{
-			RValue config = *monster.GetRefMember("config");
-			*config.GetRefMember("attack_sequence") = 5.0;
-			*config.GetRefMember("attack_legion") = 10.0;
-			*config.GetRefMember("attack_sequence_turn") = -1.0;
-			*config.GetRefMember("attack_sequence_image_speed") = -1.0;
-			*config.GetRefMember("projectile_speed") = 3.0;
-			*config.GetRefMember("split_distance") = -1.0;
-			*config.GetRefMember("split_depth") = -1.0;
-			*config.GetRefMember("split_angle") = -1.0;
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
+
+			// Shoots a wall of 10 pellets repeatedly 5 times
+			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "attack_sequence", 5.0);
+			StructVariableSet(config_clone, "attack_legion", 10.0);
+			StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
+			StructVariableSet(config_clone, "attack_sequence_image_speed", -1.0);
+			StructVariableSet(config_clone, "projectile_speed", 3.0);
+			StructVariableSet(config_clone, "split_distance", -1.0);
+			StructVariableSet(config_clone, "split_depth", -1.0);
+			StructVariableSet(config_clone, "split_angle", -1.0);
+			StructVariableSet(monster, "config", config_clone);
+			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 		}
 	}
 
-	if (StructVariableExists(monster, "fsm"))
+	if (custom_attack_pattern_exists.ToBoolean() && StructVariableExists(monster, "fsm"))
 	{
 		RValue state_id = monster.GetMember("fsm").GetMember("state").GetMember("state_id");
 		if (state_id.ToInt64() == monster_category_to_state_id_map["clod"]["attack"])
@@ -1822,19 +1829,19 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 		Modes mode = magic_enum::enum_value<Modes>(random_mode_distribution(random_generator));
 		StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
 	}
-	Modes attack_pattern_mode = Modes::CROSS_X; //Modes attack_pattern_mode = magic_enum::enum_cast<Modes>(monster.GetMember("__deep_dungeon__attack_pattern_mode").ToString()).value();
+	Modes attack_pattern_mode = magic_enum::enum_cast<Modes>(monster.GetMember("__deep_dungeon__attack_pattern_mode").ToString()).value();
 
 	// Control the attack patterns.
 	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
 	if (!custom_attack_pattern_exists.ToBoolean())
 	{
-		// Randomly choose starting attack. Each pattern has two alternating attacks.
-		int starting_pattern = zero_to_one_distribution(random_generator);
-
-		StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", starting_pattern);
 		if (StructVariableExists(monster, "config"))
 		{
-			RValue config = *monster.GetRefMember("config");
+			// Randomly choose starting attack. Each pattern has two alternating attacks.
+			int starting_pattern = zero_to_one_distribution(random_generator);
+
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
 
 			if (attack_pattern_mode == Modes::DONUT_PB)
 			{
@@ -1849,7 +1856,10 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
 					}
 
-					*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+					StructVariableSet(config_clone, "secondary_spikes", secondary_spikes);
+					StructVariableSet(monster, "config", config_clone);
+					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", starting_pattern);
 				}
 				else if (starting_pattern == 1) // PB AOE
 				{
@@ -1862,7 +1872,10 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
 					}
 
-					*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+					StructVariableSet(config_clone, "secondary_spikes", secondary_spikes);
+					StructVariableSet(monster, "config", config_clone);
+					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", starting_pattern);
 				}
 			}
 			else if (attack_pattern_mode == Modes::CROSS_X)
@@ -1878,7 +1891,10 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
 					}
 
-					*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+					StructVariableSet(config_clone, "secondary_spikes", secondary_spikes);
+					StructVariableSet(monster, "config", config_clone);
+					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", starting_pattern);
 				}
 				else if (starting_pattern == 1) // X AOE
 				{
@@ -1891,14 +1907,17 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
 					}
 
-					*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+					StructVariableSet(config_clone, "secondary_spikes", secondary_spikes);
+					StructVariableSet(monster, "config", config_clone);
+					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", starting_pattern);
 				}
 			}
 			// TODO: else if (attack_pattern_mode == Modes::CHECKERBOARD
 		}
 	}
 
-	if (StructVariableExists(monster, "fsm"))
+	if (custom_attack_pattern_exists.ToBoolean() && StructVariableExists(monster, "fsm"))
 	{
 		RValue state_id = monster.GetMember("fsm").GetMember("state").GetMember("state_id");
 		if (state_id.ToInt64() == monster_category_to_state_id_map["mite"]["attack"])
@@ -1993,7 +2012,7 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 	}
 }
 
-void ModifySaplingAttackPatterns(RValue monster)
+void ModifySaplingAttackPatterns(RValue monster, int monster_id)
 {
 	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
 	if (!wait_to_change_attack_pattern_exists.ToBoolean())
@@ -2003,34 +2022,38 @@ void ModifySaplingAttackPatterns(RValue monster)
 	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
 	if (!custom_attack_pattern_exists.ToBoolean())
 	{
-		StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 		if (StructVariableExists(monster, "config"))
 		{
-			RValue config = *monster.GetRefMember("config");
-			StructVariableSet(config, "sticky", true);
-			StructVariableSet(config, "free_fly", true);
-			StructVariableSet(config, "air_speed_modifier", 0.6);
-			StructVariableSet(config, "use_circle", true);
-			StructVariableSet(config, "attack_radius", 624);
-			StructVariableSet(config, "max_jump_radius", 624);
-			StructVariableSet(config, "aggro_radius", 624);
-			StructVariableSet(config, "sap_children_birth_timer", 30);
-			StructVariableSet(config, "sap_children_birth_distance", 15);
-			StructVariableSet(config, "sap_children", 2);
-			StructVariableSet(config, "sap_children_species", "sapling_orange_mini");
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
+
+			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "sticky", true);
+			StructVariableSet(config_clone, "free_fly", true);
+			StructVariableSet(config_clone, "air_speed_modifier", 0.6);
+			StructVariableSet(config_clone, "use_circle", true);
+			StructVariableSet(config_clone, "attack_radius", 624);
+			StructVariableSet(config_clone, "max_jump_radius", 624);
+			StructVariableSet(config_clone, "aggro_radius", 624);
+			StructVariableSet(config_clone, "sap_children_birth_timer", 30);
+			StructVariableSet(config_clone, "sap_children_birth_distance", 15);
+			StructVariableSet(config_clone, "sap_children", 3);
+			StructVariableSet(config_clone, "sap_children_species", RValue(monster_id_to_name_map[monster_id]));
+			StructVariableSet(monster, "config", config_clone);
+			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 		}
 	}
 }
 
 void ModifyDreadBeastAttackPatterns(RValue monster)
 {
-	RValue monster_id = monster.GetMember("monster_id");
-	if (monster_id.ToInt64() == monster_name_to_id_map["rockclod"] || monster_id.ToInt64() == monster_name_to_id_map["rockclod_blue"] || monster_id.ToInt64() == monster_name_to_id_map["rockclod_green"] || monster_id.ToInt64() == monster_name_to_id_map["rockclod_red"])
+	int monster_id = monster.GetMember("monster_id").ToInt64();
+	if (monster_id == monster_name_to_id_map["rockclod"] || monster_id == monster_name_to_id_map["rockclod_blue"] || monster_id == monster_name_to_id_map["rockclod_green"] || monster_id == monster_name_to_id_map["rockclod_red"])
 		ModifyRockClodAttackPatterns(monster);
-	if (monster_id.ToInt64() == monster_name_to_id_map["stalagmite"] || monster_id.ToInt64() == monster_name_to_id_map["stalagmite_green"] || monster_id.ToInt64() == monster_name_to_id_map["stalagmite_purple"])
+	if (monster_id == monster_name_to_id_map["stalagmite"] || monster_id == monster_name_to_id_map["stalagmite_green"] || monster_id == monster_name_to_id_map["stalagmite_purple"])
 		ModifyStalagmiteAttackPatterns(monster);
-	if (monster_id.ToInt64() == monster_name_to_id_map["sapling"]) // TODO
-		ModifySaplingAttackPatterns(monster);
+	if (monster_id == monster_name_to_id_map["sapling"] || monster_id == monster_name_to_id_map["sapling_blue"] || monster_id == monster_name_to_id_map["sapling_purple"] || monster_id == monster_name_to_id_map["sapling_orange"])
+		ModifySaplingAttackPatterns(monster, monster_id);
 }
 
 void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
@@ -2692,24 +2715,21 @@ void SpawnDreadBeast(CInstance* Self, CInstance* Other)
 		// TODO: Update this as dread beast logic is implemented
 		std::vector<std::string> possible_dread_beast_monsters = {};
 		if (floor_number < 20)
-			possible_dread_beast_monsters = { "rockclod" };
+			possible_dread_beast_monsters = { "rockclod", "sapling" };
 		else if (floor_number < 40)
-			possible_dread_beast_monsters = { "rockclod_blue", "stalagmite" };
+			possible_dread_beast_monsters = { "rockclod_blue", "sapling_blue", "stalagmite" };
 		else if (floor_number < 60)
-			possible_dread_beast_monsters = { "rockclod_green", "stalagmite_green" };
+			possible_dread_beast_monsters = { "rockclod_green", "sapling_purple", "stalagmite_green" };
 		else if (floor_number < 80)
-			possible_dread_beast_monsters = { "rockclod_red", "stalagmite_purple" };
+			possible_dread_beast_monsters = { "rockclod_red", "sapling_orange", "stalagmite_purple" };
 		else
 			return; // TODO
 
 		std::uniform_int_distribution<size_t> random_dread_beast_distribution(0, possible_dread_beast_monsters.size() - 1);
 		random_index = random_dread_beast_distribution(random_generator);
-		// int dread_beast_monster_id = monster_name_to_id_map[possible_dread_beast_monsters[random_index]];
-		//SpawnMonster(Self, Other, spawn_point.first, spawn_point.second, dread_beast_monster_id);
-		//dread_beast_monster_id = dread_beast_monster_id;
+		int monster_id = monster_name_to_id_map[possible_dread_beast_monsters[random_index]];
+		//int monster_id = monster_name_to_id_map["stalagmite"]; // TESTING
 
-		int monster_id = monster_name_to_id_map["sapling"]; // TESTING
-		//int dread_beast_monster_id = GenerateRandomMonstersIdsForCurrentFloor(1, 1)[0];
 		SpawnMonster(Self, Other, spawn_point.first, spawn_point.second, monster_id);
 		dread_beast_monster_id = monster_id;
 	}
@@ -3165,33 +3185,33 @@ void ObjectCallback(
 		ari_y = y.ToDouble();
 
 		// Progression Mode Biome Cleared Rewards
-		if (progression_mode && biome_reward && ari_x != 0 && ari_y != 0 && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
+		if (progression_mode && drop_biome_reward && ari_x != 0 && ari_y != 0 && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
 		{
 			// Upper Mines
 			if (ari_current_gm_room == "rm_water_seal") 
 			{
-				biome_reward = false;
+				drop_biome_reward = false;
 				DropItem(cursed_gear_to_item_id_map[CURSED_CHESTPIECE_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				DropItem(item_name_to_id_map[TIDE_CAVERNS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 			}
 			// Tide Caverns
 			else if (ari_current_gm_room == "rm_earth_seal")
 			{
-				biome_reward = false;
+				drop_biome_reward = false;
 				DropItem(cursed_gear_to_item_id_map[CURSED_HELMET_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				DropItem(item_name_to_id_map[DEEP_EARTH_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 			}
 			// Deep Earth
 			else if (ari_current_gm_room == "rm_fire_seal")
 			{
-				biome_reward = false;
+				drop_biome_reward = false;
 				DropItem(cursed_gear_to_item_id_map[CURSED_GLOVES_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				DropItem(item_name_to_id_map[LAVA_CAVES_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 			}
 			// Lava Caves
 			else if (ari_current_gm_room == "rm_ruins_seal") 
 			{
-				biome_reward = false;
+				drop_biome_reward = false;
 				DropItem(cursed_gear_to_item_id_map[CURSED_PANTS_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				DropItem(item_name_to_id_map[RUINS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 
@@ -3199,7 +3219,7 @@ void ObjectCallback(
 			// Ruins
 			else if (ari_current_gm_room == "not_yet_implemented") // TODO: Use room name when its implemented
 			{
-				biome_reward = false;
+				drop_biome_reward = false;
 				DropItem(cursed_gear_to_item_id_map[CURSED_BOOTS_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				// TODO: Drop some special kind of key?
 			}
@@ -3338,6 +3358,7 @@ void ObjectCallback(
 								else if (lift_key_used)
 								{
 									lift_key_used = false;
+									biome_reward_disabled = true;
 
 									if (held_item_id == item_name_to_id_map[TIDE_CAVERNS_KEY_NAME])
 										EnterDungeon(19, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
@@ -3703,37 +3724,6 @@ RValue& GmlScriptSpawnMonsterCallback(
 	static thread_local std::mt19937 random_generator(std::random_device{}());
 	std::uniform_int_distribution<size_t> zero_to_nintey_nine_distribution(0, 99);
 
-	// Sapling Dread Beasts - Duplicate on Death
-	if (Arguments[2]->ToInt64() == monster_name_to_id_map["sapling_orange_mini"] && (dread_beast_monster_id == monster_name_to_id_map["sapling"] || dread_beast_monster_id == monster_name_to_id_map["sapling_blue"] || dread_beast_monster_id == monster_name_to_id_map["sapling_purple"] || dread_beast_monster_id == monster_name_to_id_map["sapling_orange"]))
-	{
-		bool dread_beast_slain = false;
-		for (CInstance* monster : current_floor_monsters)
-		{
-			if (monster != nullptr && StructVariableExists(monster, "__deep_dungeon__dread_beast") && StructVariableExists(monster, "hit_points"))
-			{
-				RValue monster_hp = monster->GetMember("hit_points");
-				if (IsNumeric(monster_hp) && std::isfinite(monster_hp.ToDouble()) && monster_hp.ToInt64() <= 0)
-					dread_beast_slain = true;
-			}
-		}
-
-		if (dread_beast_slain && dread_beast_sapling_splits < 2) // TODO: Make sure this matches the value set in ModifySaplingAttackPatterns()
-		{
-			dread_beast_sapling_splits++;
-
-			if (floor_number < 20)
-				*Arguments[2] = monster_name_to_id_map["sapling"];
-			else if (floor_number < 40)
-				*Arguments[2] = monster_name_to_id_map["sapling_blue"];
-			else if (floor_number < 60)
-				*Arguments[2] = monster_name_to_id_map["sapling_purple"];
-			else if (floor_number < 80)
-				*Arguments[2] = monster_name_to_id_map["sapling_orange"];
-			//else if (floor_number < 100)
-			// TODO: When more mines levels are added
-		}
-	}
-
 	// Sigil of Silence
 	// TODO: Don't override a Dread Beast
 	if (active_sigils.contains(Sigils::SILENCE))
@@ -3863,46 +3853,6 @@ RValue& GmlScriptDamageCallback(
 {
 	static thread_local std::mt19937 random_generator(std::random_device{}());
 	std::uniform_int_distribution<size_t> zero_to_one_distribution(0, 1);
-
-	// Dread Beasts
-	if (active_offerings.contains(Offerings::DREAD))
-	{
-		RValue target = Arguments[0]->GetMember("target");
-		if (target.ToInt64() == 1 && StructVariableExists(*Arguments[0], "parent_id"))
-		{
-			RValue parent_id = Arguments[0]->GetMember("parent_id");
-
-			bool source_is_dread_beast = false;
-			// TODO: This is working on most enemies. But for some reason not the attacks bats create. 
-			if (parent_id.m_Kind == VALUE_OBJECT && StructVariableExists(parent_id, "hit_points"))
-			{
-				RValue hit_points = parent_id.GetMember("hit_points");
-				if (IsNumeric(hit_points) && std::isfinite(hit_points.ToDouble()))
-				{
-					for (CInstance* monster : current_floor_monsters)
-					{
-						if (monster != nullptr && StructVariableExists(monster, "__deep_dungeon__dread_beast") && StructVariableExists(monster, "hit_points"))
-						{
-							RValue monster_hp = monster->GetMember("hit_points");
-							if (IsNumeric(monster_hp) && std::isfinite(monster_hp.ToDouble()) && hit_points.ToInt64() == monster_hp.ToInt64())
-								source_is_dread_beast = true;
-						}
-					}
-				}
-			}
-
-			if (source_is_dread_beast && !StructVariableExists(*Arguments[0], "__deep_dungeon__dread_beast") && StructVariableExists(*Arguments[0], "damage"))
-			{
-				RValue damage = Arguments[0]->GetMember("damage");
-				if (IsNumeric(damage) && std::isfinite(damage.ToDouble()))
-				{
-					double modified_damage = std::trunc(damage.ToDouble() * 2); // 2x increased damage
-					*Arguments[0]->GetRefMember("damage") = modified_damage;
-					StructVariableSet(*Arguments[0], "__deep_dungeon__dread_beast", true);
-				}
-			}
-		}
-	}
 
 	// Distortion
 	if (active_floor_enchantments.contains(FloorEnchantments::DISTORTION))
@@ -4662,11 +4612,11 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		std::uniform_int_distribution<size_t> zero_to_nineteen(0, 19);
 
 		int random = zero_to_nineteen(random_generator);
-		if (true/*random == 13*/) // TESTING - REMOVE THIS
+		if (random == 13)
 			active_offerings.insert(Offerings::DREAD);
 	}
 	if(active_offerings.contains(Offerings::DREAD))
-		SpawnDreadBeast(Self, Other); // TODO: Store the ID of the spawned monster for use in ObjectCallback
+		SpawnDreadBeast(Self, Other);
 	
 	DisableAllPerks();
 	ModifySpellCosts(true);
@@ -4674,7 +4624,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	ScaleMistpoolWeapon(true);
 	CancelAllStatusEffects();
 	SetInvulnerabilityHits(0);
-	biome_reward = false;
+	drop_biome_reward = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
 	offering_chance_occurred = false;
@@ -4682,13 +4632,14 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	sigil_of_alteration_count = 0;
 
 	// Toggle reward on seal rooms in progression mode
-	if (progression_mode && ari_current_gm_room.contains("seal"))
-		biome_reward = true;
+	if (progression_mode && ari_current_gm_room.contains("seal") && !biome_reward_disabled)
+		drop_biome_reward = true;
+	biome_reward_disabled = false;
 
 	// TODO: Confirm what "milestone" rooms are and determine if they should be removed from this conditional.
 	if (ari_current_gm_room != "rm_mines_entry" && ari_current_gm_room.find("seal") == std::string::npos && ari_current_gm_room.find("ritual") == std::string::npos && ari_current_gm_room.find("treasure") == std::string::npos && ari_current_gm_room.find("milestone") == std::string::npos)
 	{
-		GenerateFloorTraps(); // TODO: Testing this
+		GenerateFloorTraps();
 
 		if (ari_current_gm_room == "rm_mines_upper_floor1")
 			active_floor_enchantments = RandomFloorEnchantments(true, DungeonBiomes::UPPER);
@@ -4787,7 +4738,8 @@ RValue& GmlScriptGoToRoomCallback(
 		ScaleMistpoolWeapon(true);
 		CancelAllStatusEffects();
 		SetInvulnerabilityHits(0);
-		biome_reward = false;
+		drop_biome_reward = false;
+		biome_reward_disabled = false;
 		dread_beast_configured = false;
 		fire_breath_cast = false; // Different than OnDungeonRoomStart
 		reckoning_applied = false;
@@ -4885,11 +4837,11 @@ RValue& GmlScriptGetEquipmentBonusFromCallback(
 		if (class_armor_infusions.contains(infusion_id))
 		{
 			if (infusion_id == infusion_name_to_id_map["fortified"])
-				Result = class_armor_infusions[infusion_id] * 4; // TODO: Confirm the game returns 4 * <foritifed_count>
+				Result = class_armor_infusions[infusion_id] * 4;
 			if (infusion_id == infusion_name_to_id_map["hasty"])
-				Result = class_armor_infusions[infusion_id] * 0.04; // TODO: Figure out what value the game uses here
+				Result = class_armor_infusions[infusion_id] * 0.04;
 			if (infusion_id == infusion_name_to_id_map["tireless"])
-				Result = class_armor_infusions[infusion_id] * 4; // TODO: Confirm the game returns 4 * <tireless_count>
+				Result = class_armor_infusions[infusion_id] * 4;
 		}
 	}
 
