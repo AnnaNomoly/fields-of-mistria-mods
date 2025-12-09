@@ -70,7 +70,6 @@ static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Displa
 static const char* const GML_SCRIPT_DISPLAY_RESIZE = "gml_Script_resize_amount@Display@Display";
 static const char* const GML_SCRIPT_GET_ITEM_UI_ICON = "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem";
 static const char* const GML_SCRIPT_CREATE_ITEM_PROTOTYPES = "gml_Script_create_item_prototypes";
-static const char* const GML_SCRIPT_STOP_ROOM_TITLE = "gml_Script_stop_room_title";
 static const char* const GML_SCRIPT_DESERIALIZE_LIVE_ITEM = "gml_Script_deserialize_live_item";
 static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script_get_treasure_from_distribution";
 static const std::string SIGIL_OF_ALTERATION_NAME = "sigil_of_alteration";
@@ -118,6 +117,7 @@ static const std::string RUINS_KEY_NAME = "ruins_key";
 static const std::string WATER_ORB_NAME = "water_orb";
 // TODO: Orbs
 static const std::string LIFT_KEY_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/lift_key_restricted";
+static const std::string SIGIL_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_restricted";
 static const std::string SIGIL_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_limit";
 static const std::string SALVE_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/salve_limit";
 static const std::string ITEM_PENALTY_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_penalty";
@@ -134,6 +134,7 @@ static const std::string FLOOR_ENCHANTMENT_CONVERSATION_KEY = "Conversations/Mod
 static const std::string DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning";
 static const std::string FLOOR_ENCHANTMENT_AND_DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning_and_floor_enchantments";
 static const std::string PROGRESSION_MODE_ELEVATOR_LOCKED_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Progression Mode/elevator_locked";
+static const std::string BOSS_BATTLE_WATER_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/water_orb";
 static const std::string OFFERINGS_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/offerings/result";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
 static const std::string DREAD_BEAST_WARNING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Special/dread";
@@ -158,6 +159,12 @@ static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/
 
 static const int TWO_MINUTES_IN_SECONDS = 120;
 static const int TRAP_ACTIVATION_DISTANCE = 16;
+
+static enum class BossBattle {
+	NONE,
+	WATER_ORB
+	// TODO
+};
 
 static enum class ClassArmor {
 	CLERIC,
@@ -529,6 +536,7 @@ static bool biome_reward_disabled = false;
 static bool dread_beast_configured = false;
 static bool sigil_item_used = false;
 static bool lift_key_used = false;
+static bool orb_item_used = false;
 static bool fire_breath_cast = false;
 static bool reckoning_applied = false;
 static bool fairy_buff_applied = false;
@@ -547,10 +555,12 @@ static int held_item_id = -1;
 static int sigil_of_silence_count = 0;
 static int sigil_of_alteration_count = 0;
 static int dread_beast_monster_id = -1;
-static int dread_beast_sapling_splits = 0;
+static int boss_monsters_configured = 0;
+static BossBattle boss_battle = BossBattle::NONE; // TODO
 
 static std::string ari_current_location = "";
 static std::string ari_current_gm_room = "";
+static std::unordered_set<int> orb_items = {};
 static std::unordered_set<int> lift_key_items = {};
 static std::unordered_set<int> restricted_items = {};
 static std::unordered_set<int> deep_dungeon_items = {};
@@ -634,6 +644,7 @@ void ResetStaticFields(bool returned_to_title_screen)
 	dread_beast_configured = false;
 	sigil_item_used = false;
 	lift_key_used = false;
+	orb_item_used = false;
 	fire_breath_cast = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
@@ -643,7 +654,7 @@ void ResetStaticFields(bool returned_to_title_screen)
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
 	dread_beast_monster_id = -1;
-	dread_beast_sapling_splits = 0;
+	boss_monsters_configured = 0;
 	salves_used.clear();
 	active_sigils.clear();
 	queued_offerings.clear();
@@ -904,6 +915,13 @@ void SetInvulnerabilityHits(double amount)
 		*ari.GetRefMember("invulnerable_hits") = amount;
 	else
 		*ari.GetRefMember("invulnerable_hits") = invulnerability_hits + amount;
+}
+
+void SetFireBreathTime(double value)
+{
+	// Stop the fire breath spell
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	*__ari.GetRefMember("fire_breath_time") = value;
 }
 
 void DisableAllPerks()
@@ -1242,7 +1260,8 @@ void LoadObjectIds()
 
 void LoadItems()
 {
-	std::unordered_set<std::string> lift_keys = { TIDE_CAVERNS_KEY_NAME, DEEP_EARTH_KEY_NAME, LAVA_CAVES_KEY_NAME, RUINS_KEY_NAME };
+	std::unordered_set<std::string> lift_key_names = { TIDE_CAVERNS_KEY_NAME, DEEP_EARTH_KEY_NAME, LAVA_CAVES_KEY_NAME, RUINS_KEY_NAME };
+	std::unordered_set<std::string> orb_item_names = { WATER_ORB_NAME }; // TODO: Add other orbs
 	std::vector<std::string> custom_potions = { SUSTAINING_POTION_NAME, HEALTH_SALVE_NAME, STAMINA_SALVE_NAME, MANA_SALVE_NAME }; // TODO: Change to unordered_set
 	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME, CURSED_BRACELET_NAME }; // TODO: Change to unordered_set
 
@@ -1273,8 +1292,12 @@ void LoadItems()
 			}
 
 			// Lift keys
-			if (lift_keys.contains(item_name))
+			if (lift_key_names.contains(item_name))
 				lift_key_items.insert(item_id);
+
+			// Orb Items
+			if(orb_item_names.contains(item_name))
+				orb_items.insert(item_id);
 
 			// Custom potions
 			for (std::string custom_potion : custom_potions)
@@ -1701,7 +1724,7 @@ void SpawnMonster(CInstance* Self, CInstance* Other, int room_x, int room_y, int
 	);
 }
 
-void ModifyRockClodAttackPatterns(RValue monster)
+void ModifyRockClodAttackPatterns(bool is_boss_battle, RValue monster)
 {
 	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
 	if (!wait_to_change_attack_pattern_exists.ToBoolean())
@@ -1716,18 +1739,56 @@ void ModifyRockClodAttackPatterns(RValue monster)
 			RValue config = monster.GetMember("config");
 			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
 
-			// Shoots a wall of 10 pellets repeatedly 5 times
-			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
-			StructVariableSet(config_clone, "attack_sequence", 5.0);
-			StructVariableSet(config_clone, "attack_legion", 10.0);
-			StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
-			StructVariableSet(config_clone, "attack_sequence_image_speed", -1.0);
-			StructVariableSet(config_clone, "projectile_speed", 3.0);
-			StructVariableSet(config_clone, "split_distance", -1.0);
-			StructVariableSet(config_clone, "split_depth", -1.0);
-			StructVariableSet(config_clone, "split_angle", -1.0);
-			StructVariableSet(monster, "config", config_clone);
-			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+			if (is_boss_battle)
+			{
+				if (boss_monsters_configured < 2)
+				{
+					// Rotates 18-degrees at a time while shooting 5 pellets in a small cone
+					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+					StructVariableSet(config_clone, "attack_sequence", 20.0);
+					StructVariableSet(config_clone, "attack_legion", 5.0);
+					StructVariableSet(config_clone, "attack_sequence_turn", 18.0);
+					StructVariableSet(config_clone, "attack_sequence_image_speed", 2.0);
+					StructVariableSet(config_clone, "projectile_speed", 3.0);
+					StructVariableSet(config_clone, "split_distance", -1.0);
+					StructVariableSet(config_clone, "split_depth", -1.0);
+					StructVariableSet(config_clone, "split_angle", -1.0);
+					StructVariableSet(monster, "config", config_clone);
+					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 1);
+					boss_monsters_configured++;
+				}
+				else if (boss_monsters_configured == 2)
+				{
+					// Shoots a single pellet that then splits into many that repeatedly split
+					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+					StructVariableSet(config_clone, "attack_sequence", 5.0);
+					StructVariableSet(config_clone, "attack_legion", 1.0);
+					StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
+					StructVariableSet(config_clone, "attack_sequence_image_speed", -1.0);
+					StructVariableSet(config_clone, "projectile_speed", 3.0);
+					StructVariableSet(config_clone, "split_distance", 20.0);
+					StructVariableSet(config_clone, "split_depth", 5.0);
+					StructVariableSet(config_clone, "split_angle", 20.0);
+					StructVariableSet(monster, "config", config_clone);
+					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 2);
+					boss_monsters_configured++;
+				}
+			}
+			else
+			{
+				// Shoots a wall of 10 pellets repeatedly 5 times
+				StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+				StructVariableSet(config_clone, "attack_sequence", 5.0);
+				StructVariableSet(config_clone, "attack_legion", 10.0);
+				StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
+				StructVariableSet(config_clone, "attack_sequence_image_speed", -1.0);
+				StructVariableSet(config_clone, "projectile_speed", 3.0);
+				StructVariableSet(config_clone, "split_distance", -1.0);
+				StructVariableSet(config_clone, "split_depth", -1.0);
+				StructVariableSet(config_clone, "split_angle", -1.0);
+				StructVariableSet(monster, "config", config_clone);
+				StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+			}
 		}
 	}
 
@@ -1741,7 +1802,7 @@ void ModifyRockClodAttackPatterns(RValue monster)
 		{
 			*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = true;
 
-			int custom_attack_pattern = monster.GetMember("__deep_dungeon__custom_attack_pattern").ToInt64() + 1;
+			int custom_attack_pattern = monster.GetMember("__deep_dungeon__custom_attack_pattern").ToInt64();
 			if (custom_attack_pattern > 2)
 				custom_attack_pattern = 0;
 
@@ -1794,7 +1855,7 @@ void ModifyRockClodAttackPatterns(RValue monster)
 				}
 			}
 
-			*monster.GetRefMember("__deep_dungeon__custom_attack_pattern") = custom_attack_pattern;
+			*monster.GetRefMember("__deep_dungeon__custom_attack_pattern") = custom_attack_pattern + 1;
 		}
 	}
 }
@@ -2045,11 +2106,11 @@ void ModifySaplingAttackPatterns(RValue monster, int monster_id)
 	}
 }
 
-void ModifyDreadBeastAttackPatterns(RValue monster)
+void ModifyDreadBeastAttackPatterns(bool is_boss_battle, RValue monster)
 {
 	int monster_id = monster.GetMember("monster_id").ToInt64();
 	if (monster_id == monster_name_to_id_map["rockclod"] || monster_id == monster_name_to_id_map["rockclod_blue"] || monster_id == monster_name_to_id_map["rockclod_green"] || monster_id == monster_name_to_id_map["rockclod_red"])
-		ModifyRockClodAttackPatterns(monster);
+		ModifyRockClodAttackPatterns(is_boss_battle, monster);
 	if (monster_id == monster_name_to_id_map["stalagmite"] || monster_id == monster_name_to_id_map["stalagmite_green"] || monster_id == monster_name_to_id_map["stalagmite_purple"])
 		ModifyStalagmiteAttackPatterns(monster);
 	if (monster_id == monster_name_to_id_map["sapling"] || monster_id == monster_name_to_id_map["sapling_blue"] || monster_id == monster_name_to_id_map["sapling_purple"] || monster_id == monster_name_to_id_map["sapling_orange"])
@@ -2241,6 +2302,8 @@ void EnterDungeon(double dungeon_level, CInstance* Self, CInstance* Other)
 
 bool AriCurrentGmRoomIsDungeonFloor()
 {
+	if (boss_battle != BossBattle::NONE)
+		return true;
 	return ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal");
 }
 
@@ -2728,7 +2791,6 @@ void SpawnDreadBeast(CInstance* Self, CInstance* Other)
 		std::uniform_int_distribution<size_t> random_dread_beast_distribution(0, possible_dread_beast_monsters.size() - 1);
 		random_index = random_dread_beast_distribution(random_generator);
 		int monster_id = monster_name_to_id_map[possible_dread_beast_monsters[random_index]];
-		//int monster_id = monster_name_to_id_map["stalagmite"]; // TESTING
 
 		SpawnMonster(Self, Other, spawn_point.first, spawn_point.second, monster_id);
 		dread_beast_monster_id = monster_id;
@@ -2759,6 +2821,7 @@ void CancelAllStatusEffects()
 {
 	std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
 
+	// Remove all status effects
 	for (int i = 0; i <= status_effect_name_to_id_map.size(); i++)
 		CancelStatusEffect(refs[0], refs[1], i);
 }
@@ -3007,7 +3070,7 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			
 			Traps trap = magic_enum::enum_value<Traps>(random_trap_distribution(random_generator));
 			active_traps.insert({trap, { floor_trap->first, floor_trap->second } });
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Trap Triggered: %s", MOD_NAME, VERSION, magic_enum::enum_name(trap));
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Trap Triggered: %s", MOD_NAME, VERSION, magic_enum::enum_name(trap).data());
 			
 			if (trap == Traps::CONFUSING)
 			{
@@ -3369,6 +3432,18 @@ void ObjectCallback(
 									else if (held_item_id == item_name_to_id_map[RUINS_KEY_NAME])
 										EnterDungeon(79, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
 								}
+								else if (orb_item_used)
+								{
+									orb_item_used = false;
+									biome_reward_disabled = true;
+
+									// TODO
+									if (held_item_id == item_name_to_id_map[WATER_ORB_NAME])
+									{
+										boss_battle = BossBattle::WATER_ORB;
+										EnterDungeon(19, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+									}
+								}
 							}
 						}
 					}
@@ -3452,6 +3527,46 @@ void ObjectCallback(
 
 			if (is_valid_monster_object)
 			{
+				// Mimic Loot
+				if (monster_id.ToInt64() == monster_name_to_id_map["mimic"] && !StructVariableExists(monster, "__deep_dungeon__mimic_drop_sigil") && StructVariableExists(monster, "fsm"))
+				{
+					RValue fsm = monster.GetMember("fsm");
+					if (StructVariableExists(fsm, "state"))
+					{
+						RValue state = fsm.GetMember("state");
+						if (StructVariableExists(state, "state_id"))
+						{
+							RValue state_id = state.GetMember("state_id");
+							if (state_id.ToInt64() == monster_category_to_state_id_map["mimic"]["gobble"])
+							{
+								static thread_local std::mt19937 random_generator(std::random_device{}());
+								std::uniform_int_distribution<size_t> random_sigil_distribution(0, magic_enum::enum_count<Sigils>() - 1);
+
+								Sigils random_sigil = magic_enum::enum_value<Sigils>(random_sigil_distribution(random_generator));
+								DropItem(sigil_to_item_id_map[random_sigil], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+								StructVariableSet(monster, "__deep_dungeon__mimic_drop_sigil", true);
+							}
+						}
+					}
+				}
+
+				// Boss Battles
+				if (boss_battle == BossBattle::WATER_ORB)
+				{
+					if (!StructVariableExists(monster, "__deep_dungeon__boss_monster") && StructVariableExists(monster, "hit_points"))
+					{
+						double hit_points = monster.GetMember("hit_points").ToDouble();
+						if (std::isfinite(hit_points))
+						{
+							*monster.GetRefMember("hit_points") = hit_points * 20; // TODO: Tune this.
+
+							StructVariableSet(monster, "__deep_dungeon__boss_monster", true);
+						}
+					}
+					else if (StructVariableExists(monster, "__deep_dungeon__boss_monster"))
+						ModifyDreadBeastAttackPatterns(true, monster);
+				}
+
 				// Dread Beasts
 				if (!dread_beast_configured && monster_id.ToInt64() == dread_beast_monster_id && !StructVariableExists(monster, "__deep_dungeon__dread_beast") && StructVariableExists(monster, "hit_points"))
 				{
@@ -3466,7 +3581,7 @@ void ObjectCallback(
 					}
 				}
 				else if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
-					ModifyDreadBeastAttackPatterns(monster);
+					ModifyDreadBeastAttackPatterns(false, monster);
 
 				// Track the monster
 				if (!StructVariableExists(monster, "__deep_dungeon__current_floor_monsters") && StructVariableExists(monster, "hit_points"))
@@ -3475,8 +3590,8 @@ void ObjectCallback(
 					StructVariableSet(monster, "__deep_dungeon__current_floor_monsters", true);
 				}
 
-				// Loot drops
-				if (!StructVariableExists(monster, "__deep_dungeon__loot_drop") && StructVariableExists(monster, "hit_points"))
+				// Regular loot drops
+				if (!ari_current_gm_room.contains("seal") && !StructVariableExists(monster, "__deep_dungeon__loot_drop") && StructVariableExists(monster, "hit_points"))
 				{
 					double hit_points = monster.GetMember("hit_points").ToDouble();
 					if (std::isfinite(hit_points) && hit_points <= 0 && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
@@ -3545,6 +3660,29 @@ void ObjectCallback(
 						}
 
 						StructVariableSet(monster, "__deep_dungeon__loot_drop", true);
+					}
+				}
+
+				// Boss loot drops
+				if (boss_battle != BossBattle::NONE && boss_monsters_configured > 0)
+				{
+					int boss_monsters_defeated = 0;
+					for (CInstance* monster : current_floor_monsters)
+					{
+						if (StructVariableExists(monster, "hit_points"))
+						{
+							double hit_points = monster->GetMember("hit_points").ToDouble();
+							if (std::isfinite(hit_points) && hit_points <= 0)
+								boss_monsters_defeated++;
+						}
+					}
+
+					if (boss_monsters_defeated == boss_monsters_configured)
+					{
+						if (script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
+							DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+						boss_battle = BossBattle::NONE;
+						ResetCustomDrawFields();
 					}
 				}
 
@@ -3852,7 +3990,6 @@ RValue& GmlScriptDamageCallback(
 )
 {
 	static thread_local std::mt19937 random_generator(std::random_device{}());
-	std::uniform_int_distribution<size_t> zero_to_one_distribution(0, 1);
 
 	// Distortion
 	if (active_floor_enchantments.contains(FloorEnchantments::DISTORTION))
@@ -3860,8 +3997,9 @@ RValue& GmlScriptDamageCallback(
 		RValue target = Arguments[0]->GetMember("target");
 		if (target.ToInt64() != 1) // Everything not Ari
 		{
-			bool miss = zero_to_one_distribution(random_generator);
-			if (miss)
+			std::uniform_int_distribution<size_t> zero_to_two_distribution(0, 2);
+			int random = zero_to_two_distribution(random_generator);
+			if (random == 0) // 33% chance to miss
 			{
 				*Arguments[0]->GetRefMember("damage") = 0.0;
 				*Arguments[0]->GetRefMember("critical") = false;
@@ -4252,12 +4390,25 @@ RValue& GmlScriptUseItemCallback(
 	{
 		if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari"))
 		{
-			// Sigil Already Used
-			if (item_id_to_sigil_map.contains(held_item_id) && active_sigils.contains(item_id_to_sigil_map[held_item_id]))
+			if (boss_battle != BossBattle::NONE)
 			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - That sigil is already active!", MOD_NAME, VERSION);
-				CreateNotification(SIGIL_LIMIT_NOTIFICATION_KEY, Self, Other);
-				return Result;
+				// Sigil Items Restricted
+				if (item_id_to_sigil_map.contains(held_item_id))
+				{
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use sigils during boss battles!", MOD_NAME, VERSION);
+					CreateNotification(SIGIL_RESTRICTED_NOTIFICATION_KEY, Self, Other);
+					return Result;
+				}
+			}
+			else
+			{
+				// Sigil Already Used
+				if (item_id_to_sigil_map.contains(held_item_id) && active_sigils.contains(item_id_to_sigil_map[held_item_id]))
+				{
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - That sigil is already active!", MOD_NAME, VERSION);
+					CreateNotification(SIGIL_LIMIT_NOTIFICATION_KEY, Self, Other);
+					return Result;
+				}
 			}
 
 			// Salve Limit
@@ -4300,6 +4451,11 @@ RValue& GmlScriptUseItemCallback(
 	lift_key_used = false;
 	if(lift_key_items.contains(held_item_id))
 		lift_key_used = true;
+
+	// Orb Item
+	orb_item_used = false;
+	if (orb_items.contains(held_item_id))
+		orb_item_used = true;
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_USE_ITEM));
 	original(
@@ -4600,30 +4756,31 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	active_traps_to_value_map.clear();
 	floor_trap_positions.clear();
 	
-	// Dread Beast controls
+	// Dread Beast & Boss controls
 	dread_beast_configured = false;
 	dread_beast_monster_id = -1;
-	dread_beast_sapling_splits = 0;
-	show_dashes = active_offerings.contains(Offerings::DREAD);
-	show_danger_banner = active_offerings.contains(Offerings::DREAD);
+	boss_monsters_configured = 0;
 	if (!active_offerings.contains(Offerings::DREAD))
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
-		std::uniform_int_distribution<size_t> zero_to_nineteen(0, 19);
+		std::uniform_int_distribution<size_t> zero_to_nineteen(0, 19); // TODO: Tune this.
 
 		int random = zero_to_nineteen(random_generator);
-		if (random == 13)
+		if (random == 13 && floor_number > 1 && !ari_current_gm_room.contains("seal"))
 			active_offerings.insert(Offerings::DREAD);
 	}
+	show_dashes = active_offerings.contains(Offerings::DREAD) || boss_battle != BossBattle::NONE;
+	show_danger_banner = active_offerings.contains(Offerings::DREAD) || boss_battle != BossBattle::NONE;
 	if(active_offerings.contains(Offerings::DREAD))
 		SpawnDreadBeast(Self, Other);
-	
+
 	DisableAllPerks();
 	ModifySpellCosts(true);
 	ScaleMistpoolArmor(true);
 	ScaleMistpoolWeapon(true);
 	CancelAllStatusEffects();
 	SetInvulnerabilityHits(0);
+	SetFireBreathTime(0);
 	drop_biome_reward = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
@@ -4675,6 +4832,22 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 	}
+	else if (boss_battle != BossBattle::NONE)
+	{
+		if (CountEquippedClassArmor()[ClassArmor::CLERIC] > 0)
+			time_of_last_restoration_tick = current_time_in_seconds;
+
+		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
+			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+		if (boss_battle == BossBattle::WATER_ORB)
+		{
+			SpawnMonster(Self, Other, 160, 240, monster_name_to_id_map["rockclod_blue"]); // Left
+			SpawnMonster(Self, Other, 240, 240, monster_name_to_id_map["rockclod_blue"]); // Right
+			SpawnMonster(Self, Other, 200, 256, monster_name_to_id_map["rockclod_blue"]); // Middle
+			PlayConversation(BOSS_BATTLE_WATER_ORB_CONVERSATION_KEY, Self, Other);
+		}
+	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_DUNGEON_ROOM_START));
 	original(
@@ -4696,6 +4869,10 @@ RValue& GmlScriptGoToRoomCallback(
 	IN RValue** Arguments
 )
 {
+	ResetCustomDrawFields();
+	if (boss_battle != BossBattle::NONE && ari_current_gm_room.contains("seal"))
+		boss_battle = BossBattle::NONE;
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GO_TO_ROOM));
 	original(
 		Self,
@@ -4711,6 +4888,8 @@ RValue& GmlScriptGoToRoomCallback(
 
 	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry")
 		SetFloorNumber();
+	else if (boss_battle == BossBattle::WATER_ORB) // TODO: Other orbs
+		floor_number = 20;
 	else
 		floor_number = 0;
 
@@ -4738,6 +4917,7 @@ RValue& GmlScriptGoToRoomCallback(
 		ScaleMistpoolWeapon(true);
 		CancelAllStatusEffects();
 		SetInvulnerabilityHits(0);
+		SetFireBreathTime(0);
 		drop_biome_reward = false;
 		biome_reward_disabled = false;
 		dread_beast_configured = false;
@@ -4748,7 +4928,7 @@ RValue& GmlScriptGoToRoomCallback(
 		sigil_of_silence_count = 0;
 		sigil_of_alteration_count = 0;
 		dread_beast_monster_id = -1;
-		dread_beast_sapling_splits = 0;
+		boss_monsters_configured = 0;
 	}
 	else
 		active_offerings.clear(); // TESTING -- Confirm this clears stuff like Reckoning before new monsters spawn and get modified
@@ -5050,8 +5230,7 @@ RValue& GmlScriptCreateItemPrototypesCallback(
 	return Result;
 }
 
-// TODO: Remove this hook
-RValue& GmlScriptStopRoomTitleCallback(
+RValue& GmlScriptSpawnLadderCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
 	OUT RValue& Result,
@@ -5059,7 +5238,10 @@ RValue& GmlScriptStopRoomTitleCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_STOP_ROOM_TITLE));
+	if (ari_current_gm_room.contains("seal"))
+		return Result;
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SPAWN_LADDER));
 	original(
 		Self,
 		Other,
@@ -5964,30 +6146,30 @@ void CreateHookGmlScriptCreateItemPrototypes(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptStopRoomTitle(AurieStatus& status)
+void CreateHookGmlScriptSpawnLadder(AurieStatus& status)
 {
-	CScript* gml_script_stop_room_title = nullptr;
+	CScript* gml_script_spawn_ladder = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_STOP_ROOM_TITLE,
-		(PVOID*)&gml_script_stop_room_title
+		GML_SCRIPT_SPAWN_LADDER,
+		(PVOID*)&gml_script_spawn_ladder
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_STOP_ROOM_TITLE);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SPAWN_LADDER);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		GML_SCRIPT_STOP_ROOM_TITLE,
-		gml_script_stop_room_title->m_Functions->m_ScriptFunction,
-		GmlScriptStopRoomTitleCallback,
+		GML_SCRIPT_SPAWN_LADDER,
+		gml_script_spawn_ladder->m_Functions->m_ScriptFunction,
+		GmlScriptSpawnLadderCallback,
 		nullptr
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_STOP_ROOM_TITLE);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SPAWN_LADDER);
 	}
 }
 
@@ -6283,7 +6465,7 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
-	CreateHookGmlScriptStopRoomTitle(status);
+	CreateHookGmlScriptSpawnLadder(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
