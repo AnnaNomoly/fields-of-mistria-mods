@@ -523,14 +523,14 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 		{ 176 + 8, 112 + 8 },
 		{ 240 + 8, 112 + 8 },
 	}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
+	{ "rm_mines_tide_oasis", {
+		{ 128 + 8, 240 + 8 },
+		{ 176 + 8, 288 + 8 },
+		{ 224 + 8, 208 + 8 },
+		{ 256 + 8, 112 + 8 },
+		{ 288 + 8, 256 + 8 },
+		{ 352 + 8, 176 + 8 },
+	}},
 	//{ "", {
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
@@ -3530,15 +3530,15 @@ void LoadStalagmiteAttackData()
 
 					if (json_object.contains("checkerboard_room_wide_b_points"))
 					{
-						checkerboard_room_wide_b_points = json_object["checkerboard_room_wide_a_points"];
+						checkerboard_room_wide_b_points = json_object["checkerboard_room_wide_b_points"];
 						if (checkerboard_room_wide_b_points.empty())
 						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_b_points", stalagmite_json.c_str());
 						}
 					}
 					else
 					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
+						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_b_points", stalagmite_json.c_str());
 					}
 				}
 			}
