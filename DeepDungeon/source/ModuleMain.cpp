@@ -483,7 +483,126 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 		{ 368 + 8, 320 + 8 },
 		{ 400 + 8, 192 + 8 },
 	}},
+	{ "rm_mines_tide_fork", {
+		{ 128 + 8, 176 + 8 },
+		{ 368 + 8, 352 + 8 },
+		{ 592 + 8, 384 + 8 },
+		{ 768 + 8, 240 + 8 },
+		{ 512 + 8, 512 + 8 },
+		{ 576 + 8, 640 + 8 },
+	}},
+	{ "rm_mines_tide_whirly", {
+		{ 656 + 8, 512 + 8 },
+		{ 464 + 8, 576 + 8 },
+		{ 448 + 8, 448 + 8 },
+		{ 224 + 8, 464 + 8 },
+		{ 176 + 8, 448 + 8 },
+		{ 672 + 8, 272 + 8 },
+	}},
+	{ "rm_mines_tide_islands", {
+		{ 144 + 8, 384 + 8 },
+		{ 336 + 8, 352 + 8 },
+		{ 400 + 8, 352 + 8 },
+		{ 368 + 8, 272 + 8 },
+		{ 608 + 8, 272 + 8 },
+		{ 576 + 8, 160 + 8 },
+	}},
+	{ "rm_mines_tide_paths", {
+		{ 336 + 8, 448 + 8 },
+		{ 512 + 8, 464 + 8 },
+		{ 624 + 8, 432 + 8 },
+		{ 640 + 8, 304 + 8 },
+		{ 624 + 8, 112 + 8 },
+		{ 368 + 8, 352 + 8 },
+	}},
+	{ "rm_mines_tide_milestone", {
+		{ 128 + 8, 272 + 8 },
+		{ 224 + 8, 272 + 8 },
+		{ 176 + 8, 192 + 8 },
+		{ 112 + 8, 112 + 8 },
+		{ 176 + 8, 112 + 8 },
+		{ 240 + 8, 112 + 8 },
+	}},
 	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},	//{ "", {
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
@@ -598,6 +717,14 @@ static std::map<int, std::string> floor_number_to_biome_name_map = {}; // Maps f
 static std::vector<CInstance*> current_floor_monsters = {};
 static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {}; // Tracks when a notification was last displayed.
 static std::map<int, RValue> item_id_to_prototype_map = {};
+
+// Attack pattern data for Stalagmites
+static std::vector<std::vector<double>> donut_aoe_points;
+static std::vector<std::vector<double>> pb_aoe_points;
+static std::vector<std::vector<double>> cross_aoe_points;
+static std::vector<std::vector<double>> x_aoe_points;
+static std::vector<std::vector<double>> checkerboard_room_wide_a_points;
+static std::vector<std::vector<double>> checkerboard_room_wide_b_points;
 
 // GUI
 static double window_width = 0;
@@ -1860,22 +1987,17 @@ void ModifyRockClodAttackPatterns(bool is_boss_battle, RValue monster)
 	}
 }
 
-void ModifyStalagmiteAttackPatterns(RValue monster)
+void ModifyStalagmiteAttackPatterns(bool is_boss_battle, RValue monster)
 {
 	const enum class Modes {
 		DONUT_PB,
 		CROSS_X,
-		//CHECKBOARD // TODO
+		CHECKERBOARD
 	};
 
 	static thread_local std::mt19937 random_generator(std::random_device{}());
 	std::uniform_int_distribution<size_t> zero_to_one_distribution(0, 1);
 	std::uniform_int_distribution<size_t> random_mode_distribution(0, magic_enum::enum_count<Modes>() - 1);
-
-	const std::vector<std::vector<RValue>> donut_aoe_points = { {-56.0, 0.0}, {-55.65, -6.27}, {-54.6, -12.46}, {-52.86, -18.5}, {-50.45, -24.3}, {-47.42, -29.79}, {-43.78, -34.92}, {-39.6, -39.6}, {-34.92, -43.78}, {-29.79, -47.42}, {-24.3, -50.45}, {-18.5, -52.86}, {-12.46, -54.6}, {-6.27, -55.65}, {-0.0, -56.0}, {6.27, -55.65}, {12.46, -54.6}, {18.5, -52.86}, {24.3, -50.45}, {29.79, -47.42}, {34.92, -43.78}, {39.6, -39.6}, {43.78, -34.92}, {47.42, -29.79}, {50.45, -24.3}, {52.86, -18.5}, {54.6, -12.46}, {55.65, -6.27}, {56.0, -0.0}, {55.65, 6.27}, {54.6, 12.46}, {52.86, 18.5}, {50.45, 24.3}, {47.42, 29.79}, {43.78, 34.92}, {39.6, 39.6}, {34.92, 43.78}, {29.79, 47.42}, {24.3, 50.45}, {18.5, 52.86}, {12.46, 54.6}, {6.27, 55.65}, {0.0, 56.0}, {-6.27, 55.65}, {-12.46, 54.6}, {-18.5, 52.86}, {-24.3, 50.45}, {-29.79, 47.42}, {-34.92, 43.78}, {-39.6, 39.6}, {-43.78, 34.92}, {-47.42, 29.79}, {-50.45, 24.3}, {-52.86, 18.5}, {-54.6, 12.46}, {-55.65, 6.27}, {-56.0, 0.0}, {-64.0, 0.0}, {-63.69, -6.27}, {-62.77, -12.49}, {-61.24, -18.58}, {-59.13, -24.49}, {-56.44, -30.17}, {-53.21, -35.56}, {-49.47, -40.6}, {-45.25, -45.25}, {-40.6, -49.47}, {-35.56, -53.21}, {-30.17, -56.44}, {-24.49, -59.13}, {-18.58, -61.24}, {-12.49, -62.77}, {-6.27, -63.69}, {-0.0, -64.0}, {6.27, -63.69}, {12.49, -62.77}, {18.58, -61.24}, {24.49, -59.13}, {30.17, -56.44}, {35.56, -53.21}, {40.6, -49.47}, {45.25, -45.25}, {49.47, -40.6}, {53.21, -35.56}, {56.44, -30.17}, {59.13, -24.49}, {61.24, -18.58}, {62.77, -12.49}, {63.69, -6.27}, {64.0, -0.0}, {63.69, 6.27}, {62.77, 12.49}, {61.24, 18.58}, {59.13, 24.49}, {56.44, 30.17}, {53.21, 35.56}, {49.47, 40.6}, {45.25, 45.25}, {40.6, 49.47}, {35.56, 53.21}, {30.17, 56.44}, {24.49, 59.13}, {18.58, 61.24}, {12.49, 62.77}, {6.27, 63.69}, {0.0, 64.0}, {-6.27, 63.69}, {-12.49, 62.77}, {-18.58, 61.24}, {-24.49, 59.13}, {-30.17, 56.44}, {-35.56, 53.21}, {-40.6, 49.47}, {-45.25, 45.25}, {-49.47, 40.6}, {-53.21, 35.56}, {-56.44, 30.17}, {-59.13, 24.49}, {-61.24, 18.58}, {-62.77, 12.49}, {-63.69, 6.27}, {-64.0, 0.0}, {-72.0, 0.0}, {-71.73, -6.28}, {-70.91, -12.5}, {-69.55, -18.63}, {-67.66, -24.63}, {-65.25, -30.43}, {-62.35, -36.0}, {-58.98, -41.3}, {-55.16, -46.28}, {-50.91, -50.91}, {-46.28, -55.16}, {-41.3, -58.98}, {-36.0, -62.35}, {-30.43, -65.25}, {-24.63, -67.66}, {-18.63, -69.55}, {-12.5, -70.91}, {-6.28, -71.73}, {-0.0, -72.0}, {6.28, -71.73}, {12.5, -70.91}, {18.63, -69.55}, {24.63, -67.66}, {30.43, -65.25}, {36.0, -62.35}, {41.3, -58.98}, {46.28, -55.16}, {50.91, -50.91}, {55.16, -46.28}, {58.98, -41.3}, {62.35, -36.0}, {65.25, -30.43}, {67.66, -24.63}, {69.55, -18.63}, {70.91, -12.5}, {71.73, -6.28}, {72.0, -0.0}, {71.73, 6.28}, {70.91, 12.5}, {69.55, 18.63}, {67.66, 24.63}, {65.25, 30.43}, {62.35, 36.0}, {58.98, 41.3}, {55.16, 46.28}, {50.91, 50.91}, {46.28, 55.16}, {41.3, 58.98}, {36.0, 62.35}, {30.43, 65.25}, {24.63, 67.66}, {18.63, 69.55}, {12.5, 70.91}, {6.28, 71.73}, {0.0, 72.0}, {-6.28, 71.73}, {-12.5, 70.91}, {-18.63, 69.55}, {-24.63, 67.66}, {-30.43, 65.25}, {-36.0, 62.35}, {-41.3, 58.98}, {-46.28, 55.16}, {-50.91, 50.91}, {-55.16, 46.28}, {-58.98, 41.3}, {-62.35, 36.0}, {-65.25, 30.43}, {-67.66, 24.63}, {-69.55, 18.63}, {-70.91, 12.5}, {-71.73, 6.28}, {-72.0, 0.0}, {-80.0, 0.0}, {-79.75, -6.28}, {-79.02, -12.51}, {-77.79, -18.68}, {-76.08, -24.72}, {-73.91, -30.61}, {-71.28, -36.32}, {-68.21, -41.8}, {-64.72, -47.02}, {-60.83, -51.96}, {-56.57, -56.57}, {-51.96, -60.83}, {-47.02, -64.72}, {-41.8, -68.21}, {-36.32, -71.28}, {-30.61, -73.91}, {-24.72, -76.08}, {-18.68, -77.79}, {-12.51, -79.02}, {-6.28, -79.75}, {-0.0, -80.0}, {6.28, -79.75}, {12.51, -79.02}, {18.68, -77.79}, {24.72, -76.08}, {30.61, -73.91}, {36.32, -71.28}, {41.8, -68.21}, {47.02, -64.72}, {51.96, -60.83}, {56.57, -56.57}, {60.83, -51.96}, {64.72, -47.02}, {68.21, -41.8}, {71.28, -36.32}, {73.91, -30.61}, {76.08, -24.72}, {77.79, -18.68}, {79.02, -12.51}, {79.75, -6.28}, {80.0, -0.0}, {79.75, 6.28}, {79.02, 12.51}, {77.79, 18.68}, {76.08, 24.72}, {73.91, 30.61}, {71.28, 36.32}, {68.21, 41.8}, {64.72, 47.02}, {60.83, 51.96}, {56.57, 56.57}, {51.96, 60.83}, {47.02, 64.72}, {41.8, 68.21}, {36.32, 71.28}, {30.61, 73.91}, {24.72, 76.08}, {18.68, 77.79}, {12.51, 79.02}, {6.28, 79.75}, {0.0, 80.0}, {-6.28, 79.75}, {-12.51, 79.02}, {-18.68, 77.79}, {-24.72, 76.08}, {-30.61, 73.91}, {-36.32, 71.28}, {-41.8, 68.21}, {-47.02, 64.72}, {-51.96, 60.83}, {-56.57, 56.57}, {-60.83, 51.96}, {-64.72, 47.02}, {-68.21, 41.8}, {-71.28, 36.32}, {-73.91, 30.61}, {-76.08, 24.72}, {-77.79, 18.68}, {-79.02, 12.51}, {-79.75, 6.28}, {-80.0, 0.0}, {-88.0, 0.0}, {-87.78, -6.28}, {-87.1, -12.52}, {-85.99, -18.71}, {-84.44, -24.79}, {-82.45, -30.75}, {-80.05, -36.56}, {-77.24, -42.17}, {-74.03, -47.58}, {-70.45, -52.74}, {-66.51, -57.63}, {-62.23, -62.23}, {-57.63, -66.51}, {-52.74, -70.45}, {-47.58, -74.03}, {-42.17, -77.24}, {-36.56, -80.05}, {-30.75, -82.45}, {-24.79, -84.44}, {-18.71, -85.99}, {-12.52, -87.1}, {-6.28, -87.78}, {-0.0, -88.0}, {6.28, -87.78}, {12.52, -87.1}, {18.71, -85.99}, {24.79, -84.44}, {30.75, -82.45}, {36.56, -80.05}, {42.17, -77.24}, {47.58, -74.03}, {52.74, -70.45}, {57.63, -66.51}, {62.23, -62.23}, {66.51, -57.63}, {70.45, -52.74}, {74.03, -47.58}, {77.24, -42.17}, {80.05, -36.56}, {82.45, -30.75}, {84.44, -24.79}, {85.99, -18.71}, {87.1, -12.52}, {87.78, -6.28}, {88.0, -0.0}, {87.78, 6.28}, {87.1, 12.52}, {85.99, 18.71}, {84.44, 24.79}, {82.45, 30.75}, {80.05, 36.56}, {77.24, 42.17}, {74.03, 47.58}, {70.45, 52.74}, {66.51, 57.63}, {62.23, 62.23}, {57.63, 66.51}, {52.74, 70.45}, {47.58, 74.03}, {42.17, 77.24}, {36.56, 80.05}, {30.75, 82.45}, {24.79, 84.44}, {18.71, 85.99}, {12.52, 87.1}, {6.28, 87.78}, {0.0, 88.0}, {-6.28, 87.78}, {-12.52, 87.1}, {-18.71, 85.99}, {-24.79, 84.44}, {-30.75, 82.45}, {-36.56, 80.05}, {-42.17, 77.24}, {-47.58, 74.03}, {-52.74, 70.45}, {-57.63, 66.51}, {-62.23, 62.23}, {-66.51, 57.63}, {-70.45, 52.74}, {-74.03, 47.58}, {-77.24, 42.17}, {-80.05, 36.56}, {-82.45, 30.75}, {-84.44, 24.79}, {-85.99, 18.71}, {-87.1, 12.52}, {-87.78, 6.28}, {-88.0, 0.0}, {-96.0, 0.0}, {-95.79, -6.28}, {-95.18, -12.53}, {-94.16, -18.73}, {-92.73, -24.85}, {-90.91, -30.86}, {-88.69, -36.74}, {-86.1, -42.46}, {-83.14, -48.0}, {-79.82, -53.33}, {-76.16, -58.44}, {-72.18, -63.3}, {-67.88, -67.88}, {-63.3, -72.18}, {-58.44, -76.16}, {-53.33, -79.82}, {-48.0, -83.14}, {-42.46, -86.1}, {-36.74, -88.69}, {-30.86, -90.91}, {-24.85, -92.73}, {-18.73, -94.16}, {-12.53, -95.18}, {-6.28, -95.79}, {-0.0, -96.0}, {6.28, -95.79}, {12.53, -95.18}, {18.73, -94.16}, {24.85, -92.73}, {30.86, -90.91}, {36.74, -88.69}, {42.46, -86.1}, {48.0, -83.14}, {53.33, -79.82}, {58.44, -76.16}, {63.3, -72.18}, {67.88, -67.88}, {72.18, -63.3}, {76.16, -58.44}, {79.82, -53.33}, {83.14, -48.0}, {86.1, -42.46}, {88.69, -36.74}, {90.91, -30.86}, {92.73, -24.85}, {94.16, -18.73}, {95.18, -12.53}, {95.79, -6.28}, {96.0, -0.0}, {95.79, 6.28}, {95.18, 12.53}, {94.16, 18.73}, {92.73, 24.85}, {90.91, 30.86}, {88.69, 36.74}, {86.1, 42.46}, {83.14, 48.0}, {79.82, 53.33}, {76.16, 58.44}, {72.18, 63.3}, {67.88, 67.88}, {63.3, 72.18}, {58.44, 76.16}, {53.33, 79.82}, {48.0, 83.14}, {42.46, 86.1}, {36.74, 88.69}, {30.86, 90.91}, {24.85, 92.73}, {18.73, 94.16}, {12.53, 95.18}, {6.28, 95.79}, {0.0, 96.0}, {-6.28, 95.79}, {-12.53, 95.18}, {-18.73, 94.16}, {-24.85, 92.73}, {-30.86, 90.91}, {-36.74, 88.69}, {-42.46, 86.1}, {-48.0, 83.14}, {-53.33, 79.82}, {-58.44, 76.16}, {-63.3, 72.18}, {-67.88, 67.88}, {-72.18, 63.3}, {-76.16, 58.44}, {-79.82, 53.33}, {-83.14, 48.0}, {-86.1, 42.46}, {-88.69, 36.74}, {-90.91, 30.86}, {-92.73, 24.85}, {-94.16, 18.73}, {-95.18, 12.53}, {-95.79, 6.28}, {-96.0, 0.0} };
-	const std::vector<std::vector<RValue>> pb_aoe_points = { {-10.0, 0.0}, {-8.09, -5.88}, {-3.09, -9.51}, {3.09, -9.51}, {8.09, -5.88}, {10.0, -0.0}, {8.09, 5.88}, {3.09, 9.51}, {-3.09, 9.51}, {-8.09, 5.88}, {-10.0, 0.0}, {-16.0, 0.0}, {-14.78, -6.12}, {-11.31, -11.31}, {-6.12, -14.78}, {-0.0, -16.0}, {6.12, -14.78}, {11.31, -11.31}, {14.78, -6.12}, {16.0, -0.0}, {14.78, 6.12}, {11.31, 11.31}, {6.12, 14.78}, {0.0, 16.0}, {-6.12, 14.78}, {-11.31, 11.31}, {-14.78, 6.12}, {-16.0, 0.0}, {-24.0, 0.0}, {-23.18, -6.21}, {-20.78, -12.0}, {-16.97, -16.97}, {-12.0, -20.78}, {-6.21, -23.18}, {-0.0, -24.0}, {6.21, -23.18}, {12.0, -20.78}, {16.97, -16.97}, {20.78, -12.0}, {23.18, -6.21}, {24.0, -0.0}, {23.18, 6.21}, {20.78, 12.0}, {16.97, 16.97}, {12.0, 20.78}, {6.21, 23.18}, {0.0, 24.0}, {-6.21, 23.18}, {-12.0, 20.78}, {-16.97, 16.97}, {-20.78, 12.0}, {-23.18, 6.21}, {-24.0, 0.0}, {-32.0, 0.0}, {-31.39, -6.24}, {-29.56, -12.25}, {-26.61, -17.78}, {-22.63, -22.63}, {-17.78, -26.61}, {-12.25, -29.56}, {-6.24, -31.39}, {-0.0, -32.0}, {6.24, -31.39}, {12.25, -29.56}, {17.78, -26.61}, {22.63, -22.63}, {26.61, -17.78}, {29.56, -12.25}, {31.39, -6.24}, {32.0, -0.0}, {31.39, 6.24}, {29.56, 12.25}, {26.61, 17.78}, {22.63, 22.63}, {17.78, 26.61}, {12.25, 29.56}, {6.24, 31.39}, {0.0, 32.0}, {-6.24, 31.39}, {-12.25, 29.56}, {-17.78, 26.61}, {-22.63, 22.63}, {-26.61, 17.78}, {-29.56, 12.25}, {-31.39, 6.24}, {-32.0, 0.0}, {-40.0, 0.0}, {-39.51, -6.26}, {-38.04, -12.36}, {-35.64, -18.16}, {-32.36, -23.51}, {-28.28, -28.28}, {-23.51, -32.36}, {-18.16, -35.64}, {-12.36, -38.04}, {-6.26, -39.51}, {-0.0, -40.0}, {6.26, -39.51}, {12.36, -38.04}, {18.16, -35.64}, {23.51, -32.36}, {28.28, -28.28}, {32.36, -23.51}, {35.64, -18.16}, {38.04, -12.36}, {39.51, -6.26}, {40.0, -0.0}, {39.51, 6.26}, {38.04, 12.36}, {35.64, 18.16}, {32.36, 23.51}, {28.28, 28.28}, {23.51, 32.36}, {18.16, 35.64}, {12.36, 38.04}, {6.26, 39.51}, {0.0, 40.0}, {-6.26, 39.51}, {-12.36, 38.04}, {-18.16, 35.64}, {-23.51, 32.36}, {-28.28, 28.28}, {-32.36, 23.51}, {-35.64, 18.16}, {-38.04, 12.36}, {-39.51, 6.26}, {-40.0, 0.0}, {-48.0, 0.0}, {-47.59, -6.27}, {-46.36, -12.42}, {-44.35, -18.37}, {-41.57, -24.0}, {-38.08, -29.22}, {-33.94, -33.94}, {-29.22, -38.08}, {-24.0, -41.57}, {-18.37, -44.35}, {-12.42, -46.36}, {-6.27, -47.59}, {-0.0, -48.0}, {6.27, -47.59}, {12.42, -46.36}, {18.37, -44.35}, {24.0, -41.57}, {29.22, -38.08}, {33.94, -33.94}, {38.08, -29.22}, {41.57, -24.0}, {44.35, -18.37}, {46.36, -12.42}, {47.59, -6.27}, {48.0, -0.0}, {47.59, 6.27}, {46.36, 12.42}, {44.35, 18.37}, {41.57, 24.0}, {38.08, 29.22}, {33.94, 33.94}, {29.22, 38.08}, {24.0, 41.57}, {18.37, 44.35}, {12.42, 46.36}, {6.27, 47.59}, {0.0, 48.0}, {-6.27, 47.59}, {-12.42, 46.36}, {-18.37, 44.35}, {-24.0, 41.57}, {-29.22, 38.08}, {-33.94, 33.94}, {-38.08, 29.22}, {-41.57, 24.0}, {-44.35, 18.37}, {-46.36, 12.42}, {-47.59, 6.27}, {-48.0, 0.0} };
-	const std::vector<std::vector<RValue>> cross_aoe_points = { {-16.0, -48.0}, {-8.0, -48.0}, {0.0, -48.0}, {8.0, -48.0}, {16.0, -48.0}, {-16.0, -40.0}, {-8.0, -40.0}, {0.0, -40.0}, {8.0, -40.0}, {16.0, -40.0}, {-16.0, -32.0}, {-8.0, -32.0}, {0.0, -32.0}, {8.0, -32.0}, {16.0, -32.0}, {-16.0, -24.0}, {-8.0, -24.0}, {0.0, -24.0}, {8.0, -24.0}, {16.0, -24.0}, {-48.0, -16.0}, {-40.0, -16.0}, {-32.0, -16.0}, {-24.0, -16.0}, {-16.0, -16.0}, {-8.0, -16.0}, {0.0, -16.0}, {8.0, -16.0}, {16.0, -16.0}, {24.0, -16.0}, {32.0, -16.0}, {40.0, -16.0}, {48.0, -16.0}, {-48.0, -8.0}, {-40.0, -8.0}, {-32.0, -8.0}, {-24.0, -8.0}, {-16.0, -8.0}, {-8.0, -8.0}, {0.0, -8.0}, {8.0, -8.0}, {16.0, -8.0}, {24.0, -8.0}, {32.0, -8.0}, {40.0, -8.0}, {48.0, -8.0}, {-48.0, 0.0}, {-40.0, 0.0}, {-32.0, 0.0}, {-24.0, 0.0}, {-16.0, 0.0}, {-8.0, 0.0}, {8.0, 0.0}, {16.0, 0.0}, {24.0, 0.0}, {32.0, 0.0}, {40.0, 0.0}, {48.0, 0.0}, {-48.0, 8.0}, {-40.0, 8.0}, {-32.0, 8.0}, {-24.0, 8.0}, {-16.0, 8.0}, {-8.0, 8.0}, {0.0, 8.0}, {8.0, 8.0}, {16.0, 8.0}, {24.0, 8.0}, {32.0, 8.0}, {40.0, 8.0}, {48.0, 8.0}, {-48.0, 16.0}, {-40.0, 16.0}, {-32.0, 16.0}, {-24.0, 16.0}, {-16.0, 16.0}, {-8.0, 16.0}, {0.0, 16.0}, {8.0, 16.0}, {16.0, 16.0}, {24.0, 16.0}, {32.0, 16.0}, {40.0, 16.0}, {48.0, 16.0}, {-16.0, 24.0}, {-8.0, 24.0}, {0.0, 24.0}, {8.0, 24.0}, {16.0, 24.0}, {-16.0, 32.0}, {-8.0, 32.0}, {0.0, 32.0}, {8.0, 32.0}, {16.0, 32.0}, {-16.0, 40.0}, {-8.0, 40.0}, {0.0, 40.0}, {8.0, 40.0}, {16.0, 40.0}, {-16.0, 48.0}, {-8.0, 48.0}, {0.0, 48.0}, {8.0, 48.0}, {16.0, 48.0} };
-	const std::vector<std::vector<RValue>> x_aoe_points = { {22.63, -45.25}, {28.28, -39.6}, {33.94, -33.94}, {39.6, -28.28}, {45.25, -22.63}, {16.97, -39.6}, {22.63, -33.94}, {28.28, -28.28}, {33.94, -22.63}, {39.6, -16.97}, {11.31, -33.94}, {16.97, -28.28}, {22.63, -22.63}, {28.28, -16.97}, {33.94, -11.31}, {5.66, -28.28}, {11.31, -22.63}, {16.97, -16.97}, {22.63, -11.31}, {28.28, -5.66}, {-22.63, -45.25}, {-16.97, -39.6}, {-11.31, -33.94}, {-5.66, -28.28}, {0.0, -22.63}, {5.66, -16.97}, {11.31, -11.31}, {16.97, -5.66}, {22.63, 0.0}, {28.28, 5.66}, {33.94, 11.31}, {39.6, 16.97}, {45.25, 22.63}, {-28.28, -39.6}, {-22.63, -33.94}, {-16.97, -28.28}, {-11.31, -22.63}, {-5.66, -16.97}, {0.0, -11.31}, {5.66, -5.66}, {11.31, 0.0}, {16.97, 5.66}, {22.63, 11.31}, {28.28, 16.97}, {33.94, 22.63}, {39.6, 28.28}, {-33.94, -33.94}, {-28.28, -28.28}, {-22.63, -22.63}, {-16.97, -16.97}, {-11.31, -11.31}, {-5.66, -5.66}, {5.66, 5.66}, {11.31, 11.31}, {16.97, 16.97}, {22.63, 22.63}, {28.28, 28.28}, {33.94, 33.94}, {-39.6, -28.28}, {-33.94, -22.63}, {-28.28, -16.97}, {-22.63, -11.31}, {-16.97, -5.66}, {-11.31, 0.0}, {-5.66, 5.66}, {0.0, 11.31}, {5.66, 16.97}, {11.31, 22.63}, {16.97, 28.28}, {22.63, 33.94}, {28.28, 39.6}, {-45.25, -22.63}, {-39.6, -16.97}, {-33.94, -11.31}, {-28.28, -5.66}, {-22.63, 0.0}, {-16.97, 5.66}, {-11.31, 11.31}, {-5.66, 16.97}, {0.0, 22.63}, {5.66, 28.28}, {11.31, 33.94}, {16.97, 39.6}, {22.63, 45.25}, {-28.28, 5.66}, {-22.63, 11.31}, {-16.97, 16.97}, {-11.31, 22.63}, {-5.66, 28.28}, {-33.94, 11.31}, {-28.28, 16.97}, {-22.63, 22.63}, {-16.97, 28.28}, {-11.31, 33.94}, {-39.6, 16.97}, {-33.94, 22.63}, {-28.28, 28.28}, {-22.63, 33.94}, {-16.97, 39.6}, {-45.25, 22.63}, {-39.6, 28.28}, {-33.94, 33.94}, {-28.28, 39.6}, {-22.63, 45.25} };
 
 	// Setup the state tracker variable.
 	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
@@ -1887,8 +2009,17 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 	RValue attack_pattern_mode_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__attack_pattern_mode" });
 	if (!attack_pattern_mode_exists.ToBoolean())
 	{
-		Modes mode = magic_enum::enum_value<Modes>(random_mode_distribution(random_generator));
-		StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+		if (is_boss_battle)
+		{
+			// TODO: Set the mode based on the number of bosses spawned (see Rockclod boss logic) instead of randomizing.
+			Modes mode = magic_enum::enum_value<Modes>(random_mode_distribution(random_generator));
+			StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+		}
+		else
+		{
+			Modes mode = magic_enum::enum_value<Modes>(zero_to_one_distribution(random_generator)); // Only use DONUT_PB and CROSS_X modes for Dread Beasts.
+			StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+		}
 	}
 	Modes attack_pattern_mode = magic_enum::enum_cast<Modes>(monster.GetMember("__deep_dungeon__attack_pattern_mode").ToString()).value();
 
@@ -1900,6 +2031,8 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 		{
 			// Randomly choose starting attack. Each pattern has two alternating attacks.
 			int starting_pattern = zero_to_one_distribution(random_generator);
+
+			// TODO: Have separate logic for bosses.
 
 			RValue config = monster.GetMember("config");
 			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
@@ -1974,7 +2107,41 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", starting_pattern);
 				}
 			}
-			// TODO: else if (attack_pattern_mode == Modes::CHECKERBOARD
+			else if (attack_pattern_mode == Modes::CHECKERBOARD)
+			{
+				if (starting_pattern == 0) // Checkerboard AOE
+				{
+					RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { checkerboard_room_wide_a_points.size() });
+					for (int i = 0; i < checkerboard_room_wide_a_points.size(); i++)
+					{
+						RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 0, checkerboard_room_wide_a_points[i][0] });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 1, checkerboard_room_wide_a_points[i][1] });
+						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+					}
+
+					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+					StructVariableSet(config_clone, "secondary_spikes", secondary_spikes);
+					StructVariableSet(monster, "config", config_clone);
+					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", starting_pattern);
+				}
+				else if (starting_pattern == 1) // Checkerboard Inverted AOE
+				{
+					RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { checkerboard_room_wide_b_points.size() });
+					for (int i = 0; i < checkerboard_room_wide_b_points.size(); i++)
+					{
+						RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 0, checkerboard_room_wide_b_points[i][0] });
+						g_ModuleInterface->CallBuiltin("array_set", { pair, 1, checkerboard_room_wide_b_points[i][1] });
+						g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+					}
+
+					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+					StructVariableSet(config_clone, "secondary_spikes", secondary_spikes);
+					StructVariableSet(monster, "config", config_clone);
+					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", starting_pattern);
+				}
+			}
 		}
 	}
 
@@ -2011,7 +2178,7 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 						*config.GetRefMember("secondary_spikes") = secondary_spikes;
 					}
 				}
-				if (custom_attack_pattern == 1) // PB AOE
+				else if (custom_attack_pattern == 1) // PB AOE
 				{
 					if (StructVariableExists(monster, "config"))
 					{
@@ -2048,7 +2215,7 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 						*config.GetRefMember("secondary_spikes") = secondary_spikes;
 					}
 				}
-				if (custom_attack_pattern == 1) // X AOE
+				else if (custom_attack_pattern == 1) // X AOE
 				{
 					if (StructVariableExists(monster, "config"))
 					{
@@ -2066,7 +2233,43 @@ void ModifyStalagmiteAttackPatterns(RValue monster)
 					}
 				}
 			}
-			// TODO: else if (attack_pattern_mode == Modes::CHECKERBOARD
+			else if (attack_pattern_mode == Modes::CHECKERBOARD)
+			{
+				if (custom_attack_pattern == 0) // Checkerboard AOE
+				{
+					if (StructVariableExists(monster, "config"))
+					{
+						RValue config = *monster.GetRefMember("config");
+						RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { checkerboard_room_wide_a_points.size() });
+						for (int i = 0; i < checkerboard_room_wide_a_points.size(); i++)
+						{
+							RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 0, checkerboard_room_wide_a_points[i][0] });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 1, checkerboard_room_wide_a_points[i][1] });
+							g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+						}
+
+						*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					}
+				}
+				else if (custom_attack_pattern == 1) // Checkerboard Inverted AOE
+				{
+					if (StructVariableExists(monster, "config"))
+					{
+						RValue config = *monster.GetRefMember("config");
+						RValue secondary_spikes = g_ModuleInterface->CallBuiltin("array_create", { checkerboard_room_wide_b_points.size() });
+						for (int i = 0; i < checkerboard_room_wide_b_points.size(); i++)
+						{
+							RValue pair = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 0, checkerboard_room_wide_b_points[i][0] });
+							g_ModuleInterface->CallBuiltin("array_set", { pair, 1, checkerboard_room_wide_b_points[i][1] });
+							g_ModuleInterface->CallBuiltin("array_set", { secondary_spikes, i, pair });
+						}
+
+						*config.GetRefMember("secondary_spikes") = secondary_spikes;
+					}
+				}
+			}
 
 			*monster.GetRefMember("__deep_dungeon__custom_attack_pattern") = custom_attack_pattern;
 		}
@@ -2112,7 +2315,7 @@ void ModifyDreadBeastAttackPatterns(bool is_boss_battle, RValue monster)
 	if (monster_id == monster_name_to_id_map["rockclod"] || monster_id == monster_name_to_id_map["rockclod_blue"] || monster_id == monster_name_to_id_map["rockclod_green"] || monster_id == monster_name_to_id_map["rockclod_red"])
 		ModifyRockClodAttackPatterns(is_boss_battle, monster);
 	if (monster_id == monster_name_to_id_map["stalagmite"] || monster_id == monster_name_to_id_map["stalagmite_green"] || monster_id == monster_name_to_id_map["stalagmite_purple"])
-		ModifyStalagmiteAttackPatterns(monster);
+		ModifyStalagmiteAttackPatterns(is_boss_battle, monster);
 	if (monster_id == monster_name_to_id_map["sapling"] || monster_id == monster_name_to_id_map["sapling_blue"] || monster_id == monster_name_to_id_map["sapling_purple"] || monster_id == monster_name_to_id_map["sapling_orange"])
 		ModifySaplingAttackPatterns(monster, monster_id);
 }
@@ -3222,6 +3425,145 @@ void GenerateTreasureChestLoot(std::string object_name, CInstance* Self, CInstan
 			DropItem(cursed_gear_to_item_id_map[CURSED_PANTS_NAME], ari_x, ari_y, Self, Other);
 		else if (floor_number < 100) // Ruins
 			DropItem(cursed_gear_to_item_id_map[CURSED_BOOTS_NAME], ari_x, ari_y, Self, Other);
+	}
+}
+
+void PrintError(std::exception_ptr eptr)
+{
+	try {
+		if (eptr) {
+			std::rethrow_exception(eptr);
+		}
+	}
+	catch (const std::exception& e) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
+	}
+}
+
+void LoadStalagmiteAttackData()
+{
+	// Load config file.
+	std::exception_ptr eptr;
+	try
+	{
+		// Try to find the mod_data directory.
+		std::string current_dir = std::filesystem::current_path().string();
+		std::string stalagmite_json = current_dir + "\\mods\\Deep Dungeon\\data\\stalagmite_attacks.json";
+		std::ifstream in_stream(stalagmite_json);
+		if (in_stream.good())
+		{
+			try
+			{
+				json json_object = json::parse(in_stream);
+
+				if (json_object.empty())
+				{
+					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in JSON file: %s!", MOD_NAME, VERSION, stalagmite_json.c_str());
+				}
+				else
+				{
+					if (json_object.contains("donut_aoe_points"))
+					{
+						donut_aoe_points = json_object["donut_aoe_points"];
+						if (donut_aoe_points.empty())
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "donut_aoe_points", stalagmite_json.c_str());
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "donut_aoe_points", stalagmite_json.c_str());
+					}
+
+					if (json_object.contains("pb_aoe_points"))
+					{
+						pb_aoe_points = json_object["pb_aoe_points"];
+						if (donut_aoe_points.empty())
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "pb_aoe_points", stalagmite_json.c_str());
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "pb_aoe_points", stalagmite_json.c_str());
+					}
+
+					if (json_object.contains("cross_aoe_points"))
+					{
+						cross_aoe_points = json_object["cross_aoe_points"];
+						if (cross_aoe_points.empty())
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "cross_aoe_points", stalagmite_json.c_str());
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "cross_aoe_points", stalagmite_json.c_str());
+					}
+
+					if (json_object.contains("x_aoe_points"))
+					{
+						x_aoe_points = json_object["x_aoe_points"];
+						if (x_aoe_points.empty())
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "x_aoe_points", stalagmite_json.c_str());
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "x_aoe_points", stalagmite_json.c_str());
+
+					}
+
+					if (json_object.contains("checkerboard_room_wide_a_points"))
+					{
+						checkerboard_room_wide_a_points = json_object["checkerboard_room_wide_a_points"];
+						if (checkerboard_room_wide_a_points.empty())
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
+					}
+
+					if (json_object.contains("checkerboard_room_wide_b_points"))
+					{
+						checkerboard_room_wide_b_points = json_object["checkerboard_room_wide_a_points"];
+						if (checkerboard_room_wide_b_points.empty())
+						{
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
+						}
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
+					}
+				}
+			}
+			catch (...)
+			{
+				eptr = std::current_exception();
+				PrintError(eptr);
+
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from file: %s", MOD_NAME, VERSION, stalagmite_json.c_str());
+			}
+
+			in_stream.close();
+		}
+		else
+		{
+			in_stream.close();
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - The JSON file was not found: %s", MOD_NAME, VERSION, stalagmite_json.c_str());
+		}
+	}
+	catch (...)
+	{
+		eptr = std::current_exception();
+		PrintError(eptr);
+
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred loading the \"stalagmite_attacks.json\" JSON file!", MOD_NAME, VERSION);
 	}
 }
 
@@ -4888,8 +5230,14 @@ RValue& GmlScriptGoToRoomCallback(
 
 	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry")
 		SetFloorNumber();
-	else if (boss_battle == BossBattle::WATER_ORB) // TODO: Other orbs
+	else if (ari_current_gm_room == "rm_water_seal")
 		floor_number = 20;
+	else if (ari_current_gm_room == "rm_earth_seal")
+		floor_number = 40;
+	else if (ari_current_gm_room == "rm_fire_seal")
+		floor_number = 60;
+	else if (ari_current_gm_room == "rm_ruins_seal")
+		floor_number = 80;
 	else
 		floor_number = 0;
 
@@ -4963,6 +5311,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		LoadPlayerStates();
 		LoadMonsterStates();
 		LoadTutorials();
+		LoadStalagmiteAttackData();
 		// TODO: Load other stuff
 	}
 	else
