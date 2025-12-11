@@ -117,6 +117,7 @@ static const std::string RUINS_KEY_NAME = "ruins_key";
 static const std::string WATER_ORB_NAME = "water_orb";
 // TODO: Orbs
 static const std::string LIFT_KEY_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/lift_key_restricted";
+static const std::string ORB_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/orb_restricted";
 static const std::string SIGIL_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_restricted";
 static const std::string SIGIL_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_limit";
 static const std::string SALVE_LIMIT_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/salve_limit";
@@ -124,6 +125,8 @@ static const std::string ITEM_PENALTY_NOTIFICATION_KEY = "Notifications/Mods/Dee
 static const std::string ITEM_PROHIBITED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_prohibited";
 static const std::string ITEM_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/item_restricted";
 static const std::string CONCEALMENT_LOST_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/Sigils/concealment/deactivated";
+static const std::string AMNESIA_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/amnesia";
+static const std::string BOSS_BATTLE_SPELL_RESTRICTION_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/boss_spell_restriction";
 static const std::string INHIBITED_PENALTY_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/inhibited_penalty";
 static const std::string CONFUSING_TRAP_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/Traps/confusing";
 static const std::string DISORIENTING_TRAP_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/Traps/disorienting";
@@ -166,12 +169,16 @@ static enum class BossBattle {
 	// TODO
 };
 
-static enum class ClassArmor {
+static enum class Classes {
 	CLERIC,
-	WIZARD,
+	MAGE,
 	PALADIN,
-	ELDRITCH_KNIGHT,
+	DARK_KNIGHT,
 	ROGUE
+};
+
+static enum class ManagedSetBonuses { // Set bonuses that have actively managed values.
+	AFFLATUS_MISERY
 };
 
 static enum class AriResources {
@@ -257,8 +264,8 @@ static const std::unordered_set<std::string> CLASS_ARMOR_NAMES = {
 	CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME
 };
 
-static const std::map<ClassArmor, std::unordered_set<std::string>> CLASS_ARMOR_TO_NAMES_MAP = {
-	{ ClassArmor::CLERIC, { CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME } },
+static const std::map<Classes, std::unordered_set<std::string>> CLASS_NAME_TO_ARMOR_NAMES_MAP = {
+	{ Classes::CLERIC, { CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME } },
 	// TODO: Add other class armor
 };
 
@@ -531,70 +538,70 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 		{ 288 + 8, 256 + 8 },
 		{ 352 + 8, 176 + 8 },
 	}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
+	{ "rm_mines_tide_chamber", {
+		{ 224 + 8, 560 + 8 },
+		{ 224 + 8, 384 + 8 },
+		{ 304 + 8, 464 + 8 },
+		{ 352 + 8, 336 + 8 },
+		{ 352 + 8, 560 + 8 },
+		{ 448 + 8, 480 + 8 },
+	}},
+	{ "rm_mines_tide_elevator25", {
+		{ 272 + 8, 336 + 8 },
+		{ 208 + 8, 432 + 8 },
+		{ 256 + 8, 528 + 8 },
+		{ 336 + 8, 496 + 8 },
+		{ 416 + 8, 480 + 8 },
+		{ 368 + 8, 400 + 8 },
+	}},
+	{ "rm_mines_tide_elevator30", {
+		{ 224 + 8, 368 + 8 },
+		{ 160 + 8, 464 + 8 },
+		{ 208 + 8, 528 + 8 },
+		{ 304 + 8, 528 + 8 },
+		{ 336 + 8, 464 + 8 },
+		{ 448 + 8, 384 + 8 },
+	}},
+	{ "rm_mines_tide_elevator35", {
+		{ 352 + 8, 320 + 8 },
+		{ 304 + 8, 336 + 8 },
+		{ 352 + 8, 416 + 8 },
+		{ 192 + 8, 368 + 8 },
+		{ 176 + 8, 432 + 8 },
+		{ 256 + 8, 512 + 8 },
+	}},
+	{ "rm_mines_tide_floor21", {
+		{ 464 + 8, 208 + 8 },
+		{ 336 + 8, 272 + 8 },
+		{ 368 + 8, 368 + 8 },
+		{ 224 + 8, 384 + 8 },
+		{ 288 + 8, 432 + 8 },
+		{ 192 + 8, 464 + 8 },
+	}},
+	{ "rm_mines_tide_basic1", {
+		{ 576 + 8, 272 + 8 },
+		{ 448 + 8, 336 + 8 },
+		{ 432 + 8, 464 + 8 },
+		{ 496 + 8, 560 + 8 },
+		{ 656 + 8, 512 + 8 },
+		{ 816 + 8, 496 + 8 },
+	}},
+	{ "rm_mines_tide_shrine1", {
+		{ 304 + 8, 400 + 8 },
+		{ 352 + 8, 224 + 8 },
+		{ 480 + 8, 208 + 8 },
+		{ 528 + 8, 288 + 8 },
+		{ 480 + 8, 384 + 8 },
+		{ 768 + 8, 320 + 8 },
+	}},
+	{ "rm_mines_tide_whirlpool1", {
+		{ 864 + 8, 560 + 8 },
+		{ 848 + 8, 400 + 8 },
+		{ 832 + 8, 288 + 8 },
+		{ 688 + 8, 224 + 8 },
+		{ 672 + 8, 368 + 8 },
+		{ 464 + 8, 384 + 8 },
+	}},
 	//{ "", {
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
@@ -667,6 +674,7 @@ static bool obj_dungeon_ladder_down_focused = false;
 static double ari_x = -1;
 static double ari_y = -1;
 static double floor_number = 0;
+static int floor_start_time = 0;
 static int current_time_in_seconds = -1;
 static int time_of_last_restoration_tick = -1;
 static int time_of_last_second_wind_tick = -1;
@@ -686,6 +694,7 @@ static std::unordered_set<int> deep_dungeon_items = {};
 static std::map<Sigils, int> sigil_to_item_id_map = {};
 static std::map<int, Sigils> item_id_to_sigil_map = {};
 static std::map<std::string, int> perk_name_to_id_map = {};
+static std::map<std::string, int> spell_name_to_id_map = {};
 static std::map<int, int> spell_id_to_default_cost_map = {};
 static std::map<std::string, int> salve_name_to_id_map = {};
 static std::map<int, std::string> object_id_to_name_map = {};
@@ -714,9 +723,10 @@ static std::map<AriResources, bool> ari_resource_to_penalty_map = {}; // Used to
 static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script.
 static std::map<std::string, std::unordered_set<int>> dungeon_biome_to_candidate_monsters_map = {}; // Holds the candidate monster spawns for each dungeon biome.
 static std::map<int, std::string> floor_number_to_biome_name_map = {}; // Maps floor numbers to the dungeon biome name.
-static std::vector<CInstance*> current_floor_monsters = {};
+static std::vector<CInstance*> current_floor_monsters = {}; // Holds CInstance refs to all monsters on the current floor.
 static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {}; // Tracks when a notification was last displayed.
-static std::map<int, RValue> item_id_to_prototype_map = {};
+static std::map<int, RValue> item_id_to_prototype_map = {}; // Used to serialize LiveItem instances for a given item prototype.
+static std::map<Classes, std::map<ManagedSetBonuses, int>> class_name_to_set_bonus_effect_value_map; // Used to track values for specific class set bonus effects. Example: Cleric->afflatus_misery->70.
 
 // Attack pattern data for Stalagmites
 static std::vector<std::vector<double>> donut_aoe_points;
@@ -757,6 +767,7 @@ void ResetStaticFields(bool returned_to_title_screen)
 		ari_x = -1;
 		ari_y = -1;
 		floor_number = 0;
+		floor_start_time = 0;
 		current_time_in_seconds = -1;
 		time_of_last_restoration_tick = -1;
 		time_of_last_second_wind_tick = -1;
@@ -1491,6 +1502,7 @@ void LoadItems()
 					if (array_element->ToString() == "bomb")
 					{
 						*item->GetRefMember("damage") = 0;
+						*item->GetRefMember("bomb")->GetRefMember("damage") = 0;
 						restricted_items.insert(item_id);
 					}
 				}
@@ -1680,7 +1692,7 @@ void ScaleMistpoolArmor(bool in_dungeon)
 	}
 }
 
-std::map<ClassArmor, int> CountEquippedClassArmor()
+std::map<Classes, int> CountEquippedClassArmor()
 {
 	RValue ari = global_instance->GetMember("__ari");
 	RValue armor = ari.GetMember("armor");
@@ -1690,7 +1702,7 @@ std::map<ClassArmor, int> CountEquippedClassArmor()
 	size_t array_length;
 	g_ModuleInterface->GetArraySize(buffer, array_length);
 
-	std::map<ClassArmor, int> class_armor_equipped = {};
+	std::map<Classes, int> class_armor_equipped = {};
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_entry;
@@ -1705,9 +1717,9 @@ std::map<ClassArmor, int> CountEquippedClassArmor()
 				if (StructVariableExists(prototype, "recipe_key"))
 				{
 					RValue recipe_key = prototype.GetMember("recipe_key");
-					for (const auto& class_armor : CLASS_ARMOR_TO_NAMES_MAP)
+					for (const auto& class_armor : CLASS_NAME_TO_ARMOR_NAMES_MAP)
 					{
-						if (CLASS_ARMOR_TO_NAMES_MAP.at(class_armor.first).contains(recipe_key.ToString()))
+						if (CLASS_NAME_TO_ARMOR_NAMES_MAP.at(class_armor.first).contains(recipe_key.ToString()))
 							class_armor_equipped[class_armor.first]++;
 					}
 				}
@@ -1749,6 +1761,32 @@ std::map<int, int> GetClassArmorInfusions()
 	}
 	
 	return class_armor_infusions;
+}
+
+int GetClericAutoRegenPotency()
+{
+	int cleric_armor_pieces_equipped = CountEquippedClassArmor()[Classes::CLERIC];
+	if (cleric_armor_pieces_equipped == 0)
+		return 0;
+	if (cleric_armor_pieces_equipped < 3)
+		return 1;
+	if (cleric_armor_pieces_equipped < 5)
+		return 2;
+	if (cleric_armor_pieces_equipped == 5)
+		return 3;
+}
+
+void LoadSpellIds()
+{
+	size_t array_length = 0;
+	RValue spell_ids = global_instance->GetMember("__spell__");
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(spell_ids, i, array_element);
+
+		spell_name_to_id_map[array_element->ToString()] = i;
+	}
 }
 
 void LoadSpells()
@@ -2320,10 +2358,10 @@ void ModifyDreadBeastAttackPatterns(bool is_boss_battle, RValue monster)
 		ModifySaplingAttackPatterns(monster, monster_id);
 }
 
-void CreateNotification(std::string notification_localization_str, CInstance* Self, CInstance* Other)
+void CreateNotification(bool ignore_cooldown, std::string notification_localization_str, CInstance* Self, CInstance* Other)
 {
 	uint64_t current_system_time = GetCurrentSystemTime();
-	if (current_system_time > notification_name_to_last_display_time_map[notification_localization_str] + 5000)
+	if(ignore_cooldown || current_system_time > notification_name_to_last_display_time_map[notification_localization_str] + 5000)
 	{
 		CScript* gml_script_create_notification = nullptr;
 		g_ModuleInterface->GetNamedRoutinePointer(
@@ -3278,7 +3316,7 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			if (trap == Traps::CONFUSING)
 			{
 				PlaySoundEffect("snd_bark_o_o", 100);
-				CreateNotification(CONFUSING_TRAP_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(true, CONFUSING_TRAP_NOTIFICATION_KEY, Self, Other);
 
 				if (!active_traps_to_value_map.contains(Traps::CONFUSING))
 				{
@@ -3295,7 +3333,7 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			if (trap == Traps::DISORIENTING)
 			{
 				PlaySoundEffect("snd_interactable_scan", 100);
-				CreateNotification(DISORIENTING_TRAP_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(true, DISORIENTING_TRAP_NOTIFICATION_KEY, Self, Other);
 
 				if (!active_traps_to_value_map.contains(Traps::DISORIENTING))
 				{
@@ -3311,12 +3349,12 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			if (trap == Traps::EXPLODING)
 			{
 				PlaySoundEffect("snd_Explosion_CaveReverb", 100);
-				CreateNotification(EXPLODING_TRAP_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(true, EXPLODING_TRAP_NOTIFICATION_KEY, Self, Other);
 			}
 			if (trap == Traps::INHIBITING)
 			{
 				PlaySoundEffect("snd_bark_surprised", 100);
-				CreateNotification(INHIBITING_TRAP_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(true, INHIBITING_TRAP_NOTIFICATION_KEY, Self, Other);
 
 				if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 					UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
@@ -3335,7 +3373,7 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			if (trap == Traps::LURING)
 			{
 				PlaySoundEffect("snd_ScrollRaise", 100);
-				CreateNotification(LURING_TRAP_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(true, LURING_TRAP_NOTIFICATION_KEY, Self, Other);
 				std::vector<int> random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2, 2); // TODO: Scale the number of monsters spawned?
 				std::uniform_int_distribution<int> random_position_offset_distribution(-12, 12);
 
@@ -3793,12 +3831,12 @@ void ObjectCallback(
 			}
 		}
 
-		// Restoration & Cleric Armor Bonus
+		// Restoration & Auto Regen (Cleric Set Bonus)
 		if (is_restoration_tracked_interval)
 		{
 			int recovery = 1;
 			if (!GameIsPaused())
-				recovery = max(recovery, CountEquippedClassArmor()[ClassArmor::CLERIC]);
+				recovery = max(recovery, GetClericAutoRegenPotency());
 
 			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery);
 			is_restoration_tracked_interval = false;
@@ -4047,8 +4085,11 @@ void ObjectCallback(
 				{
 					if (!StructVariableExists(monster, "__deep_dungeon__reckoning_applied") && StructVariableExists(monster, "hit_points"))
 					{
-						*monster.GetRefMember("hit_points") = 1;
-						StructVariableSet(monster, "__deep_dungeon__reckoning_applied", true);
+						if (current_time_in_seconds < floor_start_time + 30) // All enemies seem to be created with HP var initialized before floor starts
+						{
+							*monster.GetRefMember("hit_points") = 1;
+							StructVariableSet(monster, "__deep_dungeon__reckoning_applied", true);
+						}
 					}
 				}
 
@@ -4068,7 +4109,7 @@ void ObjectCallback(
 						else
 						{
 							active_sigils.erase(Sigils::CONCEALMENT);
-							CreateNotification(CONCEALMENT_LOST_NOTIFICATION_KEY, nullptr, nullptr);
+							CreateNotification(false, CONCEALMENT_LOST_NOTIFICATION_KEY, nullptr, nullptr);
 
 							if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 								UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
@@ -4152,6 +4193,30 @@ RValue& GmlScriptRegisterStatusEffectCallback(
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_REGISTER_STATUS_EFFECT));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptModifyHealthCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	// Afflatus Misery (Cleric Set Bonus)
+	if (Arguments[0]->ToInt64() < 0 && CountEquippedClassArmor()[Classes::CLERIC] == 5 && floor_number != 0)
+		class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AFFLATUS_MISERY] += abs(Arguments[0]->ToInt64());
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_MODIFY_HEALTH));
 	original(
 		Self,
 		Other,
@@ -4290,6 +4355,43 @@ RValue& GmlScriptCanCastSpellCallback(
 	if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA))
 	{
 		Result = 0.0;
+		CreateNotification(false, AMNESIA_NOTIFICATION_KEY, Self, Other);
+	}
+
+	// Boss Fights
+	if (boss_battle != BossBattle::NONE)
+	{
+		Result = 0.0;
+		CreateNotification(false, BOSS_BATTLE_SPELL_RESTRICTION_NOTIFICATION_KEY, Self, Other);
+	}
+
+	return Result;
+}
+
+RValue& GmlScriptCastSpellCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CAST_SPELL));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	// Divine Seal (Cleric Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::CLERIC] >= 3 && floor_number != 0)
+	{
+		RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1], status_effect_name_to_id_map["fairy"], RValue(), 1, 2147483647.0);
+
+		active_floor_enchantments.clear();
+		active_sigils.insert(Sigils::SERENITY); // Prevent Serenity on the floor so it isn't wasted.
 	}
 
 	return Result;
@@ -4420,6 +4522,31 @@ RValue& GmlScriptDamageCallback(
 		}
 	}
 
+	// Afflatus Misery (Cleric Set Bonus)
+	bool afflatus_misery_proc = false;
+	if (floor_number != 0 && CountEquippedClassArmor()[Classes::CLERIC] == 5 && !active_sigils.contains(Sigils::RAGE) && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
+	{
+		RValue target = Arguments[0]->GetMember("target");
+		if (target.ToInt64() != 1) // Everything not Ari
+		{
+			if (!StructVariableExists(*Arguments[0], "__deep_dungeon__afflatus_misery_applied") && class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AFFLATUS_MISERY] > 0)
+			{
+				std::uniform_int_distribution<size_t> zero_to_nine_distribution(0, 9);
+				int random = zero_to_nine_distribution(random_generator);
+				if (random == 7) // 10% chance to proc
+				{
+					double damage = Arguments[0]->GetMember("damage").ToDouble() + class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AFFLATUS_MISERY];
+					*Arguments[0]->GetRefMember("damage") = damage;
+					*Arguments[0]->GetRefMember("critical") = true;
+
+					afflatus_misery_proc = true;
+					StructVariableSet(*Arguments[0], "__deep_dungeon__afflatus_misery_applied", true);
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - The Cleric Set Bonus effect \"Afflatus Misery\" triggered, increasing your damage by: %d!", MOD_NAME, VERSION, class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AFFLATUS_MISERY]);
+				}
+			}
+		}
+	}
+
 	// Sigil of Rage
 	if (active_sigils.contains(Sigils::RAGE))
 	{
@@ -4443,6 +4570,9 @@ RValue& GmlScriptDamageCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	if (afflatus_misery_proc && Result.ToBoolean())
+		class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AFFLATUS_MISERY] = 0;
 
 	return Result;
 }
@@ -4689,13 +4819,24 @@ RValue& GmlScriptUseItemCallback(
 	IN RValue** Arguments
 )
 {
+	// Orbs
+	if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari") && orb_items.contains(held_item_id))
+	{
+		if (ari_current_gm_room != "rm_mines_entry")
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are only allowed to use an orb at the mines entrance!", MOD_NAME, VERSION);
+			CreateNotification(false, ORB_RESTRICTED_NOTIFICATION_KEY, Self, Other);
+			return Result;
+		}
+	}
+
 	// Lift Keys
 	if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari") && lift_key_items.contains(held_item_id))
 	{
 		if (ari_current_gm_room != "rm_mines_entry")
 		{
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are only allowed to use a lift key at the mines entrance!", MOD_NAME, VERSION);
-			CreateNotification(LIFT_KEY_RESTRICTED_NOTIFICATION_KEY, Self, Other);
+			CreateNotification(false, LIFT_KEY_RESTRICTED_NOTIFICATION_KEY, Self, Other);
 			return Result;
 		}
 	}
@@ -4708,7 +4849,7 @@ RValue& GmlScriptUseItemCallback(
 			if (held_item_id == mistpool_gear_to_item_id_map[MISTPOOL_SWORD_NAME])
 			{
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use the Mistpool Sword due to the Inhibiting Trap's effect!", MOD_NAME, VERSION);
-				CreateNotification(INHIBITED_PENALTY_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(false, INHIBITED_PENALTY_NOTIFICATION_KEY, Self, Other);
 				return Result;
 			}
 		}
@@ -4722,7 +4863,7 @@ RValue& GmlScriptUseItemCallback(
 			if (held_item_id != sigil_to_item_id_map[Sigils::SERENITY] && restricted_items.contains(held_item_id))
 			{
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use that item due to the Item Penalty floor enchantment!!", MOD_NAME, VERSION);
-				CreateNotification(ITEM_PENALTY_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(false, ITEM_PENALTY_NOTIFICATION_KEY, Self, Other);
 				return Result;
 			}
 		}
@@ -4738,7 +4879,7 @@ RValue& GmlScriptUseItemCallback(
 				if (item_id_to_sigil_map.contains(held_item_id))
 				{
 					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use sigils during boss battles!", MOD_NAME, VERSION);
-					CreateNotification(SIGIL_RESTRICTED_NOTIFICATION_KEY, Self, Other);
+					CreateNotification(false, SIGIL_RESTRICTED_NOTIFICATION_KEY, Self, Other);
 					return Result;
 				}
 			}
@@ -4748,7 +4889,7 @@ RValue& GmlScriptUseItemCallback(
 				if (item_id_to_sigil_map.contains(held_item_id) && active_sigils.contains(item_id_to_sigil_map[held_item_id]))
 				{
 					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - That sigil is already active!", MOD_NAME, VERSION);
-					CreateNotification(SIGIL_LIMIT_NOTIFICATION_KEY, Self, Other);
+					CreateNotification(false, SIGIL_LIMIT_NOTIFICATION_KEY, Self, Other);
 					return Result;
 				}
 			}
@@ -4757,7 +4898,7 @@ RValue& GmlScriptUseItemCallback(
 			if (salves_used.contains(held_item_id))
 			{
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You have already used that type of salve on the current floor!", MOD_NAME, VERSION);
-				CreateNotification(SALVE_LIMIT_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(false, SALVE_LIMIT_NOTIFICATION_KEY, Self, Other);
 				return Result;
 			}
 
@@ -4765,7 +4906,7 @@ RValue& GmlScriptUseItemCallback(
 			if (!deep_dungeon_items.contains(held_item_id) && restricted_items.contains(held_item_id))
 			{
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - That item is prohibited in the Deep Dungeon!", MOD_NAME, VERSION);
-				CreateNotification(ITEM_PROHIBITED_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(false, ITEM_PROHIBITED_NOTIFICATION_KEY, Self, Other);
 				return Result;
 			}
 		}
@@ -4778,7 +4919,7 @@ RValue& GmlScriptUseItemCallback(
 			if (deep_dungeon_items.contains(held_item_id))
 			{
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You may only use Deep Dungeon specific items inside the dungeon!", MOD_NAME, VERSION);
-				CreateNotification(ITEM_RESTRICTED_NOTIFICATION_KEY, Self, Other);
+				CreateNotification(false, ITEM_RESTRICTED_NOTIFICATION_KEY, Self, Other);
 				return Result;
 			}
 		}
@@ -4927,7 +5068,7 @@ RValue& GmlScriptGetMinutesCallback(
 		ApplyFloorTraps(Self, Other);
 
 		// Restoration
-		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION) || (!GameIsPaused() && AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[ClassArmor::CLERIC] > 0))
+		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION) || (!GameIsPaused() && AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[Classes::CLERIC] > 0))
 		{
 			if (!is_restoration_tracked_interval && (current_time_in_seconds - time_of_last_restoration_tick) >= TWO_MINUTES_IN_SECONDS)
 			{
@@ -5168,7 +5309,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 				time_of_last_second_wind_tick = current_time_in_seconds;
 		}
 
-		if (CountEquippedClassArmor()[ClassArmor::CLERIC] > 0)
+		if (CountEquippedClassArmor()[Classes::CLERIC] > 0)
 			time_of_last_restoration_tick = current_time_in_seconds;
 
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
@@ -5176,7 +5317,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	}
 	else if (boss_battle != BossBattle::NONE)
 	{
-		if (CountEquippedClassArmor()[ClassArmor::CLERIC] > 0)
+		if (CountEquippedClassArmor()[Classes::CLERIC] > 0)
 			time_of_last_restoration_tick = current_time_in_seconds;
 
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
@@ -5200,6 +5341,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		Arguments
 	);
 
+	floor_start_time = current_time_in_seconds;
 	return Result;
 }
 
@@ -5273,6 +5415,7 @@ RValue& GmlScriptGoToRoomCallback(
 		reckoning_applied = false;
 		fairy_buff_applied = false;
 		offering_chance_occurred = false;
+		floor_start_time = 0;
 		sigil_of_silence_count = 0;
 		sigil_of_alteration_count = 0;
 		dread_beast_monster_id = -1;
@@ -5302,6 +5445,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 
 		LoadPerks();
 		LoadSpells();
+		LoadSpellIds();
 		LoadStatusEffects();
 		LoadInfusions();
 		LoadObjectIds();
@@ -5735,6 +5879,33 @@ void CreateHookGmlScriptRegisterStatusEffect(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptModifyHealth(AurieStatus& status)
+{
+	CScript* gml_script_modify_health = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_MODIFY_HEALTH,
+		(PVOID*)&gml_script_modify_health
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_HEALTH);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_MODIFY_HEALTH,
+		gml_script_modify_health->m_Functions->m_ScriptFunction,
+		GmlScriptModifyHealthCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_HEALTH);
+	}
+}
+
 void CreateHookGmlScriptModifyStamina(AurieStatus& status)
 {
 	CScript* gml_script_modify_stamina = nullptr;
@@ -5813,6 +5984,33 @@ void CreateHookGmlScriptCanCastSpell(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CAN_CAST_SPELL);
+	}
+}
+
+void CreateHookGmlScriptCastSpell(AurieStatus& status)
+{
+	CScript* gml_script_cast_spell = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CAST_SPELL,
+		(PVOID*)&gml_script_cast_spell
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CAST_SPELL);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CAST_SPELL,
+		gml_script_cast_spell->m_Functions->m_ScriptFunction,
+		GmlScriptCastSpellCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CAST_SPELL);
 	}
 }
 
@@ -6618,6 +6816,13 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
+	CreateHookGmlScriptModifyHealth(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
 	CreateHookGmlScriptModifyStamina(status);
 	if (!AurieSuccess(status))
 	{
@@ -6633,6 +6838,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptCanCastSpell(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCastSpell(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
