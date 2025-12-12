@@ -72,6 +72,8 @@ static const char* const GML_SCRIPT_GET_ITEM_UI_ICON = "gml_Script_get_ui_icon@a
 static const char* const GML_SCRIPT_CREATE_ITEM_PROTOTYPES = "gml_Script_create_item_prototypes";
 static const char* const GML_SCRIPT_DESERIALIZE_LIVE_ITEM = "gml_Script_deserialize_live_item";
 static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script_get_treasure_from_distribution";
+static const char* const GML_SCRIPT_CRAFTING_MENU_INITIALIZE = "gml_Script_initialize@CraftingMenu@CraftingMenu";
+static const char* const GML_SCRIPT_CRAFTING_MENU_CLOSE = "gml_Script_on_close@CraftingMenu@CraftingMenu";
 static const std::string SIGIL_OF_ALTERATION_NAME = "sigil_of_alteration";
 static const std::string SIGIL_OF_CONCEALMENT_NAME = "sigil_of_concealment";
 static const std::string SIGIL_OF_FORTIFICATION_NAME = "sigil_of_fortification";
@@ -153,12 +155,19 @@ static const std::string FEY_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversatio
 static const std::string RESTORATION_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/restoration";
 static const std::string SECOND_WIND_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/second_wind";
 static const std::string HASTE_FLOOR_ENCHANTMENT_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Floor Enchantments/Positive/haste";
-
 static const std::string DREAD_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/dread";
 static const std::string INNER_FIRE_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Positive/inner_fire";
 static const std::string LEECH_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Positive/leech";
 static const std::string PERIL_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/peril";
 static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/reckoning";
+static const std::string CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Armor/cleric/description";
+
+static const std::string SET_PIECES_EQUIPPED_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/set_bonuses/equipped";
+static const std::string CLERIC_SET_BONUS_AUTO_REGEN_ONE_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/auto_regen/1";
+static const std::string CLERIC_SET_BONUS_AUTO_REGEN_TWO_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/auto_regen/2";
+static const std::string CLERIC_SET_BONUS_AUTO_REGEN_THREE_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/auto_regen/3";
+static const std::string CLERIC_SET_BONUS_DIVINE_SEAL_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/divine_seal";
+static const std::string CLERIC_SET_BONUS_AFFLATUS_MISERY_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/afflatus_misery";
 
 static const int TWO_MINUTES_IN_SECONDS = 120;
 static const int TRAP_ACTIVATION_DISTANCE = 16;
@@ -729,6 +738,7 @@ static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
 static bool localize_mod_text = false;
 static bool game_is_active = false;
+static bool crafting_menu_open = false;
 static bool progression_mode = true; // TODO: Make this configurable
 static bool drop_biome_reward = false;
 static bool biome_reward_disabled = false;
@@ -790,7 +800,9 @@ static std::unordered_set<Offerings> active_offerings = {};
 static std::unordered_set<FloorEnchantments> active_floor_enchantments = {};
 static std::map<Traps, int> active_traps_to_value_map = {}; // Used to track value's for active traps.
 static std::map<Offerings, std::string> offerings_to_localized_string_map = {};
+static std::map<Classes, std::string> classes_to_localized_armor_description_string_map = {};
 static std::map<FloorEnchantments, std::string> floor_enchantments_to_localized_string_map = {};
+static std::map<Classes, std::map<std::string, std::string>> class_armor_to_localized_string_map = {};
 static std::map<AriResources, int> ari_resource_to_value_map = {}; // Used to track Ari's current resource levels.
 static std::map<AriResources, bool> ari_resource_to_penalty_map = {}; // Used to track penalties from offerings to apply.
 static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script.
@@ -850,6 +862,7 @@ void ResetStaticFields(bool returned_to_title_screen)
 		script_name_to_reference_map.clear();
 	}
 
+	crafting_menu_open = false;
 	drop_biome_reward = false;
 	biome_reward_disabled = false;
 	dread_beast_configured = false;
@@ -5194,6 +5207,8 @@ RValue& GmlScriptGetLocalizerCallback(
 		offerings_to_localized_string_map[Offerings::LEECH] = LocalizeString(Self, Other, LEECH_OFFERING_LOCALIZED_TEXT_KEY).ToString();
 		offerings_to_localized_string_map[Offerings::PERIL] = LocalizeString(Self, Other, PERIL_OFFERING_LOCALIZED_TEXT_KEY).ToString();
 		offerings_to_localized_string_map[Offerings::RECKONING] = LocalizeString(Self, Other, RECKONING_OFFERING_LOCALIZED_TEXT_KEY).ToString();
+
+		classes_to_localized_armor_description_string_map[Classes::CLERIC] = LocalizeString(Self, Other, CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY).ToString();
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_LOCALIZER));
@@ -5232,6 +5247,29 @@ RValue& GmlScriptGetLocalizerCallback(
 					custom_text += "\n";
 			}
 
+			Result = RValue(custom_text);
+			return Result;
+		}
+		if (Arguments[0]->ToString() == CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY && !crafting_menu_open)
+		{
+			int cleric_armor_pieces_equipped = CountEquippedClassArmor()[Classes::CLERIC];
+
+			std::string custom_text = classes_to_localized_armor_description_string_map[Classes::CLERIC];
+			custom_text += "\n\n" + LocalizeString(Self, Other, SET_PIECES_EQUIPPED_LOCALIZED_TEXT_KEY).ToString() + " [" + std::to_string(cleric_armor_pieces_equipped) + "/5]";
+			if(cleric_armor_pieces_equipped == 1)
+				custom_text += "\n- " + LocalizeString(Self, Other, CLERIC_SET_BONUS_AUTO_REGEN_ONE_LOCALIZED_TEXT_KEY).ToString();
+			else if (cleric_armor_pieces_equipped == 3)
+			{
+				custom_text += "\n- " + LocalizeString(Self, Other, CLERIC_SET_BONUS_AUTO_REGEN_TWO_LOCALIZED_TEXT_KEY).ToString() + "";
+				custom_text += "\n- " + LocalizeString(Self, Other, CLERIC_SET_BONUS_DIVINE_SEAL_LOCALIZED_TEXT_KEY).ToString() + "";
+			}
+			else if (cleric_armor_pieces_equipped == 5)
+			{
+				custom_text += "\n- " + LocalizeString(Self, Other, CLERIC_SET_BONUS_AUTO_REGEN_THREE_LOCALIZED_TEXT_KEY).ToString();
+				custom_text += "\n- " + LocalizeString(Self, Other, CLERIC_SET_BONUS_DIVINE_SEAL_LOCALIZED_TEXT_KEY).ToString();
+				custom_text += "\n- " + LocalizeString(Self, Other, CLERIC_SET_BONUS_AFFLATUS_MISERY_LOCALIZED_TEXT_KEY).ToString();
+			}
+			
 			Result = RValue(custom_text);
 			return Result;
 		}
@@ -5880,6 +5918,48 @@ RValue& GmlScriptGetTreasureFromDistributionCallback(
 		Arguments
 	);
 
+	return Result;
+}
+
+RValue& GmlScriptCraftingMenuInitializeCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CRAFTING_MENU_INITIALIZE));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	crafting_menu_open = true;
+	return Result;
+}
+
+RValue& GmlScriptCraftingMenuCloseCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CRAFTING_MENU_CLOSE));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	crafting_menu_open = false;
 	return Result;
 }
 
@@ -6847,6 +6927,60 @@ void CreateHookGmlScriptGetTreasureFromDistribution(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptCraftingMenuInitialize(AurieStatus& status)
+{
+	CScript* gml_script_get_display_name = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CRAFTING_MENU_INITIALIZE,
+		(PVOID*)&gml_script_get_display_name
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CRAFTING_MENU_INITIALIZE);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CRAFTING_MENU_INITIALIZE,
+		gml_script_get_display_name->m_Functions->m_ScriptFunction,
+		GmlScriptCraftingMenuInitializeCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CRAFTING_MENU_INITIALIZE);
+	}
+}
+
+void CreateHookGmlScriptCraftingMenuClose(AurieStatus& status)
+{
+	CScript* gml_script_get_display_name = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CRAFTING_MENU_CLOSE,
+		(PVOID*)&gml_script_get_display_name
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CRAFTING_MENU_CLOSE);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CRAFTING_MENU_CLOSE,
+		gml_script_get_display_name->m_Functions->m_ScriptFunction,
+		GmlScriptCraftingMenuCloseCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CRAFTING_MENU_CLOSE);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -7114,6 +7248,20 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptGetTreasureFromDistribution(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCraftingMenuInitialize(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCraftingMenuClose(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
