@@ -1,18 +1,26 @@
-#include <YYToolkit/Shared.hpp>
+#include <unordered_set>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 
-static const char* const VERSION = "1.0.0";
+static const char* const MOD_NAME = "DirectionalAttacks";
+static const char* const VERSION = "1.0.1";
+static const char* const GML_SCRIPT_FACE_DIR = "gml_Script_face_dir@gml_Object_obj_ari_Create_0";
+static const char* const GML_SCRIPT_SET_CARDINAL = "gml_Script_set_cardinal@gml_Object_obj_ari_Create_0";
+static const char* const GML_SCRIPT_HELD_ITEM = "gml_Script_held_item@Ari@Ari";
+static const char* const GML_SCRIPT_TRY_STRING_TO_ITEM_ID = "gml_Script_try_string_to_item_id";
+static const char* const GML_SCRIPT_USE_ITEM = "gml_Script_use_item";
+static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const int UNSET_ITEM_ID = -1;
 static const int UNSET_CARDINAL_OVERRIDE = -1;
 static const double UNSET_FACE_DIR_OVERRIDE = -1.0;
 static const std::vector<std::string> ITEM_NAMES = {
 	// Fishing Rods
-	"fishing_rod_copper", "fishing_rod_gold", "fishing_rod_iron", "fishing_rod_mistril", "fishing_rod_silver", "fishing_rod_worn",
+	 "fishing_rod_worn", "fishing_rod_copper", "fishing_rod_iron", "fishing_rod_silver", "fishing_rod_gold", "fishing_rod_mistril",
 	// Nets
-	"net_copper", "net_gold", "net_iron", "net_mistril", "net_silver", "net_worn",
+	"net_worn", "net_copper", "net_iron", "net_silver", "net_gold", "net_mistril", 
 	// Swords
-	"sword_copper", "sword_crystal", "sword_gold", "sword_iron", "sword_mistril", "sword_scrap_metal", "sword_silver", "sword_verdigris", "sword_worn"
+	"sword_worn", "sword_copper", "sword_iron", "sword_silver", "sword_gold", "sword_mistril", "sword_scrap_metal", "sword_verdigris", "sword_crystal", "sword_tarnished_gold"
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
@@ -20,7 +28,7 @@ static bool load_items = true;
 static int held_item_id = UNSET_ITEM_ID;
 static int cardinal_override = UNSET_CARDINAL_OVERRIDE;
 static double face_dir_override = UNSET_FACE_DIR_OVERRIDE;
-static std::vector<int> item_ids = {};
+static std::unordered_set<int> item_ids = {};
 static CInstance* ari = nullptr;
 
 std::vector<double> GetCenter(std::vector<double> topLeft, std::vector<double> bottomRight)
@@ -116,7 +124,7 @@ void FaceDir(CInstance* Self, CInstance* Other)
 
 		CScript* gml_script_face_dir = nullptr;
 		g_ModuleInterface->GetNamedRoutinePointer(
-			"gml_Script_face_dir@gml_Object_obj_ari_Create_0",
+			GML_SCRIPT_FACE_DIR,
 			(PVOID*)&gml_script_face_dir
 		);
 
@@ -144,7 +152,7 @@ void SetCardinal(CInstance* Self, CInstance* Other)
 
 		CScript* gml_script_set_cardinal = nullptr;
 		g_ModuleInterface->GetNamedRoutinePointer(
-			"gml_Script_set_cardinal@gml_Object_obj_ari_Create_0",
+			GML_SCRIPT_SET_CARDINAL,
 			(PVOID*)&gml_script_set_cardinal
 		);
 
@@ -196,7 +204,7 @@ RValue& GmlScriptHeldItemCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_held_item@Ari@Ari"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_HELD_ITEM));
 	original(
 		Self,
 		Other,
@@ -205,13 +213,8 @@ RValue& GmlScriptHeldItemCallback(
 		Arguments
 	);
 
-	if (Result.m_Kind != VALUE_UNDEFINED)
-	{
-		if (held_item_id != Result.at("item_id").m_i64)
-		{
-			held_item_id = Result.at("item_id").m_i64;
-		}
-	}
+	if (Result.m_Kind != VALUE_UNDEFINED && held_item_id != Result.GetMember("item_id").ToInt64())
+		held_item_id = Result.GetMember("item_id").ToInt64();
 
 	return Result;
 }
@@ -234,7 +237,7 @@ RValue& GmlScriptUseItemCallback(
 		}
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_use_item"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_USE_ITEM));
 	original(
 		Self,
 		Other,
@@ -264,14 +267,13 @@ RValue& GmlScriptSetupMainScreenCallback(
 	{
 		for (std::string item_name : ITEM_NAMES)
 		{
-			// gml_Script_try_string_to_item_id
 			CScript* gml_script_try_string_to_item_id = nullptr;
 			g_ModuleInterface->GetNamedRoutinePointer(
-				"gml_Script_try_string_to_item_id",
+				GML_SCRIPT_TRY_STRING_TO_ITEM_ID,
 				(PVOID*)&gml_script_try_string_to_item_id
 			);
 
-			RValue argument = item_name;
+			RValue argument = RValue(item_name);
 			RValue* argument_ptr = &argument;
 			RValue result;
 			gml_script_try_string_to_item_id->m_Functions->m_ScriptFunction(
@@ -282,21 +284,14 @@ RValue& GmlScriptSetupMainScreenCallback(
 				{ &argument_ptr }
 			);
 
-			if (result.m_Kind != VALUE_NULL && result.m_Kind != VALUE_UNSET && result.m_Kind != VALUE_UNDEFINED)
-			{
-				if (result.m_Kind == VALUE_INT32)
-					item_ids.push_back(result.m_i32);
-				if (result.m_Kind == VALUE_INT64)
-					item_ids.push_back(result.m_i64);
-				if (result.m_Kind == VALUE_REAL)
-					item_ids.push_back(static_cast<int>(result.m_Real));
-			}
+			if (result.m_Kind == VALUE_INT32 || result.m_Kind == VALUE_INT64 || result.m_Kind != VALUE_REAL)
+				item_ids.insert(result.ToInt64());
 		}
 
 		load_items = false;
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SETUP_MAIN_SCREEN));
 	original(
 		Self,
 		Other,
@@ -319,7 +314,7 @@ void CreateObjectCallback(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook (EVENT_OBJECT_CALL)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook (%s)!", MOD_NAME, VERSION, "EVENT_OBJECT_CALL");
 	}
 }
 
@@ -327,18 +322,18 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 {
 	CScript* gml_script_held_item = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_held_item@Ari@Ari",
+		GML_SCRIPT_HELD_ITEM,
 		(PVOID*)&gml_script_held_item
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to get script (gml_Script_held_item@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_HELD_ITEM);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_held_item@Ari@Ari",
+		GML_SCRIPT_HELD_ITEM,
 		gml_script_held_item->m_Functions->m_ScriptFunction,
 		GmlScriptHeldItemCallback,
 		nullptr
@@ -347,7 +342,7 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook script (gml_Script_held_item@Ari@Ari)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_HELD_ITEM);
 	}
 }
 
@@ -355,18 +350,18 @@ void CreateHookGmlScriptUseItem(AurieStatus& status)
 {
 	CScript* gml_script_use_item = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_use_item",
+		GML_SCRIPT_USE_ITEM,
 		(PVOID*)&gml_script_use_item
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to get script (gml_Script_use_item)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_USE_ITEM);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_use_item",
+		GML_SCRIPT_USE_ITEM,
 		gml_script_use_item->m_Functions->m_ScriptFunction,
 		GmlScriptUseItemCallback,
 		nullptr
@@ -374,7 +369,7 @@ void CreateHookGmlScriptUseItem(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook script (gml_Script_use_item)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_USE_ITEM);
 	}
 }
 
@@ -382,18 +377,18 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 {
 	CScript* gml_script_setup_main_screen = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
 		(PVOID*)&gml_script_setup_main_screen
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SETUP_MAIN_SCREEN);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
 		gml_script_setup_main_screen->m_Functions->m_ScriptFunction,
 		GmlScriptSetupMainScreenCallback,
 		nullptr
@@ -402,7 +397,7 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SETUP_MAIN_SCREEN);
 	}
 }
 
@@ -419,36 +414,36 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTAQUA, "[DirectionalAttacks %s] - Plugin starting...", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
 
 	CreateObjectCallback(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptHeldItem(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptUseItem(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[DirectionalAttacks %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[DirectionalAttacks %s] - Plugin started!", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Plugin started!", MOD_NAME, VERSION);
 	return AURIE_SUCCESS;
 }
