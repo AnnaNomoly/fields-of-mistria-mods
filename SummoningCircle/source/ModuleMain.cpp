@@ -7,7 +7,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "SummoningCircle";
-static const char* const VERSION = "1.0.2";
+static const char* const VERSION = "1.0.3";
 static const char* const GML_SCRIPT_TRY_OBJECT_ID_TO_STRING = "gml_Script_try_object_id_to_string";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
