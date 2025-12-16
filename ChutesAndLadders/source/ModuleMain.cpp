@@ -1,20 +1,18 @@
-#pragma comment(lib, "Xinput.lib")
-#include <Windows.h>
-#include <Xinput.h>
 #include <fstream>
 #include <iostream>
 #include <random>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "ChutesAndLadders";
-static const char* const VERSION = "1.2.1";
+static const char* const VERSION = "1.3.1";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE_KEY = "ritual_chamber_additional_spawn_chance";
+static const char* const SPAWN_LADDER_AT_PLAYER_POSITION_KEY = "spawn_ladder_at_player_position";
 static const std::string LADDER_SPAWNED_LOCALIZATION_KEY = "mods/ChutesAndLadders/ladder_spawned";
 static const std::string LADDER_NOT_SPAWNED_LOCALIZATION_KEY = "mods/ChutesAndLadders/ladder_not_spawned";
 static const std::string INVALID_LOCATION_LOCALIZATION_KEY = "mods/ChutesAndLadders/invalid_location";
@@ -22,13 +20,13 @@ static const std::string LOST_TO_HISTORY_PERK_NAME = "lost_to_history";
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_ON_ROOM_START = "gml_Script_on_room_start@WeatherManager@Weather";
-static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const char* const GML_SCRIPT_ERROR = "gml_Script_error";
 static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
 static const int DEFAULT_RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE = 0;
+static const bool DEFAULT_SPAWN_LADDER_AT_PLAYER_POSITION = true;
 static const std::string DEFAULT_ACTIVATION_BUTTON = "PAGE_DOWN";
 static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12",
@@ -36,7 +34,7 @@ static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
 	"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
 	"INSERT", "DELETE", "HOME", "PAGE_UP", "PAGE_DOWN", "NUM_LOCK", "SCROLL_LOCK", "CAPS_LOCK", "PAUSE_BREAK",
-	"GAMEPAD_A", "GAMEPAD_B", "GAMEPAD_X", "GAMEPAD_Y", "GAMEPAD_LEFT_SHOULDER", "GAMEPAD_RIGHT_SHOULDER", "GAMEPAD_LEFT_TRIGGER", "GAMEPAD_RIGHT_TRIGGER", "GAMEPAD_DPAD_UP", "GAMEPAD_DPAD_DOWN", "GAMEPAD_DPAD_LEFT", "GAMEPAD_DPAD_RIGHT", "GAMEPAD_LEFT_STICK", "GAMEPAD_RIGHT_STICK", "GAMEPAD_BACK", "GAMEPAD_START"
+	"GAMEPAD_A", "GAMEPAD_B", "GAMEPAD_X", "GAMEPAD_Y", "GAMEPAD_LEFT_SHOULDER", "GAMEPAD_RIGHT_SHOULDER", "GAMEPAD_LEFT_TRIGGER", "GAMEPAD_RIGHT_TRIGGER", "GAMEPAD_DPAD_UP", "GAMEPAD_DPAD_DOWN", "GAMEPAD_DPAD_LEFT", "GAMEPAD_DPAD_RIGHT", "GAMEPAD_LEFT_STICK", "GAMEPAD_RIGHT_STICK", "GAMEPAD_SELECT", "GAMEPAD_START"
 };
 static const std::map<std::string, std::vector<int>> LADDER_SPAWN_POINTS = { // As of 0.14.0
 	{ "rm_mines_tide_fork", { 68, 80 }},
@@ -44,7 +42,7 @@ static const std::map<std::string, std::vector<int>> LADDER_SPAWN_POINTS = { // 
 	{ "rm_mines_deep_runner", { 18, 18 }},
 	{ "rm_mines_tide_islands", { 18, 66 }},
 	{ "rm_mines_lava_bullseye", { 32, 46 }},
-	{ "rm_mines_tide_paths", { 52, 72 }}, // Testing change. 
+	{ "rm_mines_tide_paths", { 52, 72 }},
 	{ "rm_mines_upper_slimetime", { 40, 34 }},
 	{ "rm_mines_lava_generic", { 66, 84 }},
 	{ "rm_mines_deep_winding", { 68, 42 }},
@@ -71,7 +69,7 @@ static const std::map<std::string, std::vector<int>> LADDER_SPAWN_POINTS = { // 
 	{ "rm_mines_upper_staple", { 60, 48 }},
 	{ "rm_mines_upper_pillars", { 34, 16 }},
 	{ "rm_mines_upper_elevator5", { 12, 28 }},
-	{ "rm_mines_upper_elevator10", { 48, 42 }}, // Testing change.
+	{ "rm_mines_upper_elevator10", { 48, 42 }},
 	{ "rm_mines_upper_elevator15", { 18, 8 }},
 	{ "rm_mines_upper_floor1", { 12, 36 }},
 	{ "rm_mines_upper_path", { 40, 44 }},
@@ -86,7 +84,7 @@ static const std::map<std::string, std::vector<int>> LADDER_SPAWN_POINTS = { // 
 	{ "rm_mines_tide_elevator35", { 56, 40 }},
 	{ "rm_mines_tide_floor21", { 50, 20 }},
 	{ "rm_mines_tide_basic1", { 66, 86 }},
-	{ "rm_mines_tide_shrine1", { 26, 72 }}, // Testing change.
+	{ "rm_mines_tide_shrine1", { 26, 72 }},
 	{ "rm_mines_tide_whirlpool1", { 108, 84 }},
 	{ "rm_mines_tide_basic2", { 38, 20 }},
 	{ "rm_mines_tide_switch2", { 18, 14 }},
@@ -94,16 +92,16 @@ static const std::map<std::string, std::vector<int>> LADDER_SPAWN_POINTS = { // 
 	{ "rm_mines_tide_switch1", { 34, 38 }},
 	{ "rm_mines_tide_shrine3", { 84, 78 }},
 	{ "rm_mines_tide_shrine2", { 36, 58 }},
-	{ "rm_mines_basement_treasure", { 18, 40 }}, // Testing change.
-	{ "rm_mines_tide_whirlpool3", { 20, 84 }}, // Testing change.
+	{ "rm_mines_basement_treasure", { 18, 40 }},
+	{ "rm_mines_tide_whirlpool3", { 20, 84 }},
 	{ "rm_mines_tide_basic3", { 34, 36 }},
 	{ "rm_mines_tide_basic4", { 56, 60 }},
 	{ "rm_mines_tide_whirlpool4", { 16, 78 }},
 	{ "rm_mines_tide_switch3", { 20, 16 }},
 	{ "rm_mines_tide_switch4", { 58, 50 }},
-	{ "rm_mines_deep_chambers", { 24, 70 }}, // Testing change.
+	{ "rm_mines_deep_chambers", { 24, 70 }},
 	{ "rm_mines_deep_spiral", { 30, 98 }},
-	{ "rm_mines_deep_wishbone", { 82, 80 }}, // Testing change.
+	{ "rm_mines_deep_wishbone", { 82, 80 }},
 	{ "rm_mines_deep_key", { 40, 20 }},
 	{ "rm_mines_deep_scorpio", { 28, 24 }},
 	{ "rm_mines_deep_butterfly", { 50, 36 }},
@@ -119,7 +117,7 @@ static const std::map<std::string, std::vector<int>> LADDER_SPAWN_POINTS = { // 
 	{ "rm_mines_deep_switch4", { 86, 78 }},
 	{ "rm_mines_deep_whirlpool1", { 66, 18 }},
 	{ "rm_mines_deep_whirlpool2", { 26, 24 }},
-	{ "rm_mines_deep_shrine2", { 42, 78 }}, // Testing change.
+	{ "rm_mines_deep_shrine2", { 42, 78 }},
 	{ "rm_mines_deep_shrine1", { 102, 54 }},
 	{ "rm_mines_deep_shrine3", { 60, 48 }},
 	{ "rm_mines_deep_shrine4", { 56, 68 }},
@@ -157,15 +155,17 @@ static bool activation_button_is_controller_key = false;
 static int activation_button_int_value = -1;
 static bool processing_user_input = false;
 static std::string activation_button = DEFAULT_ACTIVATION_BUTTON;
-static std::string ari_current_location = "";
 static std::string ari_current_gm_room = "";
+static int ari_x = -1;
+static int ari_y = -1;
 static bool teleport_ari = false;
 static bool ari_is_teleporting = false;
 static bool create_ritual_altar = false;
 static int ritual_chamber_additional_spawn_chance = DEFAULT_RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE;
+static bool spawn_ladder_at_player_position = DEFAULT_SPAWN_LADDER_AT_PLAYER_POSITION;
 static std::mt19937 generator(std::random_device{}());
-static std::map<std::string, int> location_name_to_id_map = {};
 static std::map<std::string, bool> active_perk_map = {};
+static std::map<std::string, int> location_name_to_id_map = {};
 static std::map<std::string, int64_t> perk_name_to_id_map = {};
 static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {};
 
@@ -200,6 +200,51 @@ bool GameWindowHasFocus()
 {
 	RValue window_has_focus = g_ModuleInterface->CallBuiltin("window_has_focus", {});
 	return RValueAsBool(window_has_focus);
+}
+
+bool GameIsPaused()
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+	RValue paused = global_instance->GetMember("__pause_status");
+	return paused.m_i64 > 0;
+}
+
+void LoadPerks()
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	size_t array_length;
+	RValue perks = global_instance->GetMember("__perk__");
+	g_ModuleInterface->GetArraySize(perks, array_length);
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(perks, i, array_element);
+		perk_name_to_id_map[array_element->ToString()] = i;
+	}
+}
+
+void LoadLocationIds()
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+	// Load locations.
+	size_t array_length;
+	RValue location_ids = global_instance->GetMember("__location_id__");
+	g_ModuleInterface->GetArraySize(location_ids, array_length);
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(location_ids, i, array_element);
+
+		location_name_to_id_map[array_element->ToString()] = i;
+	}
+
+	if (location_name_to_id_map.size() == 0)
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load location IDs!", MOD_NAME, VERSION);
 }
 
 uint64_t GetCurrentSystemTime() {
@@ -356,73 +401,63 @@ int ActivationButtonToVirtualKey()
 int ActivationButtonToControllerKey()
 {
 	if (activation_button == "GAMEPAD_A")
-		return XINPUT_GAMEPAD_A;
+		return 0x8001;
 	if (activation_button == "GAMEPAD_B")
-		return XINPUT_GAMEPAD_B;
+		return 0x8002;
 	if (activation_button == "GAMEPAD_X")
-		return XINPUT_GAMEPAD_X;
+		return 0x8003;
 	if (activation_button == "GAMEPAD_Y")
-		return XINPUT_GAMEPAD_Y;
+		return 0x8004;
 	if (activation_button == "GAMEPAD_LEFT_SHOULDER")
-		return XINPUT_GAMEPAD_LEFT_SHOULDER;
+		return 0x8005;
 	if (activation_button == "GAMEPAD_RIGHT_SHOULDER")
-		return XINPUT_GAMEPAD_RIGHT_SHOULDER;
-	if (activation_button == "GAMEPAD_DPAD_UP")
-		return XINPUT_GAMEPAD_DPAD_UP;
-	if (activation_button == "GAMEPAD_DPAD_DOWN")
-		return XINPUT_GAMEPAD_DPAD_DOWN;
-	if (activation_button == "GAMEPAD_DPAD_LEFT")
-		return XINPUT_GAMEPAD_DPAD_LEFT;
-	if (activation_button == "GAMEPAD_DPAD_RIGHT")
-		return XINPUT_GAMEPAD_DPAD_RIGHT;
-	if (activation_button == "GAMEPAD_LEFT_STICK")
-		return XINPUT_GAMEPAD_LEFT_THUMB;
-	if (activation_button == "GAMEPAD_RIGHT_STICK")
-		return XINPUT_GAMEPAD_RIGHT_THUMB;
-	if (activation_button == "GAMEPAD_BACK")
-		return XINPUT_GAMEPAD_BACK;
+		return 0x8006;
+	if (activation_button == "GAMEPAD_LEFT_TRIGGER")
+		return 0x8007;
+	if (activation_button == "GAMEPAD_RIGHT_TRIGGER")
+		return 0x8008;
+	if (activation_button == "GAMEPAD_SELECT")
+		return 0x8009;
 	if (activation_button == "GAMEPAD_START")
-		return XINPUT_GAMEPAD_START;
+		return 0x800A;
+	if (activation_button == "GAMEPAD_LEFT_STICK")
+		return 0x800B;
+	if (activation_button == "GAMEPAD_RIGHT_STICK")
+		return 0x800C;
+	if (activation_button == "GAMEPAD_DPAD_UP")
+		return 0x800D;
+	if (activation_button == "GAMEPAD_DPAD_DOWN")
+		return 0x800E;
+	if (activation_button == "GAMEPAD_DPAD_LEFT")
+		return 0x800F;
+	if (activation_button == "GAMEPAD_DPAD_RIGHT")
+		return 0x8010;
+	return -1;
+}
+
+int GetGamepadSlotNumber()
+{
+	for (int i = 0; i < 12; i++)
+	{
+		RValue gamepad_is_connected = g_ModuleInterface->CallBuiltin("gamepad_is_connected", { i });
+		if (gamepad_is_connected.ToBoolean())
+		{
+			return i;
+		}
+	}
+
 	return -1;
 }
 
 bool CheckControllerInput()
 {
-	XINPUT_STATE state;
-	ZeroMemory(&state, sizeof(XINPUT_STATE));
-
-	if (XInputGetState(0, &state) == ERROR_SUCCESS)
+	int gamepad_slot = GetGamepadSlotNumber();
+	if (gamepad_slot != -1)
 	{
-		WORD buttons = state.Gamepad.wButtons;
-
-		if (activation_button_int_value >= 0)
-		{
-			if (buttons & activation_button_int_value)
-			{
-				processing_user_input = true;
-				return true;
-			}
-		}
-		else if (activation_button == "GAMEPAD_LEFT_TRIGGER")
-		{
-			BYTE left_trigger = state.Gamepad.bLeftTrigger;
-			if (left_trigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
-			{
-				processing_user_input = true;
-				return true;
-			}
-		}
-		else if (activation_button == "GAMEPAD_RIGHT_TRIGGER")
-		{
-			BYTE right_trigger = state.Gamepad.bRightTrigger;
-			if (right_trigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
-			{
-				processing_user_input = true;
-				return true;
-			}
-		}
+		RValue button_pressed = g_ModuleInterface->CallBuiltin("gamepad_button_check_pressed", { gamepad_slot, activation_button_int_value });
+		return button_pressed.ToBoolean();
 	}
-
+	
 	return false;
 }
 
@@ -451,43 +486,6 @@ void ConfigureActivationButton()
 	}
 }
 
-void LoadPerks()
-{
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
-	size_t array_length;
-	RValue perks = global_instance->at("__perk__");
-	g_ModuleInterface->GetArraySize(perks, array_length);
-	for (size_t i = 0; i < array_length; i++)
-	{
-		RValue* array_element;
-		g_ModuleInterface->GetArrayEntry(perks, i, array_element);
-		perk_name_to_id_map[array_element->AsString().data()] = i;
-	}
-}
-
-void LoadLocationIds()
-{
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
-	// Load locations.
-	size_t array_length;
-	RValue location_ids = global_instance->at("__location_id__");
-	g_ModuleInterface->GetArraySize(location_ids, array_length);
-	for (size_t i = 0; i < array_length; i++)
-	{
-		RValue* array_element;
-		g_ModuleInterface->GetArrayEntry(location_ids, i, array_element);
-
-		location_name_to_id_map[array_element->AsString().data()] = i;
-	}
-
-	if (location_name_to_id_map.size() == 0)
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load location IDs!", MOD_NAME, VERSION);
-}
-
 void PrintError(std::exception_ptr eptr)
 {
 	try {
@@ -504,7 +502,8 @@ json CreateConfigJson(bool use_defaults)
 {
 	json config_json = {
 		{ ACTIVATION_BUTTON_KEY, use_defaults ? DEFAULT_ACTIVATION_BUTTON : activation_button },
-		{ RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE_KEY, use_defaults ? DEFAULT_RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE : ritual_chamber_additional_spawn_chance }
+		{ RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE_KEY, use_defaults ? DEFAULT_RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE : ritual_chamber_additional_spawn_chance },
+		{ SPAWN_LADDER_AT_PLAYER_POSITION_KEY, use_defaults ? DEFAULT_SPAWN_LADDER_AT_PLAYER_POSITION : spawn_ladder_at_player_position }
 	};
 	return config_json;
 }
@@ -513,9 +512,11 @@ void LogDefaultConfigValues()
 {
 	activation_button = DEFAULT_ACTIVATION_BUTTON;
 	ritual_chamber_additional_spawn_chance = DEFAULT_RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE;
+	spawn_ladder_at_player_position = DEFAULT_SPAWN_LADDER_AT_PLAYER_POSITION;
 
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE_KEY, DEFAULT_RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, SPAWN_LADDER_AT_PLAYER_POSITION_KEY, DEFAULT_SPAWN_LADDER_AT_PLAYER_POSITION ? "true" : "false");
 }
 
 void CreateOrLoadConfigFile()
@@ -534,16 +535,16 @@ void CreateOrLoadConfigFile()
 		}
 
 		// Try to find the mod_data/ChutesAndLadders directory.
-		std::string diy_folder = mod_data_folder + "\\ChutesAndLadders";
-		if (!std::filesystem::exists(diy_folder))
+		std::string chutes_and_ladders_folder = mod_data_folder + "\\ChutesAndLadders";
+		if (!std::filesystem::exists(chutes_and_ladders_folder))
 		{
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"ChutesAndLadders\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, diy_folder.c_str());
-			std::filesystem::create_directory(diy_folder);
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"ChutesAndLadders\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, chutes_and_ladders_folder.c_str());
+			std::filesystem::create_directory(chutes_and_ladders_folder);
 		}
 
 		// Try to find the mod_data/ChutesAndLadders/ChutesAndLadders.json config file.
 		bool update_config_file = false;
-		std::string config_file = diy_folder + "\\" + "ChutesAndLadders.json";
+		std::string config_file = chutes_and_ladders_folder + "\\" + "ChutesAndLadders.json";
 		std::ifstream in_stream(config_file);
 		if (in_stream.good())
 		{
@@ -603,6 +604,18 @@ void CreateOrLoadConfigFile()
 					{
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE_KEY, config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %d!", MOD_NAME, VERSION, RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE_KEY, DEFAULT_RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE);
+					}
+
+					// Try loading the spawn_ladder_at_player_position value.
+					if (json_object.contains(SPAWN_LADDER_AT_PLAYER_POSITION_KEY))
+					{
+						spawn_ladder_at_player_position = json_object[SPAWN_LADDER_AT_PLAYER_POSITION_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, SPAWN_LADDER_AT_PLAYER_POSITION_KEY, spawn_ladder_at_player_position ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, SPAWN_LADDER_AT_PLAYER_POSITION_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, SPAWN_LADDER_AT_PLAYER_POSITION_KEY, DEFAULT_SPAWN_LADDER_AT_PLAYER_POSITION ? "true" : "false");
 					}
 				}
 
@@ -688,8 +701,10 @@ void SpawnLadder(CInstance* Self, CInstance* Other)
 			(PVOID*)&gml_Script_spawn_ladder
 		);
 
-		RValue x = RValueAsInt(LADDER_SPAWN_POINTS.at(ari_current_gm_room)[0]);
-		RValue y = RValueAsInt(LADDER_SPAWN_POINTS.at(ari_current_gm_room)[1]);
+		int _x = spawn_ladder_at_player_position ? ((ari_x * 2) / 16) : RValueAsInt(LADDER_SPAWN_POINTS.at(ari_current_gm_room)[0]);
+		int _y = spawn_ladder_at_player_position ? ((ari_y * 2) / 16) : RValueAsInt(LADDER_SPAWN_POINTS.at(ari_current_gm_room)[1]);
+		RValue x = _x;
+		RValue y = _y;
 		RValue* x_ptr = &x;
 		RValue* y_ptr = &y;
 		RValue* rvalue_array[2] = { x_ptr, y_ptr };
@@ -754,11 +769,20 @@ void ObjectCallback(
 
 	if (game_is_active)
 	{
+		// Track player position.
+		RValue x;
+		g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
+		ari_x = x.ToDouble();
+
+		RValue y;
+		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
+		ari_y = y.ToDouble();
+
 		// Track active perks.
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		if (PerkActive(global_instance->at("__ari").m_Object, self, LOST_TO_HISTORY_PERK_NAME))
+		if (PerkActive(global_instance->GetMember("__ari").ToInstance(), self, LOST_TO_HISTORY_PERK_NAME))
 			active_perk_map[LOST_TO_HISTORY_PERK_NAME] = true;
 		else
 			active_perk_map[LOST_TO_HISTORY_PERK_NAME] = false;
@@ -812,7 +836,7 @@ RValue& GmlScriptOnRoomStartCallback(
 	}
 
 	if (create_ritual_altar)
-	{		
+	{
 		RValue layer_exists = g_ModuleInterface->CallBuiltin("layer_exists", { "Impl_Ritual" });
 		if (RValueAsBool(layer_exists))
 		{
@@ -820,35 +844,11 @@ RValue& GmlScriptOnRoomStartCallback(
 			double x = 192.0;
 			double y = 224.0;
 			std::string layer_name = "Impl_Ritual";
-			g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, layer_name, obj_dungeon_ritual_altar_index });
+			g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, RValue(layer_name), obj_dungeon_ritual_altar_index });
 			create_ritual_altar = false;
 		}
 	}
 
-	return Result;
-}
-
-RValue& GmlScriptTryLocationIdToStringCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_TRY_LOCATION_ID_TO_STRING));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-
-	if (game_is_active)
-		if (Result.m_Kind == VALUE_STRING)
-			ari_current_location = Result.AsString().data();
-	
 	return Result;
 }
 
@@ -883,11 +883,12 @@ RValue& GmlScriptSetupMainScreenCallback(
 )
 {
 	game_is_active = false;
-	ari_current_location = "";
 	ari_current_gm_room = "";
 	teleport_ari = false;
 	ari_is_teleporting = false;
 	create_ritual_altar = false;
+	ari_x = -1;
+	ari_y = -1;
 	active_perk_map = {};
 
 	if (load_on_start)
@@ -920,7 +921,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 	IN RValue** Arguments
 )
 {
-	if (GameWindowHasFocus() && !processing_user_input && game_is_active)
+	if (GameWindowHasFocus() && !GameIsPaused() && !processing_user_input && game_is_active)
 	{
 		bool activate = false;
 		if (activation_button_is_controller_key && CheckControllerInput())
@@ -930,7 +931,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 
 		if (activate)
 		{
-			if (ari_current_location == "dungeon" && ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry")
+			if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal"))
 			{
 				SpawnLadder(Self, Other);
 			}
@@ -963,7 +964,7 @@ RValue& GmlScriptErrorCallback(
 	IN RValue** Arguments
 )
 {
-	std::string error = Arguments[0]->AsString().data();
+	std::string error = Arguments[0]->ToString();
 	if (error == "Failed to spawn a ladder in the dungeon!")
 	{
 		return Result;
@@ -993,16 +994,14 @@ RValue& GmlScriptGoToRoomCallback(
 {
 	if (ari_is_teleporting)
 	{
-		RValue room_index = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_tide_ritual_chamber" });
-		if(ari_current_gm_room.find("rm_mines_deep") != std::string::npos)
-			room_index = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_deep_ritual_chamber" });
-		if (ari_current_gm_room.find("rm_mines_lava") != std::string::npos)
-			room_index = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_lava_ritual_chamber" });
-		if (ari_current_gm_room.find("rm_mines_ruins") != std::string::npos)
-			room_index = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_ruins_ritual_chamber" });
-
-		RValue* room_index_ptr = &room_index;
-		Arguments[0] = room_index_ptr;
+		if (ari_current_gm_room.contains("rm_mines_tide"))
+			*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_tide_ritual_chamber" });
+		if (ari_current_gm_room.contains("rm_mines_deep"))
+			*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_deep_ritual_chamber" });
+		if (ari_current_gm_room.contains("rm_mines_lava"))
+			*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_lava_ritual_chamber" });
+		if (ari_current_gm_room.contains("rm_mines_ruins"))
+			*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_ruins_ritual_chamber" });
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GO_TO_ROOM));
@@ -1016,8 +1015,8 @@ RValue& GmlScriptGoToRoomCallback(
 
 	RValue gm_room = StructVariableGet(Result, "gm_room");
 	RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
-	ari_current_gm_room = room_name.AsString().data();
-	
+	ari_current_gm_room = room_name.ToString();
+
 	if (ari_is_teleporting)
 	{
 		ari_is_teleporting = false;
@@ -1025,7 +1024,7 @@ RValue& GmlScriptGoToRoomCallback(
 	}
 	else if (ritual_chamber_additional_spawn_chance > 0 && active_perk_map[LOST_TO_HISTORY_PERK_NAME])
 	{
-		if (!create_ritual_altar && ari_current_location == "dungeon" && ari_current_gm_room != "rm_mines_entry" && ari_current_gm_room.find("seal") == std::string::npos && ari_current_gm_room.find("ritual") == std::string::npos && ari_current_gm_room.find("treasure") == std::string::npos && ari_current_gm_room.find("milestone") == std::string::npos)
+		if (!create_ritual_altar && ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal") && !ari_current_gm_room.contains("ritual") && !ari_current_gm_room.contains("treasure") && !ari_current_gm_room.contains("milestone"))
 		{
 			if (ari_current_gm_room.find("rm_mines_tide") != std::string::npos || ari_current_gm_room.find("rm_mines_deep") != std::string::npos || ari_current_gm_room.find("rm_mines_lava") != std::string::npos || ari_current_gm_room.find("rm_mines_ruins") != std::string::npos)
 			{
@@ -1034,12 +1033,10 @@ RValue& GmlScriptGoToRoomCallback(
 				if (random <= ritual_chamber_additional_spawn_chance)
 					teleport_ari = true;
 
-				//g_ModuleInterface->Print(CM_LIGHTPURPLE, "[%s %s] - Rolled (%d).", MOD_NAME, VERSION, random, ritual_chamber_additional_spawn_chance);
 			}
 		}
 	}
-
-	//g_ModuleInterface->Print(CM_LIGHTPURPLE, "[%s %s] - Room Name: %s", MOD_NAME, VERSION, room_name.AsString().data());
+	
 	return Result;
 }
 
@@ -1085,32 +1082,6 @@ void CreateHookGmlScriptOnRoomStart(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
-{
-	CScript* gml_script_try_location_id_to_string = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_TRY_LOCATION_ID_TO_STRING,
-		(PVOID*)&gml_script_try_location_id_to_string
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TRY_LOCATION_ID_TO_STRING);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		GML_SCRIPT_TRY_LOCATION_ID_TO_STRING,
-		gml_script_try_location_id_to_string->m_Functions->m_ScriptFunction,
-		GmlScriptTryLocationIdToStringCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TRY_LOCATION_ID_TO_STRING);
-	}
-}
 
 void CreateHookGmlScriptGetWeather(AurieStatus& status)
 {
@@ -1271,13 +1242,6 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptOnRoomStart(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-		return status;
-	}
-
-	CreateHookGmlScriptTryLocationIdToString(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
