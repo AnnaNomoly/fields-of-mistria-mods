@@ -9,7 +9,7 @@ using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
-static const char* const VERSION = "1.4.3";
+static const char* const VERSION = "1.4.4";
 static const char* const FRIENDSHIP_MULTIPLIER_KEY = "friendship_multiplier";
 static const char* const AUTO_PET_KEY = "auto_pet";
 static const char* const AUTO_FEED_KEY = "auto_feed";
