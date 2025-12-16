@@ -5,7 +5,7 @@ using namespace Aurie;
 using namespace YYTK;
 
 static const char* const MOD_NAME = "Elegance";
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.0.1";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_CLOSE_TEXTBOX = "gml_Script_begin_close@TextboxMenu@TextboxMenu";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
