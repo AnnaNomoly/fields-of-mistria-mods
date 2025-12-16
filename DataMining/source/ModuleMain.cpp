@@ -1,12 +1,12 @@
 #include <map>
 #include <iostream>
 #include <fstream>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 
 static const char* const MOD_NAME = "DataMining";
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.0.1";
 static const char* GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 
@@ -76,7 +76,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	);
 
 	RValue result;
-	RValue input = localization_key;
+	RValue input = RValue(localization_key);
 	RValue* input_ptr = &input;
 	gml_script_get_localizer->m_Functions->m_ScriptFunction(
 		Self,
@@ -126,7 +126,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			for (auto& pair : item_name_to_localized_name_map)
 			{
 				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-				std::string localized_name_str = localized_name.AsString().data();
+				std::string localized_name_str = localized_name.ToString();
 				pair.second = localized_name_str;
 
 				// Item ID, Internal Item Name, Localized Item Name
@@ -143,7 +143,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		{
 			for (auto& pair : cooking_recipe_name_to_localized_name_map) {
 				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-				std::string localized_name_str = localized_name.AsString().data();
+				std::string localized_name_str = localized_name.ToString();
 				pair.second = localized_name_str;
 
 				// Internal Recipe Name, Localized Recipe Name
@@ -160,7 +160,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		{
 			for (auto& pair : craftable_cooking_recipe_name_to_localized_name_map) {
 				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-				std::string localized_name_str = localized_name.AsString().data();
+				std::string localized_name_str = localized_name.ToString();
 				pair.second = localized_name_str;
 
 				// Internal Recipe Name, Localized Recipe Name
@@ -177,7 +177,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		{
 			for (auto& pair : non_craftable_cooking_recipe_name_to_localized_name_map) {
 				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-				std::string localized_name_str = localized_name.AsString().data();
+				std::string localized_name_str = localized_name.ToString();
 				pair.second = localized_name_str;
 
 				// Internal Recipe Name, Localized Recipe Name
@@ -194,7 +194,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		{
 			for (auto& pair : furniture_recipe_name_to_localized_name_map) {
 				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-				std::string localized_name_str = localized_name.AsString().data();
+				std::string localized_name_str = localized_name.ToString();
 				pair.second = localized_name_str;
 
 				// Internal Recipe Name, Localized Recipe Name
@@ -211,7 +211,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		{
 			for (auto& pair : craftable_furniture_recipe_name_to_localized_name_map) {
 				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-				std::string localized_name_str = localized_name.AsString().data();
+				std::string localized_name_str = localized_name.ToString();
 				pair.second = localized_name_str;
 
 				// Internal Recipe Name, Localized Recipe Name
@@ -228,7 +228,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		{
 			for (auto& pair : non_craftable_furniture_recipe_name_to_localized_name_map) {
 				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-				std::string localized_name_str = localized_name.AsString().data();
+				std::string localized_name_str = localized_name.ToString();
 				pair.second = localized_name_str;
 
 				// Internal Recipe Name, Localized Recipe Name
@@ -245,7 +245,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		{
 			for (auto& pair : cosmetic_name_to_localized_name_map) {
 				RValue localized_name = GetLocalizedString(Self, Other, pair.second);
-				std::string localized_name_str = localized_name.AsString().data();
+				std::string localized_name_str = localized_name.ToString();
 				pair.second = localized_name_str;
 
 				// Internal Recipe Name, Localized Recipe Name
@@ -306,7 +306,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		RValue __item_data = global_instance->at("__item_data");
+		RValue __item_data = global_instance->GetMember("__item_data");
 		size_t array_length;
 		g_ModuleInterface->GetArraySize(__item_data, array_length);
 
@@ -316,78 +316,78 @@ RValue& GmlScriptSetupMainScreenCallback(
 			RValue* array_element;
 			g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
 
-			RValue name_key = array_element->at("name_key"); // The item's localization key
+			RValue name_key = array_element->GetMember("name_key"); // The item's localization key
 			if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
 			{
-				RValue item_id = array_element->at("item_id");
-				RValue recipe_key = array_element->at("recipe_key"); // The internal item name
-				item_name_to_id_map[recipe_key.AsString().data()] = RValueAsInt(item_id);
-				item_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+				RValue item_id = array_element->GetMember("item_id");
+				RValue recipe_key = array_element->GetMember("recipe_key"); // The internal item name
+				item_name_to_id_map[recipe_key.ToString()] = RValueAsInt(item_id);
+				item_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 
 				// Cooking recipes
-				if (strstr(name_key.AsString().data(), "cooked_dishes"))
+				if (name_key.ToString().contains("cooked_dishes"))
 				{
-					cooking_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+					cooking_recipe_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 
 					if (StructVariableExists(*array_element, "recipe"))
 					{
-						RValue recipe = array_element->at("recipe");
+						RValue recipe = array_element->GetMember("recipe");
 						if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
 						{
 							if (StructVariableExists(recipe, "item_id"))
 							{
-								craftable_cooking_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+								craftable_cooking_recipe_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 							}
 						}
 						else
 						{
-							non_craftable_cooking_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+							non_craftable_cooking_recipe_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 						}
 					}
 					else
 					{
-						non_craftable_cooking_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+						non_craftable_cooking_recipe_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 					}
 				}
 
 				// Furniture recipes.
-				if (strstr(name_key.AsString().data(), "furniture"))
+				if (name_key.ToString().contains("furniture"))
 				{
-					furniture_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+					furniture_recipe_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 
 					if (StructVariableExists(*array_element, "recipe"))
 					{
-						RValue recipe = array_element->at("recipe");
+						RValue recipe = array_element->GetMember("recipe");
 						if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
 						{
 							if (StructVariableExists(recipe, "item_id"))
 							{
-								craftable_furniture_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+								craftable_furniture_recipe_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 							}
 						}
 						else
 						{
-							non_craftable_furniture_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+							non_craftable_furniture_recipe_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 						}
 					}
 					else
 					{
-						non_craftable_furniture_recipe_name_to_localized_name_map[recipe_key.AsString().data()] = name_key.AsString().data();
+						non_craftable_furniture_recipe_name_to_localized_name_map[recipe_key.ToString()] = name_key.ToString();
 					}
 				}
 			}
 		}
 
 		// Load all cosmetics.
-		RValue __pad = global_instance->at("__pad");
-		RValue player_assets = __pad.at("player_assets");
-		RValue inner = player_assets.at("inner");
+		RValue __pad = global_instance->GetMember("__pad");
+		RValue player_assets = __pad.GetMember("player_assets");
+		RValue inner = player_assets.GetMember("inner");
 		g_ModuleInterface->EnumInstanceMembers(inner, GetAllCosmeticNames);
 		for (std::string cosmetic_name : cosmetic_names)
 		{
-			RValue cosmetic = inner.at(cosmetic_name);
-			RValue cosmetic_localization_key = cosmetic.at("name");
-			cosmetic_name_to_localized_name_map[cosmetic_name] = cosmetic_localization_key.AsString().data();
+			RValue cosmetic = inner.GetMember(cosmetic_name);
+			RValue cosmetic_localization_key = cosmetic.GetMember("name");
+			cosmetic_name_to_localized_name_map[cosmetic_name] = cosmetic_localization_key.ToString();
 		}
 
 		run_once = false;
