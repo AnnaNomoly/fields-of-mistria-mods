@@ -9,7 +9,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "StopTimeIndoors";
-static const char* const VERSION = "1.0.1";
+static const char* const VERSION = "1.0.2";
 static const char* const STOP_TIME_IN_DUNGEON_KEY = "stop_time_in_dungeon";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_IS_DUNGEON_ROOM = "gml_Script_is_dungeon_room";
