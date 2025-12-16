@@ -3,13 +3,13 @@
 #include <random>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Mistbloom";
-static const char* const VERSION = "1.0.2";
+static const char* const VERSION = "1.0.3";
 static const char* const HUNGER_VALUE_KEY = "hunger";
 static const char* const SANITY_VALUE_KEY = "sanity";
 static const char* const FOOD_QUEUE_KEY = "food_queue";
@@ -302,7 +302,7 @@ void GetHudFontIndex()
 			}
 		);
 
-		std::string font_name_str = font_name.AsString().data();
+		std::string font_name_str = font_name.ToString();
 		if (hud_font_name_str.find(font_name_str) != std::string::npos)
 		{
 			font_index_found = true;
@@ -320,13 +320,13 @@ void AdjustHudScaling()
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __settings = global_instance->at("__settings");
-	RValue inner = __settings.at("inner");
-	RValue open_fscreen = inner.at("open_fscreen");
+	RValue __settings = global_instance->GetMember("__settings");
+	RValue inner = __settings.GetMember("inner");
+	RValue open_fscreen = inner.GetMember("open_fscreen");
 
 	if (open_fscreen.m_Real == 1)
 	{
-		RValue fscreen_expansion = inner.at("fscreen_expansion");
+		RValue fscreen_expansion = inner.GetMember("fscreen_expansion");
 		if (window_width <= 1280)
 		{
 			if (fscreen_expansion.m_Real == 0)
@@ -440,7 +440,7 @@ void AdjustHudScaling()
 	}
 	else
 	{
-		RValue window_expansion = inner.at("window_expansion");
+		RValue window_expansion = inner.GetMember("window_expansion");
 		if (window_width == 2560)
 		{
 			if (window_expansion.m_Real == 0)
@@ -576,7 +576,7 @@ RValue GetLocalizedString(CInstance* Self, CInstance* Other, std::string localiz
 	);
 
 	RValue result;
-	RValue input = localization_key;
+	RValue input = RValue(localization_key);
 	RValue* input_ptr = &input;
 	gml_script_get_localizer->m_Functions->m_ScriptFunction(
 		Self,
@@ -728,7 +728,7 @@ RValue StringToItemId(CInstance* Self, CInstance* Other, std::string name)
 	);
 
 	RValue item_id;
-	RValue item_name = name;
+	RValue item_name = RValue(name);
 	RValue* item_name_ptr = &item_name;
 	gml_script_name_to_item_id->m_Functions->m_ScriptFunction(
 		Self,
@@ -746,7 +746,7 @@ void SetItemStaminaModifier(int item_id, double stamina_value)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __item_data = global_instance->at("__item_data");
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
 	RValue item = g_ModuleInterface->CallBuiltin("array_get", { __item_data, item_id });
 
 	g_ModuleInterface->CallBuiltin("struct_set", { item, "stamina_modifier", stamina_value });
@@ -815,16 +815,16 @@ bool AriHasCosmeticEquipped(std::string cosmetic_name)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
-	RValue preset_index_selected = __ari.at("preset_index_selected");
-	RValue presets = __ari.at("presets");
-	RValue buffer = presets.at("__buffer");
+	RValue __ari = global_instance->GetMember("__ari");
+	RValue preset_index_selected = __ari.GetMember("preset_index_selected");
+	RValue presets = __ari.GetMember("presets");
+	RValue buffer = presets.GetMember("__buffer");
 
 	RValue* selelected_buffer_entry; // Ari's current cosmetics
 	g_ModuleInterface->GetArrayEntry(buffer, preset_index_selected.m_Real, selelected_buffer_entry);
 	
-	RValue assets = selelected_buffer_entry->at("assets");
-	RValue inner_buffer = assets.at("__buffer");
+	RValue assets = selelected_buffer_entry->GetMember("assets");
+	RValue inner_buffer = assets.GetMember("__buffer");
 	size_t inner_buffer_size;
 	g_ModuleInterface->GetArraySize(inner_buffer, inner_buffer_size);
 
@@ -833,8 +833,8 @@ bool AriHasCosmeticEquipped(std::string cosmetic_name)
 		RValue* equipped_cosmetic;
 		g_ModuleInterface->GetArrayEntry(inner_buffer, i, equipped_cosmetic);
 
-		RValue equipped_cosmetic_name = equipped_cosmetic->at("name");
-		std::string equipped_cosmetic_name_string = equipped_cosmetic_name.AsString().data();
+		RValue equipped_cosmetic_name = equipped_cosmetic->GetMember("name");
+		std::string equipped_cosmetic_name_string = equipped_cosmetic_name.ToString();
 
 		if (cosmetic_name.compare(equipped_cosmetic_name_string) == 0)
 			return true;
@@ -848,12 +848,12 @@ bool AriHasInvulnerableHits()
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue __ari = global_instance->GetMember("__ari");
 	RValue invulnerable_hits_exists = g_ModuleInterface->CallBuiltin("struct_exists", { __ari, "invulnerable_hits" });
 	if (invulnerable_hits_exists.m_Kind == VALUE_BOOL && invulnerable_hits_exists.m_Real == 1)
 	{
 		RValue invulnerable_hits = g_ModuleInterface->CallBuiltin("struct_get", { __ari, "invulnerable_hits" });
-		if (invulnerable_hits.m_Kind == VALUE_REAL && invulnerable_hits.m_Real > 0)
+		if (invulnerable_hits.ToDouble() > 0)
 			return true;
 	}
 
@@ -866,12 +866,12 @@ void ActivatePriestessShield(CInstance* Self, CInstance* Other)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue __ari = *global_instance->GetRefMember("__ari");
 	RValue invulnerable_hits_exists = g_ModuleInterface->CallBuiltin("struct_exists", { __ari, "invulnerable_hits" });
 	if (invulnerable_hits_exists.m_Kind == VALUE_BOOL && invulnerable_hits_exists.m_Real == 1)
 	{
 		RValue invulnerable_hits = g_ModuleInterface->CallBuiltin("struct_get", { __ari, "invulnerable_hits" });
-		if (invulnerable_hits.m_Kind == VALUE_REAL && invulnerable_hits.m_Real == 0)
+		if (invulnerable_hits.ToDouble() == 0)
 		{
 			invulnerable_hits = 1.0;
 			g_ModuleInterface->CallBuiltin("struct_set", { __ari, "invulnerable_hits", invulnerable_hits });
@@ -894,12 +894,12 @@ void CancelPriestessShield(CInstance* Self, CInstance* Other)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
+	RValue __ari = *global_instance->GetRefMember("__ari");
 	RValue invulnerable_hits_exists = g_ModuleInterface->CallBuiltin("struct_exists", { __ari, "invulnerable_hits" });
 	if (invulnerable_hits_exists.m_Kind == VALUE_BOOL && invulnerable_hits_exists.m_Real == 1)
 	{
 		RValue invulnerable_hits = g_ModuleInterface->CallBuiltin("struct_get", { __ari, "invulnerable_hits" });
-		if (invulnerable_hits.m_Kind == VALUE_REAL && invulnerable_hits.m_Real > 0)
+		if (invulnerable_hits.ToDouble() > 0)
 		{
 			invulnerable_hits = 0.0;
 			g_ModuleInterface->CallBuiltin("struct_set", { __ari, "invulnerable_hits", invulnerable_hits });
@@ -918,14 +918,14 @@ void SendMail(std::string mail_name_str)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
-	RValue inbox = __ari.at("inbox");
-	RValue contents = inbox.at("contents");
-	RValue contents_buffer = contents.at("__buffer");
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue inbox = *__ari.GetRefMember("inbox");
+	RValue contents = *inbox.GetRefMember("contents");
+	RValue contents_buffer = *contents.GetRefMember("__buffer");
 
 	RValue mail;
 	RValue mail_items_taken = false;
-	RValue mail_name = mail_name_str;
+	RValue mail_name = RValue(mail_name_str);
 	RValue mail_read = false;
 	g_ModuleInterface->GetRunnerInterface().StructCreate(&mail);
 	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "items_taken", &mail_items_taken);
@@ -958,10 +958,10 @@ bool MailExists(std::string mail_name_str)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
-	RValue inbox = __ari.at("inbox");
-	RValue contents = inbox.at("contents");
-	RValue contents_buffer = contents.at("__buffer");
+	RValue __ari = global_instance->GetMember("__ari");
+	RValue inbox = __ari.GetMember("inbox");
+	RValue contents = inbox.GetMember("contents");
+	RValue contents_buffer = contents.GetMember("__buffer");
 
 	size_t size = 0;
 	g_ModuleInterface->GetArraySize(contents_buffer, size);
@@ -971,8 +971,8 @@ bool MailExists(std::string mail_name_str)
 		RValue* entry = nullptr;
 		g_ModuleInterface->GetArrayEntry(contents_buffer, i, entry);
 
-		RValue name = entry->at("name");
-		if (strstr(name.AsString().data(), mail_name_str.c_str()))
+		RValue name = entry->GetMember("name");
+		if (name.ToString() == mail_name_str.c_str())
 			return true;
 	}
 
@@ -984,8 +984,8 @@ void UnlockCookingRecipe(CInstance* Self, CInstance* Other, std::string recipe_n
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
-	RValue recipe_unlocks = __ari.at("recipe_unlocks");
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue recipe_unlocks = *__ari.GetRefMember("recipe_unlocks");
 	size_t recipe_unlocks_length = 0;
 	g_ModuleInterface->GetArraySize(recipe_unlocks, recipe_unlocks_length);
 
@@ -1025,8 +1025,8 @@ bool GameIsPaused()
 {
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
-	RValue paused = global_instance->at("__pause_status");
-	return paused.m_i64 > 0;
+	RValue paused = global_instance->GetMember("__pause_status");
+	return paused.ToInt64() > 0;
 }
 
 void GenerateNoiseMasks(bool get_window_size)
@@ -1088,7 +1088,7 @@ void ObjectCallback(
 				RValue hit_points_exists = g_ModuleInterface->CallBuiltin("struct_exists", { self, "hit_points" });
 				if (hit_points_exists.m_Kind == VALUE_BOOL && hit_points_exists.m_Real == 1)
 				{
-					RValue hit_points = self->at("hit_points");
+					RValue hit_points = self->GetMember("hit_points");
 					if (hit_points.m_Kind == VALUE_REAL && hit_points.m_Real <= 0)
 					{
 						g_ModuleInterface->CallBuiltin("struct_set", { self, "__dont_starve__processed_monster_death", true });
@@ -1113,19 +1113,19 @@ void ObjectCallback(
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
 		// Update active perks.
-		if (PerkActive(global_instance->at("__ari").m_Object, self, "guardians_shield"))
+		if (PerkActive(global_instance->GetRefMember("__ari")->ToInstance(), self, "guardians_shield"))
 			active_perk_map["guardians_shield"] = true;
 		else
 			active_perk_map["guardians_shield"] = false;
-		if (PerkActive(global_instance->at("__ari").m_Object, self, "generous_in_defeat"))
+		if (PerkActive(global_instance->GetRefMember("__ari")->ToInstance(), self, "generous_in_defeat"))
 			active_perk_map["generous_in_defeat"] = true;
 		else
 			active_perk_map["generous_in_defeat"] = false;
-		if (PerkActive(global_instance->at("__ari").m_Object, self, "refreshing"))
+		if (PerkActive(global_instance->GetRefMember("__ari")->ToInstance(), self, "refreshing"))
 			active_perk_map["refreshing"] = true;
 		else
 			active_perk_map["refreshing"] = false;
-		if (PerkActive(global_instance->at("__ari").m_Object, self, "nice_swing"))
+		if (PerkActive(global_instance->GetRefMember("__ari")->ToInstance(), self, "nice_swing"))
 			active_perk_map["nice_swing"] = true;
 		else
 			active_perk_map["nice_swing"] = false;
@@ -1135,7 +1135,7 @@ void ObjectCallback(
 		{
 			if (AriIsHungry())
 			{
-				ModifyHealth(global_instance->at("__ari").m_Object, self, HUNGER_HEALTH_LOST_PER_TICK);
+				ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, HUNGER_HEALTH_LOST_PER_TICK);
 
 				if (debug_logging)
 					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Time has passed while your hunger meter is depleted! Decreased health by %d!", MOD_NAME, VERSION, HUNGER_HEALTH_LOST_PER_TICK);
@@ -1148,7 +1148,7 @@ void ObjectCallback(
 		{
 			if (AriIsInsane())
 			{
-				ModifyHealth(global_instance->at("__ari").m_Object, self, SANITY_HEALTH_LOST_PER_TICK);
+				ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, SANITY_HEALTH_LOST_PER_TICK);
 
 				if (debug_logging)
 					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Time has passed while your sanity meter is depleted! Decreased health by %d!", MOD_NAME, VERSION, SANITY_HEALTH_LOST_PER_TICK);
@@ -1160,7 +1160,7 @@ void ObjectCallback(
 		// Stamina used while Ari is hungry penalty.
 		if (hunger_stamina_health_penatly < 0) // TODO: Check this is working with recent changes.
 		{
-			ModifyHealth(global_instance->at("__ari").m_Object, self, hunger_stamina_health_penatly);
+			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, hunger_stamina_health_penatly);
 
 			if (debug_logging)
 				g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - You used stamina while your hunger meter is depleted! Decreased health by %d!", MOD_NAME, VERSION, hunger_stamina_health_penatly);
@@ -1196,13 +1196,13 @@ void ObjectCallback(
 		if (active_perk_map["guardians_shield"])
 		{
 			// Prevent HP from exceeding modified max while Blood Pact perk is active.
-			RValue ari_max_health = GetMaxHealth(global_instance->at("__ari").m_Object, self);
-			RValue ari_current_health = GetCurrentHealth(global_instance->at("__ari").m_Object, self);
+			RValue ari_max_health = GetMaxHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
+			RValue ari_current_health = GetCurrentHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
 
 			double current_health = ari_current_health.m_Real;
 			double effective_max_health = ari_max_health.m_Real - BLOOD_PACT_HEALTH_REDUCTION;
 			if (current_health > effective_max_health)
-				SetHealth(global_instance->at("__ari").m_Object, self, effective_max_health);
+				SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, effective_max_health);
 
 			// Activate Priestess Shield.
 			if (is_priestess_shield_tracked_time_interval)
@@ -1239,7 +1239,7 @@ RValue& GmlScriptSaveGameCallback(
 	if (save_prefix.size() == 0)
 	{
 		// Get the save file name.
-		std::string save_file = Arguments[0]->AsString().data();
+		std::string save_file = Arguments[0]->ToString();
 		std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
 		std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
 
@@ -1277,7 +1277,7 @@ RValue& GmlScriptLoadGameCallback(
 )
 {
 	// Get the save file name.
-	std::string save_file = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
+	std::string save_file = std::string(Arguments[0]->GetRefMember("save_path")->ToString());
 	std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
 	std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
 
@@ -1445,7 +1445,7 @@ RValue& GmlScriptModifyHealthCallback(
 		RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
 		if (held_item_name.m_Kind == VALUE_STRING)
 		{
-			std::string held_item_name_string = held_item_name.AsString().data();
+			std::string held_item_name_string = held_item_name.ToString();
 
 			// These are special items used by the mod for restoring mod-specific values.
 			if (held_item_name_string.compare(SURVIVAL_RATIONS) == 0 || held_item_name_string.compare(MISTBLOOM_POTION) == 0)
@@ -1525,7 +1525,7 @@ RValue& GmlScriptModifyStaminaCallback(
 		RValue held_item_name = ItemIdToString(Self, Other, held_item_id);
 		if (held_item_name.m_Kind == VALUE_STRING)
 		{
-			std::string item_name_string = held_item_name.AsString().data();
+			std::string item_name_string = held_item_name.ToString();
 
 			// The item is NOT a cooked dish or other edible.
 			if (recipe_name_to_stars_map.count(item_name_string) <= 0 && item_name_to_restoration_map.count(item_name_string) <= 0)
@@ -1751,7 +1751,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 
 		g_ModuleInterface->CallBuiltin(
 			"draw_text_transformed", {
-				140, (125 + y_health_bar_offset), std::to_string(ari_hunger_value) + "%", 3, 3, 0
+				140, (125 + y_health_bar_offset), RValue(std::to_string(ari_hunger_value) + "%"), 3, 3, 0
 			}
 		);
 
@@ -1832,7 +1832,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 
 		g_ModuleInterface->CallBuiltin(
 			"draw_text_transformed", {
-				140, (125 + y_health_bar_offset + sanity_bar_offset), std::to_string(ari_sanity_value) + "%", 3, 3, 0
+				140, (125 + y_health_bar_offset + sanity_bar_offset), RValue(std::to_string(ari_sanity_value) + "%"), 3, 3, 0
 			}
 		);
 
@@ -2000,7 +2000,7 @@ RValue& GmlScriptHeldItemCallback(
 
 	if (Result.m_Kind != VALUE_UNDEFINED)
 	{
-		RValue item_id = Result.at("item_id");
+		RValue item_id = Result.GetMember("item_id");
 		int item_id_int = RValueAsInt(item_id);
 		if (held_item_id != item_id_int)
 			held_item_id = item_id_int;
@@ -2022,7 +2022,7 @@ RValue& GmlScriptUseItemCallback(
 		RValue item_name = ItemIdToString(Self, Other, held_item_id);
 		if (item_name.m_Kind == VALUE_STRING)
 		{
-			std::string item_name_string = item_name.AsString().data();
+			std::string item_name_string = item_name.ToString();
 			if (recipe_name_to_stars_map.count(item_name_string) > 0 || item_name_to_restoration_map.count(item_name_string) > 0)
 			{
 				if (item_name_to_original_stamina_recovery_map.count(item_name_string) > 0)
@@ -2081,7 +2081,7 @@ RValue& GmlScriptPlayConversationCallback(
 	{
 		int random = distribution_1_25(generator);
 		std::string conversation_name = "Conversations/Mods/Mistbloom/Cthuvian/" + std::to_string(random);
-		RValue custom_dialog = conversation_name;
+		RValue custom_dialog = RValue(conversation_name);
 		RValue* custom_dialog_ptr = &custom_dialog;
 		Arguments[0] = custom_dialog_ptr;
 	}
@@ -2143,7 +2143,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		RValue __item_data = global_instance->at("__item_data");
+		RValue __item_data = global_instance->GetMember("__item_data");
 
 		size_t array_length;
 		g_ModuleInterface->GetArraySize(__item_data, array_length);
@@ -2153,90 +2153,90 @@ RValue& GmlScriptSetupMainScreenCallback(
 			RValue* array_element;
 			g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
 
-			RValue name_key = array_element->at("name_key");
+			RValue name_key = array_element->GetMember("name_key");
 			if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
 			{
-				RValue recipe_key = array_element->at("recipe_key");
+				RValue recipe_key = array_element->GetMember("recipe_key");
 
-				if (strstr(name_key.AsString().data(), "cooked_dishes"))
+				if (name_key.ToString().contains("cooked_dishes"))
 				{
-					RValue recipe = array_element->at("recipe");
+					RValue recipe = array_element->GetMember("recipe");
 					if (recipe.m_Kind != VALUE_NULL && recipe.m_Kind != VALUE_UNDEFINED && recipe.m_Kind != VALUE_UNSET)
 					{
-						if (recipe_name_to_stars_map.count(recipe_key.AsString().data()) <= 0)
+						if (recipe_name_to_stars_map.count(recipe_key.ToString()) <= 0)
 						{
-							RValue stars = array_element->at("stars");
+							RValue stars = array_element->GetMember("stars");
 							if (stars.m_Kind != VALUE_NULL && stars.m_Kind != VALUE_UNDEFINED && stars.m_Kind != VALUE_UNSET)
-								recipe_name_to_stars_map[recipe_key.AsString().data()] = stars.m_Real;
+								recipe_name_to_stars_map[recipe_key.ToString()] = stars.ToDouble();
 							else
 							{
-								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"stars\" data for recipe: %s", MOD_NAME, VERSION, recipe_key.AsString().data());
-								recipe_name_to_stars_map[recipe_key.AsString().data()] = 1;
+								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"stars\" data for recipe: %s", MOD_NAME, VERSION, recipe_key.ToString().c_str());
+								recipe_name_to_stars_map[recipe_key.ToString()] = 1;
 							}
 						}
 					}
 
-					RValue stamina_modifier = array_element->at("stamina_modifier");
+					RValue stamina_modifier = array_element->GetMember("stamina_modifier");
 					if (stamina_modifier.m_Kind == VALUE_REAL)
-						item_name_to_original_stamina_recovery_map[recipe_key.AsString().data()] = stamina_modifier.m_Real;
+						item_name_to_original_stamina_recovery_map[recipe_key.ToString()] = stamina_modifier.ToDouble();
 				}
 				else
 				{
-					RValue edible = array_element->at("edible");
+					RValue edible = array_element->GetMember("edible");
 					if (edible.m_Kind == VALUE_BOOL && edible.m_Real == 1.0)
 					{
-						if (item_name_to_restoration_map.count(recipe_key.AsString().data()) <= 0)
+						if (item_name_to_restoration_map.count(recipe_key.ToString()) <= 0)
 						{
-							RValue stamina_modifier = array_element->at("stamina_modifier");
-							item_name_to_restoration_map[recipe_key.AsString().data()] = stamina_modifier.m_Real;
+							RValue stamina_modifier = array_element->GetMember("stamina_modifier");
+							item_name_to_restoration_map[recipe_key.ToString()] = stamina_modifier.ToDouble();
 						}
 
-						RValue stamina_modifier = array_element->at("stamina_modifier");
+						RValue stamina_modifier = array_element->GetMember("stamina_modifier");
 						if (stamina_modifier.m_Kind == VALUE_REAL)
-							item_name_to_original_stamina_recovery_map[recipe_key.AsString().data()] = stamina_modifier.m_Real;
+							item_name_to_original_stamina_recovery_map[recipe_key.ToString()] = stamina_modifier.ToDouble();
 					}
 				}
 			}
 		}
 
 		// Load perks.
-		RValue perks = global_instance->at("__perk__");
+		RValue perks = global_instance->GetMember("__perk__");
 		g_ModuleInterface->GetArraySize(perks, array_length);
 		for (size_t i = 0; i < array_length; i++)
 		{
 			RValue* array_element;
 			g_ModuleInterface->GetArrayEntry(perks, i, array_element);
-			perk_name_to_id_map[array_element->AsString().data()] = i;
+			perk_name_to_id_map[array_element->ToString()] = i;
 		}
 
 		// Load status effects.
-		RValue status_effects = global_instance->at("__status_effect_id__");
+		RValue status_effects = global_instance->GetMember("__status_effect_id__");
 		g_ModuleInterface->GetArraySize(status_effects, array_length);
 		for (size_t i = 0; i < array_length; i++)
 		{
 			RValue* array_element;
 			g_ModuleInterface->GetArrayEntry(status_effects, i, array_element);
-			status_effect_name_to_id_map[array_element->AsString().data()] = i;
+			status_effect_name_to_id_map[array_element->ToString()] = i;
 		}
 
 		// Load weather types.
-		RValue weather = global_instance->at("__weather__");
+		RValue weather = global_instance->GetMember("__weather__");
 		g_ModuleInterface->GetArraySize(weather, array_length);
 		for (size_t i = 0; i < array_length; i++)
 		{
 			RValue* array_element;
 			g_ModuleInterface->GetArrayEntry(weather, i, array_element);
-			weather_name_to_id_map[array_element->AsString().data()] = i;
+			weather_name_to_id_map[array_element->ToString()] = i;
 		}
 
 		// Load monster data.
-		RValue monster_data = global_instance->at("__monster_id__");
+		RValue monster_data = global_instance->GetMember("__monster_id__");
 		g_ModuleInterface->GetArraySize(weather, array_length);
 		for (size_t i = 0; i < array_length; i++)
 		{
 			RValue* array_element;
 			g_ModuleInterface->GetArrayEntry(weather, i, array_element);
-			monster_name_to_id_map[array_element->AsString().data()] = i;
+			monster_name_to_id_map[array_element->ToString()] = i;
 		}
 
 		GetHudFontIndex();
@@ -2374,7 +2374,7 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 
 	if (game_is_active)
 		if (Result.m_Kind == VALUE_STRING)
-			ari_current_location = Result.AsString().data();
+			ari_current_location = Result.ToString();
 
 	return Result;
 }
@@ -2424,7 +2424,7 @@ RValue& GmlScriptGetDisplayNameCallback(
 		Arguments
 	);
 
-	localized_item_name = Result.AsString().data();
+	localized_item_name = Result.ToString();
 	return Result;
 }
 
@@ -2454,8 +2454,8 @@ RValue& GmlScriptGetDisplayDescriptionCallback(
 			int occurrences = GetFoodQueueOccurrences(internal_item_name);
 			if (occurrences > 0)
 			{
-				std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.AsString().data();
-				Result = new_description;
+				std::string new_description = "Recently Eaten: " + std::to_string(occurrences) + "\n\n" + Result.ToString();
+				Result = RValue(new_description);
 			}
 
 			// Modify the item's stamina recovery.
@@ -2497,7 +2497,7 @@ RValue& GmlScriptGetLocalizerCallback(
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		RValue __item_data = global_instance->at("__item_data");
+		RValue __item_data = global_instance->GetMember("__item_data");
 
 		size_t array_length;
 		g_ModuleInterface->GetArraySize(__item_data, array_length);
@@ -2507,25 +2507,25 @@ RValue& GmlScriptGetLocalizerCallback(
 			RValue* array_element;
 			g_ModuleInterface->GetArrayEntry(__item_data, i, array_element);
 
-			RValue name_key = array_element->at("name_key");
+			RValue name_key = array_element->GetMember("name_key");
 			if (name_key.m_Kind != VALUE_NULL && name_key.m_Kind != VALUE_UNDEFINED && name_key.m_Kind != VALUE_UNSET)
 			{
-				RValue recipe_key = array_element->at("recipe_key");
+				RValue recipe_key = array_element->GetMember("recipe_key");
 
 				// Localize all of the cooked dishes.
-				if (strstr(name_key.AsString().data(), "cooked_dishes"))
+				if (name_key.ToString().contains("cooked_dishes"))
 				{
-					RValue localized_name = GetLocalizedString(Self, Other, name_key.AsString().data());
-					localized_item_name_to_internal_name_map[localized_name.AsString().data()] = recipe_key.AsString().data();
+					RValue localized_name = GetLocalizedString(Self, Other, name_key.ToString());
+					localized_item_name_to_internal_name_map[localized_name.ToString()] = recipe_key.ToString();
 				}
 				else
 				{
 					// Localize all of the edible items.
-					RValue edible = array_element->at("edible");
+					RValue edible = array_element->GetMember("edible");
 					if (edible.m_Kind == VALUE_BOOL && edible.m_Real == 1.0)
 					{
-						RValue localized_name = GetLocalizedString(Self, Other, name_key.AsString().data());
-						localized_item_name_to_internal_name_map[localized_name.AsString().data()] = recipe_key.AsString().data();
+						RValue localized_name = GetLocalizedString(Self, Other, name_key.ToString());
+						localized_item_name_to_internal_name_map[localized_name.ToString()] = recipe_key.ToString();
 					}
 				}
 			}
