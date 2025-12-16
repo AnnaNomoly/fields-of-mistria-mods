@@ -1,16 +1,26 @@
 #include <random>
 #include <fstream>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
+static const char* const MOD_NAME = "SecretSanta";
+static const char* const VERSION = "1.1.2";
+static const char* const GML_SCRIPT_DAY = "gml_Script_day@Calendar@Calendar";
+static const char* const GML_SCRIPT_SEASON = "gml_Script_season@Calendar@Calendar";
+static const char* const GML_SCRIPT_YEAR = "gml_Script_year@Calendar@Calendar";
+static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu";
+static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
+static const char* const GML_SCRIPT_SHOW_ROOM_TITLE = "gml_Script_show_room_title";
+static const char* const GML_SCRIPT_LOAD_GAME = "gml_Script_load_game";
+static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
+static const char* const GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT = "gml_Script_choose_random_artifact@Archaeology@Archaeology";
 static const char* const YYTK_KEY = "__YYTK";
 static const char* const DIG_UP_ANYTHING_KEY = "DigUpAnything";
 static const char* const SECRET_SANTA_KEY = "SecretSanta";
 static const char* const IGNORE_NEXT_DIG_SPOT_KEY = "ignore_next_dig_spot";
-static const char* const VERSION = "1.1.1";
 static const double UNSET_INT = -1;
 static const double UNSET_DOUBLE = -1.0;
 static const std::string GIFTS[] = {
@@ -84,7 +94,7 @@ void PrintException(std::exception_ptr eptr)
 		}
 	}
 	catch (const std::exception& e) {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Error: %s", VERSION, e.what());
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", VERSION, e.what());
 	}
 }
 
@@ -114,7 +124,7 @@ void ReadModFile()
 		catch (...)
 		{
 			mod_healthy = false;
-			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - An error occurred reading the mod file.", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred reading the mod file.", MOD_NAME, VERSION);
 
 			eptr = std::current_exception();
 			PrintException(eptr);
@@ -123,7 +133,7 @@ void ReadModFile()
 	else
 	{
 		mod_healthy = false;
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - No save prefix detected when trying to read the mod file!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No save prefix detected when trying to read the mod file!", MOD_NAME, VERSION);
 	}
 }
 
@@ -138,12 +148,12 @@ void SaveModFile()
 			std::ofstream out_stream(mod_folder + "\\" + save_prefix + ".json");
 			out_stream << std::setw(4) << json_object << std::endl;
 			out_stream.close();
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - Saved the mod file!", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Saved the mod file!", MOD_NAME, VERSION);
 		}
 		catch (...)
 		{
 			mod_healthy = false;
-			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - An error occurred writing the mod file.", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred writing the mod file.", MOD_NAME, VERSION);
 
 			eptr = std::current_exception();
 			PrintException(eptr);
@@ -152,7 +162,7 @@ void SaveModFile()
 	else
 	{
 		mod_healthy = false;
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - No save prefix detected when trying to save the mod file!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No save prefix detected when trying to save the mod file!", MOD_NAME, VERSION);
 	}
 }
 
@@ -161,14 +171,14 @@ void SendMail(std::string mail_name_str)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
-	RValue inbox = __ari.at("inbox");
-	RValue contents = inbox.at("contents");
-	RValue contents_buffer = contents.at("__buffer");
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue inbox = *__ari.GetRefMember("inbox");
+	RValue contents = *inbox.GetRefMember("contents");
+	RValue contents_buffer = *contents.GetRefMember("__buffer");
 
 	RValue mail;
 	RValue mail_items_taken = false;
-	RValue mail_name = mail_name_str;
+	RValue mail_name = RValue(mail_name_str);
 	RValue mail_read = false;
 	g_ModuleInterface->GetRunnerInterface().StructCreate(&mail);
 	g_ModuleInterface->GetRunnerInterface().StructAddRValue(&mail, "items_taken", &mail_items_taken);
@@ -201,10 +211,10 @@ bool MailExists(std::string mail_name_str)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __ari = global_instance->at("__ari").m_Object;
-	RValue inbox = __ari.at("inbox");
-	RValue contents = inbox.at("contents");
-	RValue contents_buffer = contents.at("__buffer");
+	RValue __ari = global_instance->GetMember("__ari");
+	RValue inbox = __ari.GetMember("inbox");
+	RValue contents = inbox.GetMember("contents");
+	RValue contents_buffer = contents.GetMember("__buffer");
 
 	size_t size = 0;
 	g_ModuleInterface->GetArraySize(contents_buffer, size);
@@ -214,8 +224,8 @@ bool MailExists(std::string mail_name_str)
 		RValue* entry = nullptr;
 		g_ModuleInterface->GetArrayEntry(contents_buffer, i, entry);
 
-		RValue name = entry->at("name");
-		if (strstr(name.AsString().data(), mail_name_str.c_str()))
+		RValue name = entry->GetMember("name");
+		if (name.ToString() == mail_name_str.c_str())
 			return true;
 	}
 
@@ -227,7 +237,7 @@ int GetNpcId(std::string npc_name)
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue __npc_id__ = global_instance->at("__npc_id__");
+	RValue __npc_id__ = global_instance->GetMember("__npc_id__");
 	size_t size = 0;
 	g_ModuleInterface->GetArraySize(__npc_id__, size);
 
@@ -236,7 +246,7 @@ int GetNpcId(std::string npc_name)
 		RValue* element = nullptr;
 		g_ModuleInterface->GetArrayEntry(__npc_id__, i, element);
 
-		std::string element_str = element->AsString().data();
+		std::string element_str = element->ToString();
 		if (element_str == npc_name)
 		{
 			return static_cast<int>(i);
@@ -254,10 +264,10 @@ void AddHeartPoints(std::string npc_name)
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		RValue __npc_database = global_instance->at("__npc_database");
+		RValue __npc_database = *global_instance->GetRefMember("__npc_database");
 		RValue npc_database_0 = __npc_database[npc_id];
-		RValue original_heart_points = npc_database_0.at("heart_points");
-		RValue modified_heart_points = original_heart_points.m_Real + 20.0;
+		RValue original_heart_points = *npc_database_0.GetRefMember("heart_points");
+		RValue modified_heart_points = original_heart_points.ToDouble() + 20.0;
 
 		g_ModuleInterface->CallBuiltin(
 			"struct_set", {
@@ -265,23 +275,12 @@ void AddHeartPoints(std::string npc_name)
 			}
 		);
 
-		g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - Added %d bonus heart points for NPC: %s", VERSION, 20, npc_name.c_str());
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Added %d bonus heart points for NPC: %s", MOD_NAME, VERSION, 20, npc_name.c_str());
 	}
 	else
 	{
-		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - Unable to lookup ID for NPC: %s", VERSION, npc_name.c_str());
+		g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Unable to lookup ID for NPC: %s", MOD_NAME, VERSION, npc_name.c_str());
 	}
-
-}
-
-int RValueAsInt(RValue value)
-{
-	if (value.m_Kind == VALUE_REAL)
-		return static_cast<int>(value.m_Real);
-	if (value.m_Kind == VALUE_INT64)
-		return static_cast<int>(value.m_i64);
-	if (value.m_Kind == VALUE_INT32)
-		return static_cast<int>(value.m_i32);
 }
 
 bool RValueAsBool(RValue value)
@@ -396,7 +395,7 @@ int GetItemId(CInstance* self, CInstance* other, std::string item_name)
 	);
 
 	RValue result;
-	RValue argument = item_name;
+	RValue argument = RValue(item_name);
 	RValue* argument_ptr = &argument;
 	gml_script_try_string_to_item_id->m_Functions->m_ScriptFunction(
 		self,
@@ -407,7 +406,7 @@ int GetItemId(CInstance* self, CInstance* other, std::string item_name)
 	);
 
 	if (result.m_Kind == VALUE_REAL || result.m_Kind == VALUE_INT64 || result.m_Kind == VALUE_INT32)
-		return RValueAsInt(result);
+		return result.ToInt64();
 	return UNSET_INT;
 }
 
@@ -435,7 +434,7 @@ RValue& GmlScriptCalendarDayCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_day@Calendar@Calendar"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_DAY));
 	original(
 		Self,
 		Other,
@@ -447,7 +446,7 @@ RValue& GmlScriptCalendarDayCallback(
 	if (mod_healthy)
 	{
 		// Result is a VALUE_REAL that is the 0-indexed calendar day
-		day = Result.m_Real + 1;
+		day = Result.ToInt64() + 1;
 	}
 
 	return Result;
@@ -461,7 +460,7 @@ RValue& GmlScriptCalendarSeasonCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_season@Calendar@Calendar"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SEASON));
 	original(
 		Self,
 		Other,
@@ -473,7 +472,7 @@ RValue& GmlScriptCalendarSeasonCallback(
 	if (mod_healthy)
 	{
 		// Result is a VALUE_REAL that is the 0-indexed calendar season
-		season = Result.m_Real + 1;
+		season = Result.ToInt64() + 1;
 	}
 
 	return Result;
@@ -487,7 +486,7 @@ RValue& GmlScriptCalendarYearCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_year@Calendar@Calendar"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_YEAR));
 	original(
 		Self,
 		Other,
@@ -499,13 +498,13 @@ RValue& GmlScriptCalendarYearCallback(
 	if (mod_healthy)
 	{
 		// Result is a VALUE_REAL that is the 0-indexed calendar year
-		year = Result.m_Real + 1;
+		year = Result.ToInt64() + 1;
 	}
 
 	return Result;
 }
 
-RValue& GmlScriptPlayConversationCallback(
+RValue& GmlScriptPlayTextCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
 	OUT RValue& Result,
@@ -517,263 +516,263 @@ RValue& GmlScriptPlayConversationCallback(
 	{
 		if (season == 4 && day == 27)
 		{
-			std::string conversation_name = Arguments[0]->AsString().data();
+			std::string conversation_name = Arguments[0]->ToString();
 			std::string conversation_name_lowercase = conversation_name;
 			std::transform(conversation_name_lowercase.begin(), conversation_name_lowercase.end(), conversation_name_lowercase.begin(), [](unsigned char c) { return std::tolower(c); });
 
 			// Dialog involves the secret santa recipient.
-			if (conversation_name_lowercase.find(secret_santa_recipient) != std::string::npos)
+			if (conversation_name_lowercase.contains(secret_santa_recipient))
 			{
 				// Dialog is a gift line.
-				if (conversation_name.find("gift_lines") != std::string::npos)
+				if (conversation_name.contains("gift_lines"))
 				{
 					// Speaker is Adeline.
-					if (conversation_name.find("Conversations/Bank/Adeline") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Adeline"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = ADELINE_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(ADELINE_GIFT_RECEIVED_DIALOGUE_KEY);
 						custom_dialogue_value_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Balor.
-					if (conversation_name.find("Conversations/Bank/Balor") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Balor"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = BALOR_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(BALOR_GIFT_RECEIVED_DIALOGUE_KEY);
 						custom_dialogue_value_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Celine.
-					if (conversation_name.find("Conversations/Bank/Celine") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Celine"))
 					{
-						custom_dialogue_value = CELINE_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(CELINE_GIFT_RECEIVED_DIALOGUE_KEY);
 						custom_dialogue_value_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Darcy.
-					if (conversation_name.find("Conversations/Bank/Darcy") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Darcy"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = DARCY_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(DARCY_GIFT_RECEIVED_DIALOGUE_KEY);
 						custom_dialogue_value_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Dell.
-					if (conversation_name.find("Conversations/Bank/Dell") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Dell"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = DELL_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(DELL_GIFT_RECEIVED_DIALOGUE_KEY);
 						custom_dialogue_value_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Dozy.
-					if (conversation_name.find("Conversations/Bank/Dozy") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Dozy"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = DOZY_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(DOZY_GIFT_RECEIVED_DIALOGUE_KEY);
 						custom_dialogue_value_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
 					// Speaker is Eiland.
-					if (conversation_name.find("Conversations/Bank/Eiland") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Eiland"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = EILAND_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(EILAND_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Elsie.
-					if (conversation_name.find("Conversations/Bank/Elsie") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Elsie"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = ELSIE_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(ELSIE_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Errol.
-					if (conversation_name.find("Conversations/Bank/Errol") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Errol"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = ERROL_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(ERROL_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Hayden.
-					if (conversation_name.find("Conversations/Bank/Hayden") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Hayden"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = HAYDEN_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(HAYDEN_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Hemlock.
-					if (conversation_name.find("Conversations/Bank/Hemlock") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Hemlock"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = HEMLOCK_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(HEMLOCK_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Henrietta.
-					if (conversation_name.find("Conversations/Bank/Henrietta") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Henrietta"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = HENRIETTA_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(HENRIETTA_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Holt.
-					if (conversation_name.find("Conversations/Bank/Holt") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Holt"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = HOLT_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(HOLT_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Josephine.
-					if (conversation_name.find("Conversations/Bank/Josephine") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Josephine"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = JOSEPHINE_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(JOSEPHINE_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Juniper.
-					if (conversation_name.find("Conversations/Bank/Juniper") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Juniper"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = JUNIPER_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(JUNIPER_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Landen.
-					if (conversation_name.find("Conversations/Bank/Landen") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Landen"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = LANDEN_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(LANDEN_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Luc.
-					if (conversation_name.find("Conversations/Bank/Luc") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Luc"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = LUC_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(LUC_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Louis.
-					if (conversation_name.find("Conversations/Bank/Louis") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Louis"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = LOUIS_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(LOUIS_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Maple.
-					if (conversation_name.find("Conversations/Bank/Maple") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Maple"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = MAPLE_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(MAPLE_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is March.
-					if (conversation_name.find("Conversations/Bank/March") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/March"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = MARCH_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(MARCH_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Merri.
-					if (conversation_name.find("Conversations/Bank/Merri") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Merri"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = MERRI_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(MERRI_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Olric.
-					if (conversation_name.find("Conversations/Bank/Olric") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Olric"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = OLRIC_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(OLRIC_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Nora.
-					if (conversation_name.find("Conversations/Bank/Nora") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Nora"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = NORA_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(NORA_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Reina.
-					if (conversation_name.find("Conversations/Bank/Reina") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Reina"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = REINA_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(REINA_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Ryis.
-					if (conversation_name.find("Conversations/Bank/Ryis") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Ryis"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = RYIS_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(RYIS_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Terithia.
-					if (conversation_name.find("Conversations/Bank/Terithia") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Terithia"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = TERITHIA_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(TERITHIA_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Valen.
-					if (conversation_name.find("Conversations/Bank/Valen") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Valen"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = VALEN_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(VALEN_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
 
 					// Speaker is Vera.
-					if (conversation_name.find("Conversations/Bank/Vera") != std::string::npos)
+					if (conversation_name.contains("Conversations/Bank/Vera"))
 					{
 						// Override the gift dialog.
-						custom_dialogue_value = VERA_GIFT_RECEIVED_DIALOGUE_KEY;
+						custom_dialogue_value = RValue(VERA_GIFT_RECEIVED_DIALOGUE_KEY);
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
@@ -785,7 +784,7 @@ RValue& GmlScriptPlayConversationCallback(
 		}
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_play_text@TextboxMenu@TextboxMenu"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_TEXT));
 	original(
 		Self,
 		Other,
@@ -820,7 +819,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 			std::string mod_data_folder = current_dir + "\\mod_data";
 			if (!std::filesystem::exists(mod_data_folder))
 			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - The \"mod_data\" directory was not found. Creating directory: %s", VERSION, mod_data_folder.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
 				std::filesystem::create_directory(mod_data_folder);
 			}
 
@@ -828,7 +827,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 			std::string secret_santa_folder = mod_data_folder + "\\SecretSanta";
 			if (!std::filesystem::exists(secret_santa_folder))
 			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[SecretSanta %s] - The \"SecretSanta\" directory was not found. Creating directory: %s", VERSION, secret_santa_folder.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"SecretSanta\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, secret_santa_folder.c_str());
 				std::filesystem::create_directory(secret_santa_folder);
 			}
 
@@ -836,7 +835,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		}
 		catch (...)
 		{
-			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - An error occurred when locating the mod directory.", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred when locating the mod directory.", MOD_NAME, VERSION);
 
 			eptr = std::current_exception();
 			PrintException(eptr);
@@ -850,19 +849,19 @@ RValue& GmlScriptSetupMainScreenCallback(
 		}
 		else
 		{
-			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to look up item ID for: magical_snowflake.", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to look up item ID for: magical_snowflake.", MOD_NAME, VERSION);
 			mod_healthy = false;
 		}
 
 		if (!mod_healthy)
 		{
-			g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - The mod has an unhealthy configuration and will NOT function!", VERSION);
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - The mod has an unhealthy configuration and will NOT function!", MOD_NAME, VERSION);
 		}
 
 		load_on_start = false;
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_setup_main_screen@TitleMenu@TitleMenu"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SETUP_MAIN_SCREEN));
 	original(
 		Self,
 		Other,
@@ -979,7 +978,7 @@ RValue& GmlScriptShowRoomTitleCallback(
 		}
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_show_room_title"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SHOW_ROOM_TITLE));
 	original(
 		Self,
 		Other,
@@ -1002,7 +1001,7 @@ RValue& GmlScriptLoadGameCallback(
 	if (mod_healthy)
 	{
 		// Get the save file name.
-		std::string save_file = std::string(Arguments[0]->m_Object->at("save_path").AsString().data());
+		std::string save_file = std::string(Arguments[0]->GetRefMember("save_path")->ToString());
 		std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
 		std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
 
@@ -1015,7 +1014,7 @@ RValue& GmlScriptLoadGameCallback(
 		ReadModFile();
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_load_game"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_LOAD_GAME));
 	original(
 		Self,
 		Other,
@@ -1041,12 +1040,12 @@ RValue& GmlScriptSaveGameCallback(
 		if (save_prefix.size() == 0)
 		{
 			// Get the save file name.
-			std::string save_file = Arguments[0]->AsString().data();
+			std::string save_file = Arguments[0]->ToString();
 			std::size_t save_file_name_delimiter_index = save_file.find_last_of("/");
 			std::string save_name = save_file.substr(save_file_name_delimiter_index + 1);
 
 			// Check it's a valid value.
-			if (save_name.find("undefined") == std::string::npos)
+			if (save_name.contains("undefined") == std::string::npos)
 			{
 				// Get the save prefix.
 				std::size_t first_hyphen_index = save_name.find_first_of("-") + 1;
@@ -1058,7 +1057,7 @@ RValue& GmlScriptSaveGameCallback(
 		SaveModFile();
 	}
 
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_save_game"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SAVE_GAME));
 	original(
 		Self,
 		Other,
@@ -1078,7 +1077,7 @@ RValue& GmlScriptChooseRandomArtifactCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, "gml_Script_choose_random_artifact@Archaeology@Archaeology"));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT));
 	original(
 		Self,
 		Other,
@@ -1101,7 +1100,7 @@ RValue& GmlScriptChooseRandomArtifactCallback(
 
 				if (random_int == 7)
 				{
-					g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - You found a Magical Snowflake!", VERSION);
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - You found a Magical Snowflake!", MOD_NAME, VERSION);
 					Result.m_i64 = magical_snowflake_item_id;
 				}
 			}
@@ -1121,18 +1120,18 @@ void CreateHookGmlScriptCalendarDay(AurieStatus& status)
 {
 	CScript* gml_script_calendar_day = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_day@Calendar@Calendar",
+		GML_SCRIPT_DAY,
 		(PVOID*)&gml_script_calendar_day
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_day@Calendar@Calendar)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DAY);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_day@Calendar@Calendar",
+		GML_SCRIPT_DAY,
 		gml_script_calendar_day->m_Functions->m_ScriptFunction,
 		GmlScriptCalendarDayCallback,
 		nullptr
@@ -1141,7 +1140,7 @@ void CreateHookGmlScriptCalendarDay(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_day@Calendar@Calendar)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DAY);
 	}
 }
 
@@ -1149,18 +1148,18 @@ void CreateHookGmlScriptCalendarSeason(AurieStatus& status)
 {
 	CScript* gml_script_calendar_season = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_season@Calendar@Calendar",
+		GML_SCRIPT_SEASON,
 		(PVOID*)&gml_script_calendar_season
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_season@Calendar@Calendar)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SEASON);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_season@Calendar@Calendar",
+		GML_SCRIPT_SEASON,
 		gml_script_calendar_season->m_Functions->m_ScriptFunction,
 		GmlScriptCalendarSeasonCallback,
 		nullptr
@@ -1169,7 +1168,7 @@ void CreateHookGmlScriptCalendarSeason(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_season@Calendar@Calendar)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SEASON);
 	}
 }
 
@@ -1177,18 +1176,18 @@ void CreateHookGmlScriptCalendarYear(AurieStatus& status)
 {
 	CScript* gml_script_calendar_year = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_year@Calendar@Calendar",
+		GML_SCRIPT_YEAR,
 		(PVOID*)&gml_script_calendar_year
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_year@Calendar@Calendar)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_YEAR);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_year@Calendar@Calendar",
+		GML_SCRIPT_YEAR,
 		gml_script_calendar_year->m_Functions->m_ScriptFunction,
 		GmlScriptCalendarYearCallback,
 		nullptr
@@ -1197,35 +1196,35 @@ void CreateHookGmlScriptCalendarYear(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_year@Calendar@Calendar)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_YEAR);
 	}
 }
 
-void CreateHookGmlScriptPlayConversation(AurieStatus& status)
+void CreateHookGmlScriptPlayText(AurieStatus& status)
 {
-	CScript* gml_script_play_conversation = nullptr;
+	CScript* gml_script_play_text = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_play_text@TextboxMenu@TextboxMenu",
-		(PVOID*)&gml_script_play_conversation
+		GML_SCRIPT_PLAY_TEXT,
+		(PVOID*)&gml_script_play_text
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_play_conversation)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_TEXT);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_play_text@TextboxMenu@TextboxMenu",
-		gml_script_play_conversation->m_Functions->m_ScriptFunction,
-		GmlScriptPlayConversationCallback,
+		GML_SCRIPT_PLAY_TEXT,
+		gml_script_play_text->m_Functions->m_ScriptFunction,
+		GmlScriptPlayTextCallback,
 		nullptr
 	);
 
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_play_conversation)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_TEXT);
 	}
 }
 
@@ -1233,18 +1232,18 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 {
 	CScript* gml_script_setup_main_screen = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
 		(PVOID*)&gml_script_setup_main_screen
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_setup_main_screen@TitleMenu@TitleMenu",
+		GML_SCRIPT_SETUP_MAIN_SCREEN,
 		gml_script_setup_main_screen->m_Functions->m_ScriptFunction,
 		GmlScriptSetupMainScreenCallback,
 		nullptr
@@ -1253,27 +1252,27 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_setup_main_screen@TitleMenu@TitleMenu)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SETUP_MAIN_SCREEN);
 	}
 }
 
 void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 {
-	CScript* gml_Script_on_new_day = nullptr;
+	CScript* gml_Script_show_room_title = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_show_room_title",
-		(PVOID*)&gml_Script_on_new_day
+		GML_SCRIPT_SHOW_ROOM_TITLE,
+		(PVOID*)&gml_Script_show_room_title
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_show_room_title)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SHOW_ROOM_TITLE);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_show_room_title",
-		gml_Script_on_new_day->m_Functions->m_ScriptFunction,
+		GML_SCRIPT_SHOW_ROOM_TITLE,
+		gml_Script_show_room_title->m_Functions->m_ScriptFunction,
 		GmlScriptShowRoomTitleCallback,
 		nullptr
 	);
@@ -1281,7 +1280,7 @@ void CreateHookGmlScriptShowRoomTitle(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_show_room_title)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SHOW_ROOM_TITLE);
 	}
 }
 
@@ -1289,18 +1288,18 @@ void CreateHookGmlScriptLoadGame(AurieStatus& status)
 {
 	CScript* gml_script_load_game = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_load_game",
+		GML_SCRIPT_LOAD_GAME,
 		(PVOID*)&gml_script_load_game
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_load_game)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_LOAD_GAME);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_load_game",
+		GML_SCRIPT_LOAD_GAME,
 		gml_script_load_game->m_Functions->m_ScriptFunction,
 		GmlScriptLoadGameCallback,
 		nullptr
@@ -1308,7 +1307,7 @@ void CreateHookGmlScriptLoadGame(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_load_game)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_LOAD_GAME);
 	}
 }
 
@@ -1316,18 +1315,18 @@ void CreateHookGmlScriptSaveGame(AurieStatus& status)
 {
 	CScript* gml_script_save_game = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_save_game",
+		GML_SCRIPT_SAVE_GAME,
 		(PVOID*)&gml_script_save_game
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_save_game)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SAVE_GAME);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_save_game",
+		GML_SCRIPT_SAVE_GAME,
 		gml_script_save_game->m_Functions->m_ScriptFunction,
 		GmlScriptSaveGameCallback,
 		nullptr
@@ -1335,7 +1334,7 @@ void CreateHookGmlScriptSaveGame(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_save_game)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SAVE_GAME);
 	}
 }
 
@@ -1343,18 +1342,18 @@ void CreateHookGmlScriptChooseRandomArtifact(AurieStatus& status)
 {
 	CScript* gml_script_choose_random_artifact = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_choose_random_artifact@Archaeology@Archaeology",
+		GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT,
 		(PVOID*)&gml_script_choose_random_artifact
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to get script (gml_Script_choose_random_artifact@Archaeology@Archaeology)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		"gml_Script_choose_random_artifact@Archaeology@Archaeology",
+		GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT,
 		gml_script_choose_random_artifact->m_Functions->m_ScriptFunction,
 		GmlScriptChooseRandomArtifactCallback,
 		nullptr
@@ -1363,7 +1362,7 @@ void CreateHookGmlScriptChooseRandomArtifact(AurieStatus& status)
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Failed to hook script (gml_Script_choose_random_artifact@Archaeology@Archaeology)!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT);
 	}
 }
 
@@ -1380,71 +1379,71 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	if (!AurieSuccess(status))
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
-	g_ModuleInterface->Print(CM_LIGHTAQUA, "[SecretSanta %s] - Plugin starting...", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
 
 	CreateHookGmlScriptCalendarDay(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptCalendarSeason(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptCalendarYear(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
-	CreateHookGmlScriptPlayConversation(status);
+	CreateHookGmlScriptPlayText(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSetupMainScreen(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptShowRoomTitle(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptLoadGame(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptSaveGame(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
 	CreateHookGmlScriptChooseRandomArtifact(status);
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[SecretSanta %s] - Exiting due to failure on start!", VERSION);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
 		return status;
 	}
 
-	g_ModuleInterface->Print(CM_LIGHTGREEN, "[SecretSanta %s] - Plugin started!", VERSION);
+	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Plugin started!", MOD_NAME, VERSION);
 	return AURIE_SUCCESS;
 }
