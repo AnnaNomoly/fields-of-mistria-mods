@@ -1,17 +1,14 @@
-#pragma comment(lib, "Xinput.lib")
-#include <Windows.h>
-#include <Xinput.h>
 #include <fstream>
 #include <iostream>
 #include <filesystem>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "MillAnywhere";
-static const char* const VERSION = "1.1.0";
+static const char* const VERSION = "1.1.1";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const GML_SCRIPT_CREATE_MILL_MENU = "gml_Script_anon@382@gml_Object_obj_mill_menu_Create_0";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
@@ -24,7 +21,7 @@ static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
 	"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
 	"INSERT", "DELETE", "HOME", "PAGE_UP", "PAGE_DOWN", "NUM_LOCK", "SCROLL_LOCK", "CAPS_LOCK", "PAUSE_BREAK",
-	"GAMEPAD_A", "GAMEPAD_B", "GAMEPAD_X", "GAMEPAD_Y", "GAMEPAD_LEFT_SHOULDER", "GAMEPAD_RIGHT_SHOULDER", "GAMEPAD_LEFT_TRIGGER", "GAMEPAD_RIGHT_TRIGGER", "GAMEPAD_DPAD_UP", "GAMEPAD_DPAD_DOWN", "GAMEPAD_DPAD_LEFT", "GAMEPAD_DPAD_RIGHT", "GAMEPAD_LEFT_STICK", "GAMEPAD_RIGHT_STICK", "GAMEPAD_BACK", "GAMEPAD_START"
+	"GAMEPAD_A", "GAMEPAD_B", "GAMEPAD_X", "GAMEPAD_Y", "GAMEPAD_LEFT_SHOULDER", "GAMEPAD_RIGHT_SHOULDER", "GAMEPAD_LEFT_TRIGGER", "GAMEPAD_RIGHT_TRIGGER", "GAMEPAD_DPAD_UP", "GAMEPAD_DPAD_DOWN", "GAMEPAD_DPAD_LEFT", "GAMEPAD_DPAD_RIGHT", "GAMEPAD_LEFT_STICK", "GAMEPAD_RIGHT_STICK", "GAMEPAD_SELECT", "GAMEPAD_START"
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
@@ -34,17 +31,6 @@ static bool activation_button_is_controller_key = false;
 static int activation_button_int_value = -1;
 static bool processing_user_input = false;
 static std::string activation_button = DEFAULT_ACTIVATION_BUTTON;
-
-
-int RValueAsInt(RValue value)
-{
-	if (value.m_Kind == VALUE_REAL)
-		return static_cast<int>(value.m_Real);
-	if (value.m_Kind == VALUE_INT64)
-		return static_cast<int>(value.m_i64);
-	if (value.m_Kind == VALUE_INT32)
-		return static_cast<int>(value.m_i32);
-}
 
 bool RValueAsBool(RValue value)
 {
@@ -59,8 +45,8 @@ bool GameIsPaused()
 {
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
-	RValue paused = global_instance->at("__pause_status");
-	return paused.m_i64 > 0;
+	RValue paused = global_instance->GetMember("__pause_status");
+	return paused.ToInt64() > 0;
 }
 
 bool GameWindowHasFocus()
@@ -219,71 +205,61 @@ int ActivationButtonToVirtualKey()
 int ActivationButtonToControllerKey()
 {
 	if (activation_button == "GAMEPAD_A")
-		return XINPUT_GAMEPAD_A;
+		return 0x8001;
 	if (activation_button == "GAMEPAD_B")
-		return XINPUT_GAMEPAD_B;
+		return 0x8002;
 	if (activation_button == "GAMEPAD_X")
-		return XINPUT_GAMEPAD_X;
+		return 0x8003;
 	if (activation_button == "GAMEPAD_Y")
-		return XINPUT_GAMEPAD_Y;
+		return 0x8004;
 	if (activation_button == "GAMEPAD_LEFT_SHOULDER")
-		return XINPUT_GAMEPAD_LEFT_SHOULDER;
+		return 0x8005;
 	if (activation_button == "GAMEPAD_RIGHT_SHOULDER")
-		return XINPUT_GAMEPAD_RIGHT_SHOULDER;
-	if (activation_button == "GAMEPAD_DPAD_UP")
-		return XINPUT_GAMEPAD_DPAD_UP;
-	if (activation_button == "GAMEPAD_DPAD_DOWN")
-		return XINPUT_GAMEPAD_DPAD_DOWN;
-	if (activation_button == "GAMEPAD_DPAD_LEFT")
-		return XINPUT_GAMEPAD_DPAD_LEFT;
-	if (activation_button == "GAMEPAD_DPAD_RIGHT")
-		return XINPUT_GAMEPAD_DPAD_RIGHT;
-	if (activation_button == "GAMEPAD_LEFT_STICK")
-		return XINPUT_GAMEPAD_LEFT_THUMB;
-	if (activation_button == "GAMEPAD_RIGHT_STICK")
-		return XINPUT_GAMEPAD_RIGHT_THUMB;
-	if (activation_button == "GAMEPAD_BACK")
-		return XINPUT_GAMEPAD_BACK;
+		return 0x8006;
+	if (activation_button == "GAMEPAD_LEFT_TRIGGER")
+		return 0x8007;
+	if (activation_button == "GAMEPAD_RIGHT_TRIGGER")
+		return 0x8008;
+	if (activation_button == "GAMEPAD_SELECT")
+		return 0x8009;
 	if (activation_button == "GAMEPAD_START")
-		return XINPUT_GAMEPAD_START;
+		return 0x800A;
+	if (activation_button == "GAMEPAD_LEFT_STICK")
+		return 0x800B;
+	if (activation_button == "GAMEPAD_RIGHT_STICK")
+		return 0x800C;
+	if (activation_button == "GAMEPAD_DPAD_UP")
+		return 0x800D;
+	if (activation_button == "GAMEPAD_DPAD_DOWN")
+		return 0x800E;
+	if (activation_button == "GAMEPAD_DPAD_LEFT")
+		return 0x800F;
+	if (activation_button == "GAMEPAD_DPAD_RIGHT")
+		return 0x8010;
+	return -1;
+}
+
+int GetGamepadSlotNumber()
+{
+	for (int i = 0; i < 12; i++)
+	{
+		RValue gamepad_is_connected = g_ModuleInterface->CallBuiltin("gamepad_is_connected", { i });
+		if (gamepad_is_connected.ToBoolean())
+		{
+			return i;
+		}
+	}
+
 	return -1;
 }
 
 bool CheckControllerInput()
 {
-	XINPUT_STATE state;
-	ZeroMemory(&state, sizeof(XINPUT_STATE));
-
-	if (XInputGetState(0, &state) == ERROR_SUCCESS)
+	int gamepad_slot = GetGamepadSlotNumber();
+	if (gamepad_slot != -1)
 	{
-		WORD buttons = state.Gamepad.wButtons;
-
-		if (activation_button_int_value >= 0)
-		{
-			if (buttons & activation_button_int_value)
-			{
-				processing_user_input = true;
-				return true;
-			}
-		}
-		else if (activation_button == "GAMEPAD_LEFT_TRIGGER")
-		{
-			BYTE left_trigger = state.Gamepad.bLeftTrigger;
-			if (left_trigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
-			{
-				processing_user_input = true;
-				return true;
-			}
-		}
-		else if (activation_button == "GAMEPAD_RIGHT_TRIGGER")
-		{
-			BYTE right_trigger = state.Gamepad.bRightTrigger;
-			if (right_trigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
-			{
-				processing_user_input = true;
-				return true;
-			}
-		}
+		RValue button_pressed = g_ModuleInterface->CallBuiltin("gamepad_button_check_pressed", { gamepad_slot, activation_button_int_value });
+		return button_pressed.ToBoolean();
 	}
 
 	return false;
@@ -326,6 +302,14 @@ void PrintError(std::exception_ptr eptr)
 	}
 }
 
+json CreateConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ ACTIVATION_BUTTON_KEY, use_defaults ? DEFAULT_ACTIVATION_BUTTON : activation_button }
+	};
+	return config_json;
+}
+
 void LogDefaultConfigValues()
 {
 	activation_button = DEFAULT_ACTIVATION_BUTTON;
@@ -348,15 +332,16 @@ void CreateOrLoadConfigFile()
 		}
 
 		// Try to find the mod_data/MillAnywhere directory.
-		std::string diy_folder = mod_data_folder + "\\MillAnywhere";
-		if (!std::filesystem::exists(diy_folder))
+		std::string mill_anywhere_folder = mod_data_folder + "\\MillAnywhere";
+		if (!std::filesystem::exists(mill_anywhere_folder))
 		{
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"MillAnywhere\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, diy_folder.c_str());
-			std::filesystem::create_directory(diy_folder);
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"MillAnywhere\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mill_anywhere_folder.c_str());
+			std::filesystem::create_directory(mill_anywhere_folder);
 		}
 
 		// Try to find the mod_data/MillAnywhere/MillAnywhere.json config file.
-		std::string config_file = diy_folder + "\\" + "MillAnywhere.json";
+		bool update_config_file = false;
+		std::string config_file = mill_anywhere_folder + "\\" + "MillAnywhere.json";
 		std::ifstream in_stream(config_file);
 		if (in_stream.good())
 		{
@@ -396,6 +381,8 @@ void CreateOrLoadConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON.c_str());
 					}
 				}
+
+				update_config_file = true;
 			}
 			catch (...)
 			{
@@ -414,15 +401,21 @@ void CreateOrLoadConfigFile()
 			in_stream.close();
 
 			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"MillAnywhere.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
-			json default_json = {
-				{ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON}
-			};
 
+			json default_config_json = CreateConfigJson(true);
 			std::ofstream out_stream(config_file);
-			out_stream << std::setw(4) << default_json << std::endl;
+			out_stream << std::setw(4) << default_config_json << std::endl;
 			out_stream.close();
 
 			LogDefaultConfigValues();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
 		}
 	}
 	catch (...)
@@ -522,10 +515,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 			activate = true;
 
 		if (activate)
-		{
-			g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Opened the mill menu!", MOD_NAME, VERSION);
 			OpenMillMenu(Self, Other);
-		}
 
 		processing_user_input = false;
 	}
