@@ -2,15 +2,16 @@
 #include <fstream>
 #include <unordered_set>
 #include <nlohmann/json.hpp>
-#include <YYToolkit/Shared.hpp>
+#include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "ShipIt";
-static const char* const VERSION = "1.1.0";
+static const char* const VERSION = "1.1.1";
 static const char* const SELL_TRASHED_ITEMS_KEY = "sell_trashed_items";
 static const char* const GML_SCRIPT_TRY_OBJECT_ID_TO_STRING = "gml_Script_try_object_id_to_string";
+static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
 static const char* const GML_SCRIPT_PLAY_TEXT = "gml_Script_play_text@TextboxMenu@TextboxMenu";
@@ -21,6 +22,7 @@ static const char* const GML_SCRIPT_INVENTORY_SLOT_POP = "gml_Script_pop@Invento
 static const char* const GML_SCRIPT_INVENTORY_SLOT_DRAIN = "gml_Script_drain@InventorySlot@Inventory";
 static const char* const GML_SCRIPT_MODIFY_GOLD = "gml_Script_modify_gold@Ari@Ari";
 static const char* const GML_SCRIPT_MODIFY_RENOWN = "gml_Script_modify_renown@Ari@Ari";
+static const char* const GML_SCRIPT_PERK_ACTIVE = "gml_Script_perk_active@Ari@Ari";
 static const std::string CUSTOM_OBJECT_NAME = "balor_crystal_ball";
 static const std::string SELL_SHIPPING_BIN_DIALOGUE_KEY = "Conversations/Mods/Sell Items/sell_shipping_bin_items/1";
 static const std::string SELL_SHIPPING_BIN_CONVERSATION_KEY = "Conversations/Mods/Sell Items/sell_shipping_bin_items";
@@ -103,7 +105,7 @@ RValue AssetGetIndex(std::string asset_name)
 {
 	RValue asset_index = g_ModuleInterface->CallBuiltin(
 		"asset_get_index",
-		{ asset_name }
+		{ RValue(asset_name)}
 	);
 	return asset_index;
 }
@@ -136,13 +138,13 @@ void LoadPerks()
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
 	size_t array_length;
-	RValue perks = global_instance->at("__perk__");
+	RValue perks = global_instance->GetMember("__perk__");
 	g_ModuleInterface->GetArraySize(perks, array_length);
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(perks, i, array_element);
-		perk_name_to_id_map[array_element->AsString().data()] = i;
+		perk_name_to_id_map[array_element->ToString()] = i;
 	}
 }
 
@@ -151,7 +153,7 @@ void LoadItemData()
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-	RValue item_data = global_instance->at("__item_data");
+	RValue item_data = global_instance->GetMember("__item_data");
 	size_t item_data_length;
 	g_ModuleInterface->GetArraySize(item_data, item_data_length);
 
@@ -159,14 +161,14 @@ void LoadItemData()
 	{
 		RValue* item;
 		g_ModuleInterface->GetArrayEntry(item_data, i, item);
-		RValue item_id = item->at("item_id");
+		RValue item_id = item->GetMember("item_id");
 
 		if (StructVariableExists(*item, "value"))
 		{
-			RValue value = item->at("value");
+			RValue value = item->GetMember("value");
 			if (StructVariableExists(value, "bin"))
 			{
-				RValue bin = value.at("bin");
+				RValue bin = value.GetMember("bin");
 				if(RValueIsNumeric(bin))
 					item_id_to_gold_value_map[RValueAsInt(item_id)] = RValueAsInt(bin);
 				else
@@ -175,7 +177,7 @@ void LoadItemData()
 
 			if (StructVariableExists(value, "renown"))
 			{
-				RValue renown = value.at("renown");
+				RValue renown = value.GetMember("renown");
 				if (RValueIsNumeric(renown))
 					item_id_to_renown_value_map[RValueAsInt(item_id)] = RValueAsInt(renown);
 				else
@@ -185,10 +187,10 @@ void LoadItemData()
 
 		if (StructVariableExists(*item, "tags"))
 		{
-			RValue tags = item->at("tags");
+			RValue tags = item->GetMember("tags");
 			if (StructVariableExists(tags, "__buffer"))
 			{
-				RValue buffer = tags.at("__buffer");
+				RValue buffer = tags.GetMember("__buffer");
 				size_t buffer_length;
 				g_ModuleInterface->GetArraySize(buffer, buffer_length);
 
@@ -197,7 +199,7 @@ void LoadItemData()
 					RValue* tag;
 					g_ModuleInterface->GetArrayEntry(buffer, j, tag);
 
-					if (tag->AsString().data() == ARCHAEOLOGY)
+					if (tag->ToString() == ARCHAEOLOGY)
 						items_with_archaeology_tag.insert(RValueAsInt(item_id));
 				}
 			}
@@ -214,7 +216,7 @@ void LoadObjectIds(CInstance* Self, CInstance* Other)
 	);
 
 	// NOTE: For some reason the __object_id__ global doesn't contain custom objects.
-	for (int i = 0; i < 3000; i++)
+	for (int i = 0; i < 5000; i++)
 	{
 		RValue result;
 		RValue object_id = i;
@@ -228,19 +230,8 @@ void LoadObjectIds(CInstance* Self, CInstance* Other)
 		);
 
 		if (result.m_Kind == VALUE_STRING)
-			object_id_to_name_map[i] = result.AsString().data();
+			object_id_to_name_map[i] = result.ToString();
 	}
-
-	//CInstance* global_instance = nullptr;
-	//g_ModuleInterface->GetGlobalInstance(&global_instance);
-
-	//RValue __object_id__ = global_instance->at("__object_id__");
-	//RValue array_length = g_ModuleInterface->CallBuiltin("array_length", { __object_id__ });
-	//for (int i = 0; i < array_length.m_Real; i++)
-	//{
-	//	RValue object_name = g_ModuleInterface->CallBuiltin("array_get", { __object_id__, i });
-	//	object_id_to_name_map[i] = object_name.AsString().data();
-	//}
 
 	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Loaded %d objects!", MOD_NAME, VERSION, static_cast<int>(object_id_to_name_map.size()));
 }
@@ -249,12 +240,12 @@ void DisplayNotification(CInstance* Self, CInstance* Other, std::string localiza
 {
 	CScript* gml_script_create_notification = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_create_notification",
+		GML_SCRIPT_CREATE_NOTIFICATION,
 		(PVOID*)&gml_script_create_notification
 	);
 
 	RValue result;
-	RValue notification = localization_key;
+	RValue notification = RValue(localization_key);
 	RValue* notification_ptr = &notification;
 	gml_script_create_notification->m_Functions->m_ScriptFunction(
 		Self,
@@ -282,7 +273,7 @@ void SellShippingBinItems(CInstance* Self, CInstance* Other)
 		nullptr
 	);
 
-	gold_earned = result.at("gold_earned"); // VALUE_REAL
+	gold_earned = result.GetMember("gold_earned"); // VALUE_REAL
 	g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Gained %d Tesserae from shipping items! Renown will be added at the end-of-day screen.", MOD_NAME, VERSION, static_cast<int>(RValueAsInt(gold_earned)));
 	DisplayNotification(Self, Other, ITEMS_SOLD_NOTIFICATION_KEY);
 }
@@ -491,14 +482,14 @@ void ObjectCallback(
 
 			if (gold_to_gain > 0)
 			{
-				ModifyGold(global_instance->at("__ari").m_Object, self, gold_to_gain);
+				ModifyGold(global_instance->GetRefMember("__ari")->ToInstance(), self, gold_to_gain);
 				g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Gained %d Tesserae from trashing items!", MOD_NAME, VERSION, gold_to_gain);
 				gold_to_gain = 0;
 			}
 
 			//if (renown_to_gain > 0)
 			//{
-			//	ModifyRenown(global_instance->at("__ari").m_Object, self, renown_to_gain);
+			//	ModifyRenown(global_instance->GetRefMember("__ari")->ToInstance(), self, renown_to_gain);
 			//	renown_to_gain = 0;
 			//}
 
@@ -509,11 +500,11 @@ void ObjectCallback(
 		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		if (PerkActive(global_instance->at("__ari").m_Object, self, BACK_IN_VOGUE_PERK_NAME))
+		if (PerkActive(global_instance->GetMember("__ari").ToInstance(), self, BACK_IN_VOGUE_PERK_NAME))
 			active_perk_map[BACK_IN_VOGUE_PERK_NAME] = true;
 		else
 			active_perk_map[BACK_IN_VOGUE_PERK_NAME] = false;
-		if (PerkActive(global_instance->at("__ari").m_Object, self, BACK_IN_VOGUE_TWO_PERK_NAME))
+		if (PerkActive(global_instance->GetMember("__ari").ToInstance(), self, BACK_IN_VOGUE_TWO_PERK_NAME))
 			active_perk_map[BACK_IN_VOGUE_TWO_PERK_NAME] = true;
 		else
 			active_perk_map[BACK_IN_VOGUE_TWO_PERK_NAME] = false;
@@ -590,7 +581,7 @@ RValue& GmlScriptInventorySlotPopCallback(
 			{
 				if (StructVariableExists(Result, "item_id"))
 				{
-					int item_id = RValueAsInt(Result.at("item_id"));
+					int item_id = RValueAsInt(Result.GetMember("item_id"));
 					if (item_id_to_gold_value_map.count(item_id) > 0)
 					{
 						double gold_value = item_id_to_gold_value_map[item_id];
@@ -645,7 +636,7 @@ RValue& GmlScriptInventorySlotDrainCallback(
 			{
 				if (StructVariableExists(Result, "__buffer"))
 				{
-					RValue buffer = Result.at("__buffer");
+					RValue buffer = Result.GetMember("__buffer");
 					size_t buffer_size;
 					g_ModuleInterface->GetArraySize(buffer, buffer_size);
 
@@ -656,7 +647,7 @@ RValue& GmlScriptInventorySlotDrainCallback(
 
 						if (StructVariableExists(*element, "item_id"))
 						{
-							int item_id = RValueAsInt(element->at("item_id"));
+							int item_id = RValueAsInt(element->GetMember("item_id"));
 							if (item_id_to_gold_value_map.count(item_id) > 0)
 							{
 								double gold_value = item_id_to_gold_value_map[item_id];
@@ -695,11 +686,11 @@ RValue& GmlScriptInteractCallback(
 {
 	if (mod_healthy)
 	{
-		RValue object = Arguments[0]->m_Object;
-		int object_id = RValueAsInt(object.at("object_id"));
+		RValue object = Arguments[0]->ToObject();
+		int object_id = RValueAsInt(object.GetMember("object_id"));
 		std::string object_name = object_id_to_name_map[object_id];
 
-		if (object_name.find(CUSTOM_OBJECT_NAME) != std::string::npos)
+		if (object_name.contains(CUSTOM_OBJECT_NAME))
 			custom_object_used = true;
 	}
 
@@ -726,7 +717,7 @@ RValue& GmlScriptPlayConversationCallback(
 	if (mod_healthy && custom_object_used)
 	{
 		custom_object_used = false;
-		custom_conversation_value = SELL_SHIPPING_BIN_CONVERSATION_KEY;
+		custom_conversation_value = RValue(SELL_SHIPPING_BIN_CONVERSATION_KEY);
 		custom_conversation_value_ptr = &custom_conversation_value;
 		Arguments[1] = custom_conversation_value_ptr;
 	}
@@ -762,17 +753,17 @@ RValue& GmlScriptGetLocalizerCallback(
 
 	if (mod_healthy)
 	{
-		std::string localization_key = Arguments[0]->AsString().data();
-		if (localization_key.find(ITEMS_SOLD_NOTIFICATION_KEY) != std::string::npos)
+		std::string localization_key = Arguments[0]->ToString();
+		if (localization_key.contains(ITEMS_SOLD_NOTIFICATION_KEY))
 		{
-			std::string result_str = Result.AsString().data();
+			std::string result_str = Result.ToString();
 			std::string value_str = std::to_string(RValueAsInt(gold_earned));
 
 			// Replace the <VALUE> placeholder.
 			size_t value_placeholder_index = result_str.find(VALUE_PLACEHOLDER_TEXT);
 			if (value_placeholder_index != std::string::npos)
 				result_str.replace(value_placeholder_index, VALUE_PLACEHOLDER_TEXT.length(), value_str);
-			Result = result_str;
+			Result = RValue(result_str);
 		}
 	}
 
@@ -789,11 +780,9 @@ RValue& GmlScriptPlayTextCallback(
 {
 	if (mod_healthy)
 	{
-		std::string conversation_name = Arguments[0]->AsString().data();
-		if (conversation_name.find(SELL_SHIPPING_BIN_DIALOGUE_KEY) != std::string::npos)
-		{
+		std::string conversation_name = Arguments[0]->ToString();
+		if (conversation_name.contains(SELL_SHIPPING_BIN_DIALOGUE_KEY))
 			SellShippingBinItems(Self, Other);
-		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_TEXT));
