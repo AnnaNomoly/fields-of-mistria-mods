@@ -9,7 +9,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "FridayNightReminder";
-static const char* const VERSION = "1.1.0";
+static const char* const VERSION = "1.1.1";
 static const char* const NOTIFICATION_TIME_KEY = "notification_time_in_seconds";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_GET_MINUTES = "gml_Script_get_minutes";
