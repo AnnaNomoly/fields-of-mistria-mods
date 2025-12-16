@@ -7,7 +7,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Telepop";
-static const char* const VERSION = "2.1.0";
+static const char* const VERSION = "2.1.1";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_TELEPORT_ARI_TO_ROOM = "gml_Script_ari_teleport_to_room";
 static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
@@ -423,7 +423,7 @@ bool CreateOrLoadModConfigFile()
 			// Verify the directory now exists.
 			if (!std::filesystem::exists(mod_data_folder))
 			{
-				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the \"mod_data\" directory: ", MOD_NAME, VERSION, mod_data_folder.c_str());
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the \"mod_data\" directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
 				return false;
 			}
 		}
@@ -438,7 +438,7 @@ bool CreateOrLoadModConfigFile()
 			// Verify the directory now exists.
 			if (!std::filesystem::exists(telepop_folder))
 			{
-				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the \"Telepop\" directory: ", MOD_NAME, VERSION, telepop_folder.c_str());
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the \"Telepop\" directory: %s", MOD_NAME, VERSION, telepop_folder.c_str());
 				return false;
 			}
 		}
@@ -582,7 +582,7 @@ bool CreateOrLoadModConfigFile()
 			// Verify the file now exists.
 			if (!std::filesystem::exists(config_file))
 			{
-				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the \"Telepop.json\" file: ", MOD_NAME, VERSION, config_file.c_str());
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to create the \"Telepop.json\" file: %s", MOD_NAME, VERSION, config_file.c_str());
 				return false;
 			}
 
