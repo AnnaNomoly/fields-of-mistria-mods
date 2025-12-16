@@ -1,6 +1,3 @@
-#pragma comment(lib, "Xinput.lib")
-#include <Windows.h>
-#include <Xinput.h>
 #include <map>
 #include <fstream>
 #include <iostream>
@@ -12,7 +9,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "DIY";
-static const char* const VERSION = "1.1.2";
+static const char* const VERSION = "1.1.3";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const UNLOCK_EVERYTHING_KEY = "unlock_everything";
 static const char* const EXAMPLE_FURNITURE_KEY = "example_furniture";
@@ -32,7 +29,7 @@ static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 	"0", "1", "2", "3", "4", "5", "6", "7", "8", "9",
 	"A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z",
 	"INSERT", "DELETE", "HOME", "PAGE_UP", "PAGE_DOWN", "NUM_LOCK", "SCROLL_LOCK", "CAPS_LOCK", "PAUSE_BREAK",
-	"GAMEPAD_A", "GAMEPAD_B", "GAMEPAD_X", "GAMEPAD_Y", "GAMEPAD_LEFT_SHOULDER", "GAMEPAD_RIGHT_SHOULDER", "GAMEPAD_LEFT_TRIGGER", "GAMEPAD_RIGHT_TRIGGER", "GAMEPAD_DPAD_UP", "GAMEPAD_DPAD_DOWN", "GAMEPAD_DPAD_LEFT", "GAMEPAD_DPAD_RIGHT", "GAMEPAD_LEFT_STICK", "GAMEPAD_RIGHT_STICK", "GAMEPAD_BACK", "GAMEPAD_START"
+	"GAMEPAD_A", "GAMEPAD_B", "GAMEPAD_X", "GAMEPAD_Y", "GAMEPAD_LEFT_SHOULDER", "GAMEPAD_RIGHT_SHOULDER", "GAMEPAD_LEFT_TRIGGER", "GAMEPAD_RIGHT_TRIGGER", "GAMEPAD_DPAD_UP", "GAMEPAD_DPAD_DOWN", "GAMEPAD_DPAD_LEFT", "GAMEPAD_DPAD_RIGHT", "GAMEPAD_LEFT_STICK", "GAMEPAD_RIGHT_STICK", "GAMEPAD_SELECT", "GAMEPAD_START"
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
@@ -236,71 +233,61 @@ int ActivationButtonToVirtualKey()
 int ActivationButtonToControllerKey()
 {
 	if (activation_button == "GAMEPAD_A")
-		return XINPUT_GAMEPAD_A;
+		return 0x8001;
 	if (activation_button == "GAMEPAD_B")
-		return XINPUT_GAMEPAD_B;
+		return 0x8002;
 	if (activation_button == "GAMEPAD_X")
-		return XINPUT_GAMEPAD_X;
+		return 0x8003;
 	if (activation_button == "GAMEPAD_Y")
-		return XINPUT_GAMEPAD_Y;
+		return 0x8004;
 	if (activation_button == "GAMEPAD_LEFT_SHOULDER")
-		return XINPUT_GAMEPAD_LEFT_SHOULDER;
+		return 0x8005;
 	if (activation_button == "GAMEPAD_RIGHT_SHOULDER")
-		return XINPUT_GAMEPAD_RIGHT_SHOULDER;
-	if (activation_button == "GAMEPAD_DPAD_UP")
-		return XINPUT_GAMEPAD_DPAD_UP;
-	if (activation_button == "GAMEPAD_DPAD_DOWN")
-		return XINPUT_GAMEPAD_DPAD_DOWN;
-	if (activation_button == "GAMEPAD_DPAD_LEFT")
-		return XINPUT_GAMEPAD_DPAD_LEFT;
-	if (activation_button == "GAMEPAD_DPAD_RIGHT")
-		return XINPUT_GAMEPAD_DPAD_RIGHT;
-	if (activation_button == "GAMEPAD_LEFT_STICK")
-		return XINPUT_GAMEPAD_LEFT_THUMB;
-	if (activation_button == "GAMEPAD_RIGHT_STICK")
-		return XINPUT_GAMEPAD_RIGHT_THUMB;
-	if (activation_button == "GAMEPAD_BACK")
-		return XINPUT_GAMEPAD_BACK;
+		return 0x8006;
+	if (activation_button == "GAMEPAD_LEFT_TRIGGER")
+		return 0x8007;
+	if (activation_button == "GAMEPAD_RIGHT_TRIGGER")
+		return 0x8008;
+	if (activation_button == "GAMEPAD_SELECT")
+		return 0x8009;
 	if (activation_button == "GAMEPAD_START")
-		return XINPUT_GAMEPAD_START;
+		return 0x800A;
+	if (activation_button == "GAMEPAD_LEFT_STICK")
+		return 0x800B;
+	if (activation_button == "GAMEPAD_RIGHT_STICK")
+		return 0x800C;
+	if (activation_button == "GAMEPAD_DPAD_UP")
+		return 0x800D;
+	if (activation_button == "GAMEPAD_DPAD_DOWN")
+		return 0x800E;
+	if (activation_button == "GAMEPAD_DPAD_LEFT")
+		return 0x800F;
+	if (activation_button == "GAMEPAD_DPAD_RIGHT")
+		return 0x8010;
+	return -1;
+}
+
+int GetGamepadSlotNumber()
+{
+	for (int i = 0; i < 12; i++)
+	{
+		RValue gamepad_is_connected = g_ModuleInterface->CallBuiltin("gamepad_is_connected", { i });
+		if (gamepad_is_connected.ToBoolean())
+		{
+			return i;
+		}
+	}
+
 	return -1;
 }
 
 bool CheckControllerInput()
 {
-	XINPUT_STATE state;
-	ZeroMemory(&state, sizeof(XINPUT_STATE));
-
-	if (XInputGetState(0, &state) == ERROR_SUCCESS)
+	int gamepad_slot = GetGamepadSlotNumber();
+	if (gamepad_slot != -1)
 	{
-		WORD buttons = state.Gamepad.wButtons;
-
-		if (activation_button_int_value >= 0)
-		{
-			if (buttons & activation_button_int_value)
-			{
-				processing_user_input = true;
-				return true;
-			}
-		}
-		else if (activation_button == "GAMEPAD_LEFT_TRIGGER")
-		{
-			BYTE left_trigger = state.Gamepad.bLeftTrigger;
-			if (left_trigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
-			{
-				processing_user_input = true;
-				return true;
-			}
-		}
-		else if (activation_button == "GAMEPAD_RIGHT_TRIGGER")
-		{
-			BYTE right_trigger = state.Gamepad.bRightTrigger;
-			if (right_trigger > XINPUT_GAMEPAD_TRIGGER_THRESHOLD)
-			{
-				processing_user_input = true;
-				return true;
-			}
-		}
+		RValue button_pressed = g_ModuleInterface->CallBuiltin("gamepad_button_check_pressed", { gamepad_slot, activation_button_int_value });
+		return button_pressed.ToBoolean();
 	}
 
 	return false;
