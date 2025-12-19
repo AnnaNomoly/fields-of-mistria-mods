@@ -26,7 +26,7 @@ struct pair_hash {
 };
 
 static const char* const MOD_NAME = "DeepDungeon";
-static const char* const VERSION = "0.2.0";
+static const char* const VERSION = "0.5.0";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
@@ -49,8 +49,7 @@ static const char* const GML_SCRIPT_SPAWN_MONSTER = "gml_Script_spawn_monster";
 static const char* const GML_SCRIPT_CAN_CAST_SPELL = "gml_Script_can_cast_spell";
 static const char* const GML_SCRIPT_GET_MOVE_SPEED = "gml_Script_get_move_speed@Ari@Ari";
 static const char* const GML_SCRIPT_DAMAGE = "gml_Script_damage@gml_Object_obj_damage_receiver_Create_0";
-static const char* const GML_SCRIPT_INTERACT = "gml_Script_interact";
-static const char* const GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE = "gml_Script_deserialize@StatusEffectManager@StatusEffectManager";
+static const char* const GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE = "gml_Script_update@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_TAKE_PRESS = "gml_Script_take_press@Input@Input";
 static const char* const GML_SCRIPT_CHECK_VALUE = "gml_Script_check_value@Input@Input";
 static const char* const GML_SCRIPT_ATTEMPT_INTERACT = "gml_Script_attempt_interact@gml_Object_par_interactable_Create_0";
@@ -74,6 +73,7 @@ static const char* const GML_SCRIPT_DESERIALIZE_LIVE_ITEM = "gml_Script_deserial
 static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script_get_treasure_from_distribution";
 static const char* const GML_SCRIPT_CRAFTING_MENU_INITIALIZE = "gml_Script_initialize@CraftingMenu@CraftingMenu";
 static const char* const GML_SCRIPT_CRAFTING_MENU_CLOSE = "gml_Script_on_close@CraftingMenu@CraftingMenu";
+static const char* const GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR = "gml_Script_vertigo_draw_with_color";
 static const std::string SIGIL_OF_ALTERATION_NAME = "sigil_of_alteration";
 static const std::string SIGIL_OF_CONCEALMENT_NAME = "sigil_of_concealment";
 static const std::string SIGIL_OF_FORTIFICATION_NAME = "sigil_of_fortification";
@@ -116,7 +116,7 @@ static const std::string TIDE_CAVERNS_KEY_NAME = "tide_caverns_key";
 static const std::string DEEP_EARTH_KEY_NAME = "deep_earth_key";
 static const std::string LAVA_CAVES_KEY_NAME = "lava_caves_key";
 static const std::string RUINS_KEY_NAME = "ruins_key";
-static const std::string WATER_ORB_NAME = "water_orb";
+static const std::string TIDE_CAVERNS_ORB = "tide_caverns_orb";
 // TODO: Orbs
 static const std::string LIFT_KEY_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/lift_key_restricted";
 static const std::string ORB_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/orb_restricted";
@@ -137,9 +137,10 @@ static const std::string INHIBITING_TRAP_NOTIFICATION_KEY = "Notifications/Mods/
 static const std::string LURING_TRAP_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/Traps/luring";
 static const std::string FLOOR_ENCHANTMENT_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/floor_enchantments";
 static const std::string DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning";
+static const std::string FLOOR_TEN_CONVERSATION_KEY = "Conversations/floor_10/mines_floor_ten";
 static const std::string FLOOR_ENCHANTMENT_AND_DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning_and_floor_enchantments";
 static const std::string PROGRESSION_MODE_ELEVATOR_LOCKED_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Progression Mode/elevator_locked";
-static const std::string BOSS_BATTLE_WATER_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/water_orb";
+static const std::string BOSS_BATTLE_TIDE_CAVERNS_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/tide_caverns_orb";
 static const std::string OFFERINGS_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/offerings/result";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
 static const std::string DREAD_BEAST_WARNING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Special/dread";
@@ -174,7 +175,7 @@ static const int TRAP_ACTIVATION_DISTANCE = 16;
 
 static enum class BossBattle {
 	NONE,
-	WATER_ORB
+	TIDE_CAVERNS_ORB
 	// TODO
 };
 
@@ -890,12 +891,13 @@ void ResetStaticFields(bool returned_to_title_screen)
 	current_floor_monsters.clear();
 	ResetCustomDrawFields();
 }
+
 bool GameIsPaused()
 {
 	CInstance* global_instance = nullptr;
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 	RValue paused = global_instance->GetMember("__pause_status");
-	return paused.m_i64 > 0;
+	return paused.ToInt64() > 0;
 }
 
 bool IsNumeric(RValue value)
@@ -1485,7 +1487,7 @@ void LoadObjectIds()
 void LoadItems()
 {
 	std::unordered_set<std::string> lift_key_names = { TIDE_CAVERNS_KEY_NAME, DEEP_EARTH_KEY_NAME, LAVA_CAVES_KEY_NAME, RUINS_KEY_NAME };
-	std::unordered_set<std::string> orb_item_names = { WATER_ORB_NAME }; // TODO: Add other orbs
+	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB }; // TODO: Add other orbs
 	std::vector<std::string> custom_potions = { SUSTAINING_POTION_NAME, HEALTH_SALVE_NAME, STAMINA_SALVE_NAME, MANA_SALVE_NAME }; // TODO: Change to unordered_set
 	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME, CURSED_BRACELET_NAME }; // TODO: Change to unordered_set
 
@@ -1618,7 +1620,7 @@ void MarkDungeonTutorialUnseen()
 	RValue* mines_tutorial;
 	g_ModuleInterface->GetArrayEntry(tutorials_seen, tutorial_name_to_id_map["mines"], mines_tutorial);
 
-	*mines_tutorial = false; // TESTING - Check this works
+	*mines_tutorial = false; // TODO: This works, but should only be called once per save file.
 }
 
 void ModifyMistpoolWeaponSprites()
@@ -2877,6 +2879,82 @@ RValue GetDynamicItemSprite(int item_id)
 	}
 }
 
+RValue GetDynamicItemSprite(std::string sprite_name)
+{
+	if (sprite_name == "spr_ui_journal_magic_restore_spell_icon_main")
+	{
+		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_disabled" });
+		//else
+		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
+	}
+	if (sprite_name == "spr_ui_journal_magic_rain_spell_icon_main")
+	{
+		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_rain_spell_icon_disabled" });
+		//else
+		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_rain_spell_icon_main" });
+	}
+	if (sprite_name == "spr_ui_journal_magic_growth_spell_icon_main")
+	{
+		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_growth_spell_icon_disabled" });
+		//else
+		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_growth_spell_icon_main" });
+	}
+	if (sprite_name == "spr_ui_journal_magic_fire_spell_icon_main")
+	{
+		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_fire_spell_icon_disabled" });
+		//else
+		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_fire_spell_icon_main" });
+	}
+	if (sprite_name == "spr_ui_dungeon_backplate")
+	{
+		if (!active_floor_enchantments.empty() || !active_offerings.empty())
+		{
+			std::string sprite_name = "backplate";
+			std::string group_one_enchantment_str = "";
+			std::string group_two_enchantment_str = "";
+			std::string group_three_enchantment_str = "";
+			std::string offering_str = "";
+
+			for (FloorEnchantments floor_enchantment : active_floor_enchantments)
+			{
+				auto group_one_enchantment = std::find(GROUP_ONE_FLOOR_ENCHANTMENTS.begin(), GROUP_ONE_FLOOR_ENCHANTMENTS.end(), floor_enchantment);
+				if(group_one_enchantment != GROUP_ONE_FLOOR_ENCHANTMENTS.end())
+					group_one_enchantment_str += magic_enum::enum_name(floor_enchantment);
+
+				auto group_two_enchantment = std::find(GROUP_TWO_FLOOR_ENCHANTMENTS.begin(), GROUP_TWO_FLOOR_ENCHANTMENTS.end(), floor_enchantment);
+				if (group_two_enchantment != GROUP_TWO_FLOOR_ENCHANTMENTS.end())
+					group_two_enchantment_str += magic_enum::enum_name(floor_enchantment);
+
+				auto group_three_enchantment = std::find(GROUP_THREE_FLOOR_ENCHANTMENTS.begin(), GROUP_THREE_FLOOR_ENCHANTMENTS.end(), floor_enchantment);
+				if (group_three_enchantment != GROUP_THREE_FLOOR_ENCHANTMENTS.end())
+					group_three_enchantment_str += magic_enum::enum_name(floor_enchantment);
+			}
+
+			for(Offerings offering : active_offerings)
+				offering_str += magic_enum::enum_name(offering);
+
+			if (!group_one_enchantment_str.empty())
+				sprite_name += "_" + group_one_enchantment_str;
+			if (!group_two_enchantment_str.empty())
+				sprite_name += "_" + group_two_enchantment_str;
+			if (!group_three_enchantment_str.empty())
+				sprite_name += "_" + group_three_enchantment_str;
+			if (!offering_str.empty())
+				sprite_name += "_" + offering_str;
+			
+			std::transform(sprite_name.begin(), sprite_name.end(), sprite_name.begin(), [](unsigned char c) { return std::tolower(c); });
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { RValue(sprite_name) });
+		}
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { RValue("backplate_empty") });
+	}
+	return RValue();
+}
+
 std::unordered_set<FloorEnchantments> RandomFloorEnchantments(bool is_first_floor, DungeonBiomes dungeon_biome)
 {
 	static thread_local std::mt19937 random_generator(std::random_device{}());
@@ -3146,7 +3224,7 @@ void CancelStatusEffect(CInstance* Self, CInstance* Other, RValue status_effect_
 
 void CancelAllStatusEffects()
 {
-	std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
+	std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE];
 
 	// Remove all status effects
 	for (int i = 0; i <= status_effect_name_to_id_map.size(); i++)
@@ -3833,7 +3911,7 @@ void ObjectCallback(
 									}
 									if (held_item_id == sigil_to_item_id_map[Sigils::PROTECTION])
 									{
-										std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
+										std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE];
 
 										active_sigils.insert(Sigils::PROTECTION);
 										RegisterStatusEffect(refs[0], refs[1], status_effect_name_to_id_map["guardians_shield"], RValue(), 1, 2147483647.0);
@@ -3843,7 +3921,7 @@ void ObjectCallback(
 										active_sigils.insert(Sigils::RAGE);
 									if (held_item_id == sigil_to_item_id_map[Sigils::REDEMPTION])
 									{
-										std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
+										std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE];
 
 										active_sigils.insert(Sigils::REDEMPTION);
 										RegisterStatusEffect(refs[0], refs[1], status_effect_name_to_id_map["fairy"], RValue(), 1, 2147483647.0);
@@ -3858,7 +3936,7 @@ void ObjectCallback(
 										// TODO: Check for other Floor Enchantments and Offering effects to cancel as implemented
 										if (active_floor_enchantments.contains(FloorEnchantments::FEY))
 										{
-											std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
+											std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE];
 
 											ModifySpellCosts(true);
 											CancelStatusEffect(refs[0], refs[1], status_effect_name_to_id_map["fairy"]);
@@ -3890,13 +3968,13 @@ void ObjectCallback(
 									biome_reward_disabled = true;
 
 									if (held_item_id == item_name_to_id_map[TIDE_CAVERNS_KEY_NAME])
-										EnterDungeon(19, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+										EnterDungeon(19, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
 									else if (held_item_id == item_name_to_id_map[DEEP_EARTH_KEY_NAME])
-										EnterDungeon(39, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+										EnterDungeon(39, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
 									else if (held_item_id == item_name_to_id_map[LAVA_CAVES_KEY_NAME])
-										EnterDungeon(59, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+										EnterDungeon(59, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
 									else if (held_item_id == item_name_to_id_map[RUINS_KEY_NAME])
-										EnterDungeon(79, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+										EnterDungeon(79, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
 								}
 								else if (orb_item_used)
 								{
@@ -3904,10 +3982,10 @@ void ObjectCallback(
 									biome_reward_disabled = true;
 
 									// TODO
-									if (held_item_id == item_name_to_id_map[WATER_ORB_NAME])
+									if (held_item_id == item_name_to_id_map[TIDE_CAVERNS_ORB])
 									{
-										boss_battle = BossBattle::WATER_ORB;
-										EnterDungeon(19, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1]);
+										boss_battle = BossBattle::TIDE_CAVERNS_ORB;
+										EnterDungeon(19, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
 									}
 								}
 							}
@@ -3952,7 +4030,7 @@ void ObjectCallback(
 		{
 			if (!fairy_buff_applied)
 			{
-				std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE];
+				std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE];
 				RegisterStatusEffect(refs[0], refs[1], status_effect_name_to_id_map["fairy"], RValue(), 1, 2147483647.0);
 				fairy_buff_applied = true;
 			}
@@ -4017,7 +4095,7 @@ void ObjectCallback(
 				}
 
 				// Boss Battles
-				if (boss_battle == BossBattle::WATER_ORB)
+				if (boss_battle == BossBattle::TIDE_CAVERNS_ORB)
 				{
 					if (!StructVariableExists(monster, "__deep_dungeon__boss_monster") && StructVariableExists(monster, "hit_points"))
 					{
@@ -4441,14 +4519,12 @@ RValue& GmlScriptCanCastSpellCallback(
 	if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA))
 	{
 		Result = 0.0;
-		CreateNotification(false, AMNESIA_NOTIFICATION_KEY, Self, Other);
 	}
 
 	// Boss Fights
 	if (boss_battle != BossBattle::NONE)
 	{
 		Result = 0.0;
-		CreateNotification(false, BOSS_BATTLE_SPELL_RESTRICTION_NOTIFICATION_KEY, Self, Other);
 	}
 
 	return Result;
@@ -4474,7 +4550,7 @@ RValue& GmlScriptCastSpellCallback(
 	// Divine Seal (Cleric Set Bonus)
 	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::CLERIC] >= 3 && floor_number != 0)
 	{
-		RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE][1], status_effect_name_to_id_map["fairy"], RValue(), 1, 2147483647.0);
+		RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["fairy"], RValue(), 1, 2147483647.0);
 
 		active_floor_enchantments.clear();
 		active_sigils.insert(Sigils::SERENITY); // Prevent Serenity on the floor so it isn't wasted.
@@ -4663,7 +4739,7 @@ RValue& GmlScriptDamageCallback(
 	return Result;
 }
 
-RValue& GmlScriptInteractCallback(
+RValue& GmlScriptStatusEffectManagerUpdateCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
 	OUT RValue& Result,
@@ -4671,29 +4747,10 @@ RValue& GmlScriptInteractCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_INTERACT));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
-	return Result;
-}
-
-RValue& GmlScriptStatusEffectManagerCallback(
-	IN CInstance* Self,
-	IN CInstance* Other,
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	if (!script_name_to_reference_map.contains(GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE))
-		script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE] = { Self, Other };
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE))
+		script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE] = { Self, Other };
 	
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE));
 	original(
 		Self,
 		Other,
@@ -4894,6 +4951,28 @@ RValue& GmlScriptPlayTextCallback(
 		Arguments
 	);
 
+	return Result;
+}
+
+RValue& GmlScriptPlayConversationCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (game_is_active && floor_number != 0 && FLOOR_TEN_CONVERSATION_KEY == Arguments[1]->ToString())
+		return Result;
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_CONVERSATION));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
 	return Result;
 }
 
@@ -5101,7 +5180,7 @@ RValue& GmlScriptDropItemCallback(
 		else if (Arguments[0]->m_Kind == VALUE_INT64 && Arguments[0]->ToInt64() == item_name_to_id_map["ore_stone"])
 			chance_to_spawn_glowstone = true;
 
-		// TODO: Test if there should be some RNG for dropping glowstone.
+		// TODO: Should there be some RNG for dropping glowstone?
 		if (chance_to_spawn_glowstone)
 		{
 			if (floor_number < 20) // Upper Mines
@@ -5357,9 +5436,9 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	if (!active_offerings.contains(Offerings::DREAD))
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
-		std::uniform_int_distribution<size_t> zero_to_nineteen(0, 19); // TODO: Tune this.
+		std::uniform_int_distribution<size_t> zero_to_fifty(0, 50); // TODO: Tune this.
 
-		int random = zero_to_nineteen(random_generator);
+		int random = zero_to_fifty(random_generator);
 		if (random == 13 && floor_number > 1 && !ari_current_gm_room.contains("seal"))
 			active_offerings.insert(Offerings::DREAD);
 	}
@@ -5434,12 +5513,12 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 
-		if (boss_battle == BossBattle::WATER_ORB)
+		if (boss_battle == BossBattle::TIDE_CAVERNS_ORB)
 		{
 			SpawnMonster(Self, Other, 160, 240, monster_name_to_id_map["rockclod_blue"]); // Left
 			SpawnMonster(Self, Other, 240, 240, monster_name_to_id_map["rockclod_blue"]); // Right
 			SpawnMonster(Self, Other, 200, 256, monster_name_to_id_map["rockclod_blue"]); // Middle
-			PlayConversation(BOSS_BATTLE_WATER_ORB_CONVERSATION_KEY, Self, Other);
+			PlayConversation(BOSS_BATTLE_TIDE_CAVERNS_ORB_CONVERSATION_KEY, Self, Other);
 		}
 	}
 
@@ -5533,7 +5612,7 @@ RValue& GmlScriptGoToRoomCallback(
 		boss_monsters_configured = 0;
 	}
 	else
-		active_offerings.clear(); // TESTING -- Confirm this clears stuff like Reckoning before new monsters spawn and get modified
+		active_offerings.clear();
 
 	return Result;
 }
@@ -5963,6 +6042,40 @@ RValue& GmlScriptCraftingMenuCloseCallback(
 	return Result;
 }
 
+RValue& GmlScriptVertigoDrawWithColorCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (game_is_active)
+	{
+		RValue type = g_ModuleInterface->CallBuiltin("asset_get_type", { *Arguments[0] });
+		if (type.ToInt64() == 1) // asset_sprite
+		{
+			RValue name = g_ModuleInterface->CallBuiltin("sprite_get_name", { *Arguments[0] });
+			std::string name_str = name.ToString();
+
+			RValue dynamic_sprite = GetDynamicItemSprite(name_str);
+			if (dynamic_sprite.m_Kind == VALUE_REF)
+				*Arguments[0] = dynamic_sprite;
+		}
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
 void CreateObjectCallback(AurieStatus& status)
 {
 	status = g_ModuleInterface->CreateCallback(
@@ -6221,57 +6334,30 @@ void CreateHookGmlScriptDamage(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptInteract(AurieStatus& status)
+void CreateHookGmlScriptStatusEffectManagerUpdate(AurieStatus& status)
 {
-	CScript* gml_script_interact = nullptr;
+	CScript* gml_script_status_effect_manager_update = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_INTERACT,
-		(PVOID*)&gml_script_interact
+		GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE,
+		(PVOID*)&gml_script_status_effect_manager_update
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_INTERACT);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		GML_SCRIPT_INTERACT,
-		gml_script_interact->m_Functions->m_ScriptFunction,
-		GmlScriptInteractCallback,
+		GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE,
+		gml_script_status_effect_manager_update->m_Functions->m_ScriptFunction,
+		GmlScriptStatusEffectManagerUpdateCallback,
 		nullptr
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_INTERACT);
-	}
-}
-
-void CreateHookGmlScriptStatusEffectManager(AurieStatus& status)
-{
-	CScript* gml_script_status_effect_manager = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE,
-		(PVOID*)&gml_script_status_effect_manager
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE,
-		gml_script_status_effect_manager->m_Functions->m_ScriptFunction,
-		GmlScriptStatusEffectManagerCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE);
 	}
 }
 
@@ -6381,6 +6467,33 @@ void CreateHookGmlScriptPlayText(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_TEXT);
+	}
+}
+
+void CreateHookGmlScriptPlayConversation(AurieStatus& status)
+{
+	CScript* gml_script_play_conversation = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_PLAY_CONVERSATION,
+		(PVOID*)&gml_script_play_conversation
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_CONVERSATION);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_PLAY_CONVERSATION,
+		gml_script_play_conversation->m_Functions->m_ScriptFunction,
+		GmlScriptPlayConversationCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_PLAY_CONVERSATION);
 	}
 }
 
@@ -6981,6 +7094,33 @@ void CreateHookGmlScriptCraftingMenuClose(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptVertigoDrawWithColor(AurieStatus& status)
+{
+	CScript* gml_script_vertigo_draw_with_color = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR,
+		(PVOID*)&gml_script_vertigo_draw_with_color
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR,
+		gml_script_vertigo_draw_with_color->m_Functions->m_ScriptFunction,
+		GmlScriptVertigoDrawWithColorCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -7072,14 +7212,7 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
-	CreateHookGmlScriptInteract(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-		return status;
-	}
-
-	CreateHookGmlScriptStatusEffectManager(status);
+	CreateHookGmlScriptStatusEffectManagerUpdate(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
@@ -7108,6 +7241,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptPlayText(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptPlayConversation(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
@@ -7262,6 +7402,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptCraftingMenuClose(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptVertigoDrawWithColor(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
