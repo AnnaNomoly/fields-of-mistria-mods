@@ -26,7 +26,7 @@ struct pair_hash {
 };
 
 static const char* const MOD_NAME = "DeepDungeon";
-static const char* const VERSION = "0.5.0";
+static const char* const VERSION = "0.5.1";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
@@ -903,6 +903,11 @@ bool GameIsPaused()
 bool IsNumeric(RValue value)
 {
 	return value.m_Kind == VALUE_INT32 || value.m_Kind == VALUE_INT64 || value.m_Kind == VALUE_REAL;
+}
+
+bool IsObject(RValue value)
+{
+	return value.m_Kind == VALUE_OBJECT;
 }
 
 bool StructVariableExists(RValue the_struct, const char* variable_name)
@@ -1842,7 +1847,7 @@ std::map<int, int> GetClassArmorInfusions()
 			{
 				RValue infusion = item.GetMember("infusion");
 				RValue prototype = item.GetMember("prototype");
-				if (StructVariableExists(prototype, "recipe_key") && CLASS_ARMOR_NAMES.contains(prototype.GetMember("recipe_key").ToString()))
+				if (IsNumeric(infusion) && IsObject(prototype) && StructVariableExists(prototype, "recipe_key") && CLASS_ARMOR_NAMES.contains(prototype.GetMember("recipe_key").ToString()))
 					class_armor_infusions[infusion.ToInt64()]++;
 			}
 		}
