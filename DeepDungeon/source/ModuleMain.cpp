@@ -26,7 +26,7 @@ struct pair_hash {
 };
 
 static const char* const MOD_NAME = "DeepDungeon";
-static const char* const VERSION = "0.5.2";
+static const char* const VERSION = "0.6.0";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
@@ -36,6 +36,8 @@ static const char* const GML_SCRIPT_UPDATE_TOOLBAR_MENU = "gml_Script_update@Too
 static const char* const GML_SCRIPT_ENTER_DUNGEON = "gml_Script_enter_dungeon";
 static const char* const GML_SCRIPT_CANCEL_STATUS_EFFECT = "gml_Script_cancel@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_REGISTER_STATUS_EFFECT = "gml_Script_register@StatusEffectManager@StatusEffectManager";
+static const char* const GML_SCRIPT_VITALS_MENU_SET_HEALTH = "gml_Script_set_health@VitalsMenu@VitalsMenu";
+static const char* const GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH = "gml_Script_set_max_health@VitalsMenu@VitalsMenu";
 static const char* const GML_SCRIPT_GET_MAX_HEALTH = "gml_Script_get_max_health@Ari@Ari";
 static const char* const GML_SCRIPT_GET_HEALTH = "gml_Script_get_health@Ari@Ari";
 static const char* const GML_SCRIPT_SET_HEALTH = "gml_Script_set_health@Ari@Ari";
@@ -74,6 +76,7 @@ static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script
 static const char* const GML_SCRIPT_CRAFTING_MENU_INITIALIZE = "gml_Script_initialize@CraftingMenu@CraftingMenu";
 static const char* const GML_SCRIPT_CRAFTING_MENU_CLOSE = "gml_Script_on_close@CraftingMenu@CraftingMenu";
 static const char* const GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR = "gml_Script_vertigo_draw_with_color";
+static const char* const GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY = "gml_Script_play@SceneAudioPlayer@SceneAudioPlayer";
 static const std::string SIGIL_OF_ALTERATION_NAME = "sigil_of_alteration";
 static const std::string SIGIL_OF_CONCEALMENT_NAME = "sigil_of_concealment";
 static const std::string SIGIL_OF_FORTIFICATION_NAME = "sigil_of_fortification";
@@ -101,7 +104,6 @@ static const std::string CURSED_CHESTPIECE_NAME = "cursed_chestpiece";
 static const std::string CURSED_PANTS_NAME = "cursed_pants";
 static const std::string CURSED_BOOTS_NAME = "cursed_boots";
 static const std::string CURSED_GLOVES_NAME = "cursed_gloves";
-static const std::string CURSED_BRACELET_NAME = "cursed_bracelet";
 static const std::string CLERIC_HELMET_NAME = "cleric_helmet";
 static const std::string CLERIC_CHESTPIECE_NAME = "cleric_chestpiece";
 static const std::string CLERIC_GLOVES_NAME = "cleric_gloves";
@@ -188,11 +190,15 @@ static enum class Classes {
 };
 
 static enum class ManagedSetBonuses { // Set bonuses that have actively managed values.
-	AFFLATUS_MISERY
+	AFFLATUS_MISERY, // Cleric
+	DARK_SEAL, // Dark Knight
+	DRAIN, // Dark Knight
+	SOUL_EATER // Dark Knight
 };
 
 static enum class AriResources {
 	HEALTH,
+	MAX_HEALTH,
 	STAMINA,
 	MANA
 };
@@ -708,6 +714,558 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 		{ 400 + 8, 560 + 8 },
 		{ 384 + 8, 672 + 8 },
 	}},
+	{ "rm_mines_deep_runner", {
+		{ 496 + 8, 128 + 8 },
+		{ 640 + 8, 176 + 8 },
+		{ 720 + 8, 112 + 8 },
+		{ 896 + 8, 128 + 8 },
+		{ 992 + 8, 176 + 8 },
+		{ 1248 + 8, 144 + 8 },
+	}},
+	{ "rm_mines_deep_winding", {
+		{ 464 + 8, 384 + 8 },
+		{ 224 + 8, 560 + 8 },
+		{ 528 + 8, 656 + 8 },
+		{ 608 + 8, 400 + 8 },
+		{ 544 + 8, 256 + 8 },
+		{ 704 + 8, 112 + 8 },
+	}},
+	{ "rm_mines_deep_leap", {
+		{ 448 + 8, 192 + 8 },
+		{ 272 + 8, 288 + 8 },
+		{ 144 + 8, 480 + 8 },
+		{ 544 + 8, 432 + 8 },
+		{ 432 + 8, 544 + 8 },
+		{ 512 + 8, 592 + 8 },
+	}},
+	{ "rm_mines_deep_chambers", {
+		{ 128 + 8, 432 + 8 },
+		{ 304 + 8, 400 + 8 },
+		{ 336 + 8, 176 + 8 },
+		{ 464 + 8, 512 + 8 },
+		{ 368 + 8, 768 + 8 },
+		{ 400 + 8, 896 + 8 },
+	}},
+	{ "rm_mines_deep_spiral", {
+		{ 144 + 8, 560 + 8 },
+		{ 160 + 8, 384 + 8 },
+		{ 352 + 8, 128 + 8 },
+		{ 464 + 8, 256 + 8 },
+		{ 720 + 8, 432 + 8 },
+		{ 608 + 8, 496 + 8 },
+	}},
+	{ "rm_mines_deep_wishbone", {
+		{ 768 + 8, 512 + 8 },
+		{ 736 + 8, 320 + 8 },
+		{ 592 + 8, 368 + 8 },
+		{ 448 + 8, 432 + 8 },
+		{ 464 + 8, 224 + 8 },
+		{ 240 + 8, 304 + 8 },
+	}},
+	{ "rm_mines_deep_key", {
+		{ 240 + 8, 288 + 8 },
+		{ 400 + 8, 400 + 8 },
+		{ 624 + 8, 432 + 8 },
+		{ 832 + 8, 336 + 8 },
+		{ 768 + 8, 576 + 8 },
+		{ 1184 + 8, 272 + 8 },
+	}},
+	{ "rm_mines_deep_scorpio", {
+		{ 240 + 8, 368 + 8 },
+		{ 304 + 8, 272 + 8 },
+		{ 384 + 8, 368 + 8 },
+		{ 512 + 8, 304 + 8 },
+		{ 704 + 8, 496 + 8 },
+		{ 784 + 8, 416 + 8 },
+	}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
 	//{ "", {
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
@@ -734,6 +1292,48 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 	//}},
 };
 
+static const std::vector<std::string> MUSIC_INTERNAL_NAMES = {
+	"Music/Events/DragonCutscene",
+	"Music/Events/SharedLight",
+	"Music/Events/TheSeal",
+	"Music/Events/ThemeOfDarkness",
+	"Music/Location Tracks/AnimalFestival",
+	"Music/Location Tracks/Bathhouse",
+	"Music/Location Tracks/Blacksmith",
+	"Music/Location Tracks/Carpenter",
+	"Music/Location Tracks/Clinic",
+	"Music/Location Tracks/Deep Woods",
+	"Music/Location Tracks/Festival",
+	"Music/Location Tracks/General Store",
+	"Music/Location Tracks/HarvestFestivalTheme",
+	"Music/Location Tracks/InnLessBusy",
+	"Music/Location Tracks/InnMoreBusy",
+	"Music/Location Tracks/MinesEntry",
+	"Music/Location Tracks/Player Home/Day",
+	"Music/Location Tracks/Player Home/Night",
+	"Music/Location Tracks/ShootingStarFestival",
+	"Music/Location Tracks/SpringFestival",
+	"Music/Npc Tracks/Adeline",
+	"Music/Npc Tracks/Balor",
+	"Music/Npc Tracks/Caldarus/Caldarus",
+	"Music/Npc Tracks/Celine/Celine",
+	"Music/Npc Tracks/Eiland",
+	"Music/Npc Tracks/Hayden",
+	"Music/Npc Tracks/Juniper",
+	"Music/Npc Tracks/March",
+	"Music/Npc Tracks/Reina",
+	"Music/Npc Tracks/Ryis",
+	"Music/Npc Tracks/Valen",
+	"Music/Playlists/MinesDeepEarth",
+	"Music/Playlists/MinesLavaCaves",
+	"Music/Playlists/MinesTideCaverns",
+	"Music/Playlists/MinesUpper",
+	"Music/Playlists/Spring",
+	"Music/Playlists/Summer",
+	"Music/Playlists/Fall",
+	"Music/Playlists/Winter",
+};
+
 static YYTKInterface* g_ModuleInterface = nullptr;
 static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
@@ -758,6 +1358,7 @@ static bool obj_dungeon_ladder_down_focused = false;
 static double ari_x = -1;
 static double ari_y = -1;
 static double floor_number = 0;
+static double unmodified_base_health = -1; // TODO
 static int floor_start_time = 0;
 static int current_time_in_seconds = -1;
 static int time_of_last_restoration_tick = -1;
@@ -1494,7 +2095,7 @@ void LoadItems()
 	std::unordered_set<std::string> lift_key_names = { TIDE_CAVERNS_KEY_NAME, DEEP_EARTH_KEY_NAME, LAVA_CAVES_KEY_NAME, RUINS_KEY_NAME };
 	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB }; // TODO: Add other orbs
 	std::vector<std::string> custom_potions = { SUSTAINING_POTION_NAME, HEALTH_SALVE_NAME, STAMINA_SALVE_NAME, MANA_SALVE_NAME }; // TODO: Change to unordered_set
-	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME, CURSED_BRACELET_NAME }; // TODO: Change to unordered_set
+	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME }; // TODO: Change to unordered_set
 
 	size_t array_length;
 	RValue item_data = global_instance->GetMember("__item_data");
@@ -1820,6 +2421,7 @@ std::map<Classes, int> CountEquippedClassArmor()
 		}
 	}
 
+	class_armor_equipped[Classes::DARK_KNIGHT] = 5; // DEBUG - TESTING
 	return class_armor_equipped;
 }
 
@@ -1869,10 +2471,24 @@ int GetClericAutoRegenPotency()
 		return 3;
 }
 
+double GetDarkKnightDrainPotency()
+{
+	int cleric_armor_pieces_equipped = CountEquippedClassArmor()[Classes::DARK_KNIGHT];
+	if (cleric_armor_pieces_equipped == 0)
+		return 0;
+	if (cleric_armor_pieces_equipped < 3)
+		return 0.03;
+	if (cleric_armor_pieces_equipped < 5)
+		return 0.05;
+	if (cleric_armor_pieces_equipped == 5)
+		return 0.08;
+}
+
 void LoadSpellIds()
 {
 	size_t array_length = 0;
 	RValue spell_ids = global_instance->GetMember("__spell__");
+	g_ModuleInterface->GetArraySize(spell_ids, array_length);
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_element;
@@ -2888,31 +3504,30 @@ RValue GetDynamicItemSprite(std::string sprite_name)
 {
 	if (sprite_name == "spr_ui_journal_magic_restore_spell_icon_main")
 	{
-		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+		{
+			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_spell_icon_disabled" });
+			else
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_spell_icon_main" });
+		}
+		else if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_disabled" });
-		//else
-		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
 	}
 	if (sprite_name == "spr_ui_journal_magic_rain_spell_icon_main")
 	{
 		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_rain_spell_icon_disabled" });
-		//else
-		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_rain_spell_icon_main" });
 	}
 	if (sprite_name == "spr_ui_journal_magic_growth_spell_icon_main")
 	{
 		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_growth_spell_icon_disabled" });
-		//else
-		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_growth_spell_icon_main" });
 	}
 	if (sprite_name == "spr_ui_journal_magic_fire_spell_icon_main")
 	{
 		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_fire_spell_icon_disabled" });
-		//else
-		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_fire_spell_icon_main" });
 	}
 	if (sprite_name == "spr_ui_dungeon_backplate")
 	{
@@ -2957,6 +3572,21 @@ RValue GetDynamicItemSprite(std::string sprite_name)
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { RValue("backplate_empty") });
 	}
+	if (sprite_name == "spr_ui_journal_magic_restore_card_icon")
+	{
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_card_icon" });
+	}
+	if (sprite_name == "spr_ui_journal_magic_card_backplate")
+	{
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_sipon_life_card_backplate" });
+	}
+	if (sprite_name == "spr_ui_journal_magic_card_ribbon_restore")
+	{
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_siphon_life" });
+	}
 	return RValue();
 }
 
@@ -2970,7 +3600,8 @@ std::unordered_set<FloorEnchantments> RandomFloorEnchantments(bool is_first_floo
 	if (is_first_floor)
 	{
 		const std::vector<FloorEnchantments> FIRST_FLOOR_POSSIBLE_ENCHANTMENTS = {
-			FloorEnchantments::RESTORATION, FloorEnchantments::SECOND_WIND, FloorEnchantments::HASTE
+			//FloorEnchantments::RESTORATION, FloorEnchantments::SECOND_WIND, FloorEnchantments::HASTE
+			FloorEnchantments::HP_PENALTY
 		};
 
 		std::uniform_int_distribution<size_t> first_floor_distribution(0, FIRST_FLOOR_POSSIBLE_ENCHANTMENTS.size() - 1);
@@ -3260,26 +3891,6 @@ void RegisterStatusEffect(CInstance* Self, CInstance* Other, RValue status_effec
 	);
 }
 
-RValue GetMaxHealth(CInstance* Self, CInstance* Other)
-{
-	CScript* gml_script_get_max_health = nullptr;
-	g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_GET_MAX_HEALTH,
-		(PVOID*)&gml_script_get_max_health
-	);
-
-	RValue result;
-	gml_script_get_max_health->m_Functions->m_ScriptFunction(
-		Self,
-		Other,
-		result,
-		0,
-		nullptr
-	);
-
-	return result;
-}
-
 RValue GetHealth(CInstance* Self, CInstance* Other)
 {
 	CScript* gml_script_get_health = nullptr;
@@ -3339,6 +3950,90 @@ void ModifyHealth(CInstance* Self, CInstance* Other, int value)
 		result,
 		1,
 		{ &health_modifier_ptr }
+	);
+}
+
+RValue GetMaxHealth(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_get_max_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_MAX_HEALTH,
+		(PVOID*)&gml_script_get_max_health
+	);
+
+	RValue result;
+	gml_script_get_max_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		0,
+		nullptr
+	);
+
+	return result;
+}
+
+void SetMaxHealth(CInstance* Self, CInstance* Other, double value)
+{
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	*__ari.GetRefMember("base_health") = value;
+
+	RValue current_health = GetHealth(Self, Other);
+	if (current_health.ToDouble() > value)
+		SetHealth(Self, Other, value);
+}
+
+double ModifyMaxHealth(CInstance* Self, CInstance* Other, double value)
+{
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	double max_health = __ari.GetMember("base_health").ToDouble() + value;
+	*__ari.GetRefMember("base_health") = max_health;
+
+	return max_health;
+}
+
+void VitalsMenuSetHealth(CInstance* Self, CInstance* Other, RValue current_health, RValue max_health)
+{
+	CScript* gml_script_vitals_menu_set_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_VITALS_MENU_SET_HEALTH,
+		(PVOID*)&gml_script_vitals_menu_set_health
+	);
+
+	RValue result;
+	RValue* current_health_ptr = &current_health;
+	RValue* max_health_ptr = &max_health;
+	RValue arg2 = false;
+	RValue* arg2_ptr = &arg2;
+	RValue* argument_array[3] = { current_health_ptr, max_health_ptr, arg2_ptr };
+
+	gml_script_vitals_menu_set_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		3,
+		argument_array
+	);
+}
+
+void VitalsMenuSetMaxHealth(CInstance* Self, CInstance* Other, double value)
+{
+	CScript* gml_script_vitals_menu_set_max_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH,
+		(PVOID*)&gml_script_vitals_menu_set_max_health
+	);
+
+	RValue result;
+	RValue max_health = value;
+	RValue* max_health_ptr = &max_health;
+
+	gml_script_vitals_menu_set_max_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &max_health_ptr }
 	);
 }
 
@@ -3572,6 +4267,7 @@ void ApplyOfferingPenalties(CInstance* Self, CInstance* Other)
 void TrackAriResources(CInstance* Self, CInstance* Other)
 {
 	ari_resource_to_value_map[AriResources::HEALTH] = GetHealth(Self, Other).ToInt64();
+	ari_resource_to_value_map[AriResources::MAX_HEALTH] = GetMaxHealth(Self, Other).ToInt64();
 	ari_resource_to_value_map[AriResources::STAMINA] = GetStamina(Self, Other).ToInt64();
 	ari_resource_to_value_map[AriResources::MANA] = GetMana(Self, Other).ToInt64();
 }
@@ -3788,6 +4484,17 @@ void ObjectCallback(
 
 	if (strstr(self->m_Object->m_Name, "obj_ari"))
 	{
+		if (!script_name_to_reference_map.contains("obj_ari"))
+			script_name_to_reference_map["obj_ari"] = { global_instance->GetRefMember("__ari")->ToInstance(), self };
+
+		// TEMP - DEBUG
+		RValue __ari = *global_instance->GetRefMember("__ari");
+		RValue spells_learned = *__ari.GetRefMember("spells_learned");
+		g_ModuleInterface->CallBuiltin("array_set", { spells_learned, 0, true });
+		g_ModuleInterface->CallBuiltin("array_set", { spells_learned, 1, true });
+		g_ModuleInterface->CallBuiltin("array_set", { spells_learned, 2, true });
+		g_ModuleInterface->CallBuiltin("array_set", { spells_learned, 3, true });
+
 		RValue x;
 		g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
 		ari_x = x.ToDouble();
@@ -4011,23 +4718,41 @@ void ObjectCallback(
 			is_restoration_tracked_interval = false;
 		}
 
+		// Drain (Dark Knight Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN] > 0)
+		{
+			int recovery = 0;
+			int drain_multiplier = class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN];
+			RValue max_health = GetMaxHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
+
+			if (active_floor_enchantments.contains(FloorEnchantments::HP_PENALTY))
+			{	
+				RValue current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
+				int penalty = std::trunc(max_health.ToDouble() * 0.25);
+				int adjusted_max_health = max_health.ToInt64() - penalty;
+				recovery = std::trunc(adjusted_max_health * GetDarkKnightDrainPotency());
+			}
+			else
+			{
+				recovery = std::trunc(max_health.ToDouble() * GetDarkKnightDrainPotency());
+			}
+			
+			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery * drain_multiplier);
+			class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN] = 0;
+		}
+
+		// Soul Eater (Dark Knight Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER] > 0)
+		{
+			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, -1 * class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER]);
+			class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER] = 0;
+		}
+
 		// Second Wind
 		if (is_second_wind_tracked_interval)
 		{
 			ModifyStamina(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
 			is_second_wind_tracked_interval = false;
-		}
-
-		// HP Penalty
-		if (active_floor_enchantments.contains(FloorEnchantments::HP_PENALTY))
-		{
-			RValue max_health = GetMaxHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
-			RValue current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
-
-			int penalty = std::trunc(max_health.ToDouble() * 0.25);
-			int adjusted_max_health = max_health.ToInt64() - penalty;
-			if (current_health.ToInt64() > adjusted_max_health)
-				SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, adjusted_max_health);
 		}
 
 		// Fey
@@ -4137,6 +4862,7 @@ void ObjectCallback(
 				{
 					current_floor_monsters.push_back(self);
 					StructVariableSet(monster, "__deep_dungeon__current_floor_monsters", true);
+					StructVariableSet(monster, "__deep_dungeon__default_hit_points", monster.GetMember("hit_points").ToDouble());
 				}
 
 				// Regular loot drops
@@ -4373,6 +5099,29 @@ RValue& GmlScriptRegisterStatusEffectCallback(
 	return Result;
 }
 
+RValue& GmlScriptVitalsMenuSetMaxHealthCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH))
+		script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH] = { Self, Other };
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
 RValue& GmlScriptModifyHealthCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -4522,15 +5271,15 @@ RValue& GmlScriptCanCastSpellCallback(
 
 	// Amnesia
 	if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA))
-	{
 		Result = 0.0;
-	}
 
 	// Boss Fights
 	if (boss_battle != BossBattle::NONE)
-	{
 		Result = 0.0;
-	}
+	
+	// Dark Seal (Dark Knight Set Bonus)
+	if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0)
+		Result = 0.0;
 
 	return Result;
 }
@@ -4543,6 +5292,36 @@ RValue& GmlScriptCastSpellCallback(
 	IN RValue** Arguments
 )
 {
+	// Dark Seal (Dark Knight Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && floor_number != 0)
+	{
+		for (CInstance* monster : current_floor_monsters)
+		{
+			if (StructVariableExists(monster, "monster_id") && StructVariableExists(monster, "hit_points") && StructVariableExists(monster, "__deep_dungeon__default_hit_points"))
+			{
+				RValue monster_id = monster->GetMember("monster_id");
+				double hit_points = monster->GetMember("hit_points").ToDouble();
+				if (IsNumeric(monster_id) && monster_id.ToInt64() != monster_name_to_id_map["mimic"] && IsNumeric(hit_points) && std::isfinite(hit_points) && hit_points > 0)
+				{
+					double default_hit_points = monster->GetMember("__deep_dungeon__default_hit_points").ToDouble();
+					double siphon_life_amount = std::trunc(default_hit_points * 0.15);
+					hit_points -= siphon_life_amount;
+
+					*monster->GetRefMember("hit_points") = hit_points;
+					double max_health = ModifyMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], siphon_life_amount);					
+					ModifyHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], siphon_life_amount);
+					
+					double current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToDouble();
+					VitalsMenuSetMaxHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], max_health);
+					VitalsMenuSetHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], current_health, max_health);
+				}
+			}
+		}
+
+		class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 1;
+		return Result;
+	}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CAST_SPELL));
 	original(
 		Self,
@@ -4714,6 +5493,58 @@ RValue& GmlScriptDamageCallback(
 		}
 	}
 
+	// Drain (Dark Knight Set Bonus)
+	bool drain_proc = false;
+	if (floor_number != 0 && CountEquippedClassArmor()[Classes::DARK_KNIGHT] > 0 && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
+	{
+		RValue target = Arguments[0]->GetMember("target");
+		if (target.ToInt64() != 1) // Everything not Ari
+		{
+			if (!StructVariableExists(*Arguments[0], "__deep_dungeon__drain_applied"))
+			{
+				std::uniform_int_distribution<size_t> zero_to_one_distribution(0, 1);
+				int random = zero_to_one_distribution(random_generator);
+				if (random == 1) // 50% chance to proc
+				{
+					drain_proc = true;
+					StructVariableSet(*Arguments[0], "__deep_dungeon__drain_applied", true);
+				}
+			}
+		}
+	}
+
+	// Soul Eater (Dark Knight Set Bonus)
+	bool soul_eater_proc = false;
+	int soul_eater_amount = 0;
+	if (floor_number != 0 && CountEquippedClassArmor()[Classes::DARK_KNIGHT] == 5 && !active_sigils.contains(Sigils::RAGE) && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
+	{
+		RValue target = Arguments[0]->GetMember("target");
+		if (target.ToInt64() != 1) // Everything not Ari
+		{
+			double max_health = ari_resource_to_value_map[AriResources::MAX_HEALTH];
+			double current_health = ari_resource_to_value_map[AriResources::HEALTH];
+			bool hp_half_or_higher = (current_health / max_health) >= 0.5 ? true : false;
+
+			if (hp_half_or_higher && !StructVariableExists(*Arguments[0], "__deep_dungeon__soul_eater_applied"))
+			{
+				std::uniform_int_distribution<size_t> zero_to_nine_distribution(0, 9);
+				int random = zero_to_nine_distribution(random_generator);
+				if (random == 7) // 10% chance to proc
+				{
+					soul_eater_amount = std::trunc(current_health * 0.25);
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Current health before \"Soul Eater\" triggered: %d!", MOD_NAME, VERSION, current_health); // DEBUG
+					double damage = Arguments[0]->GetMember("damage").ToDouble() + soul_eater_amount;
+					*Arguments[0]->GetRefMember("damage") = damage;
+					*Arguments[0]->GetRefMember("critical") = true;
+
+					soul_eater_proc = true;
+					StructVariableSet(*Arguments[0], "__deep_dungeon__soul_eater_applied", true);
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - The Dark Knight Set Bonus effect \"Soul Eater\" triggered, increasing your damage by: %d!", MOD_NAME, VERSION, soul_eater_amount);
+				}
+			}
+		}
+	}
+
 	// Sigil of Rage
 	if (active_sigils.contains(Sigils::RAGE))
 	{
@@ -4740,6 +5571,10 @@ RValue& GmlScriptDamageCallback(
 
 	if (afflatus_misery_proc && Result.ToBoolean())
 		class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AFFLATUS_MISERY] = 0;
+	if (drain_proc && Result.ToBoolean())
+		class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN]++;
+	if (soul_eater_proc && Result.ToBoolean())
+		class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER] += soul_eater_amount;
 
 	return Result;
 }
@@ -5294,6 +6129,15 @@ RValue& GmlScriptGetLocalizerCallback(
 
 		classes_to_localized_armor_description_string_map[Classes::CLERIC] = LocalizeString(Self, Other, CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY).ToString();
 	}
+	else if (game_is_active)
+	{
+		if (Arguments[0]->ToString() == "spells/full_restore/name" && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/name");
+		if (Arguments[0]->ToString() == "spells/full_restore/description" && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/description");
+		if (Arguments[0]->ToString() == "spells/full_restore/type" && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/type");
+	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_LOCALIZER));
 	original(
@@ -5320,7 +6164,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
-		if (Arguments[0]->ToString() == OFFERINGS_PLACEHOLDER_TEXT_KEY)
+		else if (Arguments[0]->ToString() == OFFERINGS_PLACEHOLDER_TEXT_KEY)
 		{
 			std::string custom_text = "";
 			for (auto it = queued_offerings.begin(); it != queued_offerings.end();)
@@ -5334,7 +6178,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
-		if (Arguments[0]->ToString() == CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY && !crafting_menu_open)
+		else if (Arguments[0]->ToString() == CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY && !crafting_menu_open)
 		{
 			int cleric_armor_pieces_equipped = CountEquippedClassArmor()[Classes::CLERIC];
 
@@ -5357,6 +6201,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
+
 	}
 
 	return Result;
@@ -5466,6 +6311,12 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
 
+	// Reset any floor specific set bonus effects.
+	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
+
+	// Track Unmodified Max HP
+	unmodified_base_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToDouble();
+
 	// Toggle reward on seal rooms in progression mode
 	if (progression_mode && ari_current_gm_room.contains("seal") && !biome_reward_disabled)
 		drop_biome_reward = true;
@@ -5509,6 +6360,20 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+		// HP Penalty
+		if (active_floor_enchantments.contains(FloorEnchantments::HP_PENALTY))
+		{
+			RValue max_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]);
+			int penalty = std::trunc(max_health.ToDouble() * 0.25);
+			int adjusted_max_health = max_health.ToInt64() - penalty;
+
+			SetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], adjusted_max_health);
+			double current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToDouble();
+
+			VitalsMenuSetMaxHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], adjusted_max_health);
+			VitalsMenuSetHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], current_health, adjusted_max_health);
+		}
 	}
 	else if (boss_battle != BossBattle::NONE)
 	{
@@ -5583,6 +6448,22 @@ RValue& GmlScriptGoToRoomCallback(
 	if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 
+	// Reset any floor specific set bonus effects.
+	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
+
+	// Reset Max HP Adjustments
+	if (unmodified_base_health != -1)
+	{
+		SetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], unmodified_base_health);
+		double current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToDouble();
+
+		VitalsMenuSetMaxHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], unmodified_base_health);
+		VitalsMenuSetHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], current_health, unmodified_base_health);
+		//ModifyHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], 1); // testing
+		//ModifyHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], -1); // testing
+		unmodified_base_health = -1;
+	}
+
 	if (ari_current_location == "dungeon" && (!ari_current_gm_room.contains("rm_mines") || ari_current_gm_room == "rm_mines_entry")) // TODO: Don't use ari_current_location
 	{
 		// TODO: Run logic to actually undo all active floor enchantments.
@@ -5615,6 +6496,7 @@ RValue& GmlScriptGoToRoomCallback(
 		sigil_of_alteration_count = 0;
 		dread_beast_monster_id = -1;
 		boss_monsters_configured = 0;
+		class_name_to_set_bonus_effect_value_map.clear();
 	}
 	else
 		active_offerings.clear();
@@ -5842,7 +6724,7 @@ RValue& GmlScriptGetUiIconCallback(
 		Arguments
 	);
 
-	if (Self != nullptr)
+	if (Self != nullptr && !crafting_menu_open)
 	{
 		RValue self = Self->ToRValue();
 		if (StructVariableExists(self, "item_id"))
@@ -6055,7 +6937,7 @@ RValue& GmlScriptVertigoDrawWithColorCallback(
 	IN RValue** Arguments
 )
 {
-	if (game_is_active)
+	if (game_is_active && !crafting_menu_open)
 	{
 		RValue type = g_ModuleInterface->CallBuiltin("asset_get_type", { *Arguments[0] });
 		if (type.ToInt64() == 1) // asset_sprite
@@ -6070,6 +6952,33 @@ RValue& GmlScriptVertigoDrawWithColorCallback(
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptSceneAudioPlayerPlayCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (game_is_active && AriCurrentGmRoomIsDungeonFloor())
+	{
+		static thread_local std::mt19937 random_generator(std::random_device{}());
+		std::uniform_int_distribution<size_t> game_music_distribution(0, MUSIC_INTERNAL_NAMES.size() - 1);
+		*Arguments[0] = RValue(MUSIC_INTERNAL_NAMES.at(game_music_distribution(random_generator)));
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY));
 	original(
 		Self,
 		Other,
@@ -6147,6 +7056,33 @@ void CreateHookGmlScriptRegisterStatusEffect(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_REGISTER_STATUS_EFFECT);
+	}
+}
+
+void CreateHookGmlScriptVitalsMenuSetMaxHealth(AurieStatus& status)
+{
+	CScript* gml_script_vitals_menu_set_max_health = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH,
+		(PVOID*)&gml_script_vitals_menu_set_max_health
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH,
+		gml_script_vitals_menu_set_max_health->m_Functions->m_ScriptFunction,
+		GmlScriptVitalsMenuSetMaxHealthCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH);
 	}
 }
 
@@ -7126,6 +8062,33 @@ void CreateHookGmlScriptVertigoDrawWithColor(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptSceneAudioPlayerPlay(AurieStatus& status)
+{
+	CScript* gml_script_scene_audio_player_play = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY,
+		(PVOID*)&gml_script_scene_audio_player_play
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY,
+		gml_script_scene_audio_player_play->m_Functions->m_ScriptFunction,
+		GmlScriptSceneAudioPlayerPlayCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -7162,6 +8125,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptRegisterStatusEffect(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptVitalsMenuSetMaxHealth(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
@@ -7414,6 +8384,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptVertigoDrawWithColor(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptSceneAudioPlayerPlay(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
