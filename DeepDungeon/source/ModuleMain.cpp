@@ -119,6 +119,7 @@ static const std::string DEEP_EARTH_KEY_NAME = "deep_earth_key";
 static const std::string LAVA_CAVES_KEY_NAME = "lava_caves_key";
 static const std::string RUINS_KEY_NAME = "ruins_key";
 static const std::string TIDE_CAVERNS_ORB = "tide_caverns_orb";
+static const std::string DEEP_EARTH_ORB = "deep_earth_orb";
 // TODO: Orbs
 static const std::string LIFT_KEY_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/lift_key_restricted";
 static const std::string ORB_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/orb_restricted";
@@ -143,6 +144,7 @@ static const std::string FLOOR_TEN_CONVERSATION_KEY = "Conversations/floor_10/mi
 static const std::string FLOOR_ENCHANTMENT_AND_DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning_and_floor_enchantments";
 static const std::string PROGRESSION_MODE_ELEVATOR_LOCKED_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Progression Mode/elevator_locked";
 static const std::string BOSS_BATTLE_TIDE_CAVERNS_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/tide_caverns_orb";
+static const std::string BOSS_BATTLE_DEEP_EARTH_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/deep_earth_orb";
 static const std::string OFFERINGS_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/offerings/result";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
 static const std::string DREAD_BEAST_WARNING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Special/dread";
@@ -177,7 +179,8 @@ static const int TRAP_ACTIVATION_DISTANCE = 16;
 
 static enum class BossBattle {
 	NONE,
-	TIDE_CAVERNS_ORB
+	TIDE_CAVERNS_ORB,
+	DEEP_EARTH_ORB
 	// TODO
 };
 
@@ -778,54 +781,54 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 		{ 704 + 8, 496 + 8 },
 		{ 784 + 8, 416 + 8 },
 	}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
+	{ "rm_mines_deep_butterfly", {
+		{ 640 + 8, 240 + 8 },
+		{ 528 + 8, 256 + 8 },
+		{ 160 + 8, 240 + 8 },
+		{ 240 + 8, 528 + 8 },
+		{ 400 + 8, 464 + 8 },
+		{ 576 + 8, 528 + 8 },
+	}},
+	{ "rm_mines_deep_41", {
+		{ 432 + 8, 176 + 8 },
+		{ 256 + 8, 272 + 8 },
+		{ 320 + 8, 384 + 8 },
+		{ 416 + 8, 384 + 8 },
+		{ 512 + 8, 448 + 8 },
+		{ 560 + 8, 352 + 8 },
+	}},
+	{ "rm_mines_deep_45", {
+		{ 368 + 8, 352 + 8 },
+		{ 512 + 8, 336 + 8 },
+		{ 544 + 8, 240 + 8 },
+		{ 672 + 8, 272 + 8 },
+		{ 624 + 8, 384 + 8 },
+		{ 576 + 8, 528 + 8 },
+	}},
+	{ "rm_mines_deep_50", {
+		{ 656 + 8, 368 + 8 },
+		{ 512 + 8, 448 + 8 },
+		{ 416 + 8, 512 + 8 },
+		{ 384 + 8, 304 + 8 },
+		{ 448 + 8, 224 + 8 },
+		{ 512 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_deep_55", {
+		{ 592 + 8, 464 + 8 },
+		{ 736 + 8, 448 + 8 },
+		{ 832 + 8, 416 + 8 },
+		{ 832 + 8, 224 + 8 },
+		{ 688 + 8, 144 + 8 },
+		{ 528 + 8, 256 + 8 },
+	}},
+	{ "rm_mines_deep_switch1", {
+		{ 464 + 8, 368 + 8 },
+		{ 400 + 8, 208 + 8 },
+		{ 272 + 8, 160 + 8 },
+		{ 208 + 8, 368 + 8 },
+		{ 288 + 8, 432 + 8 },
+		{ 400 + 8, 592 + 8 },
+	}},
 	//{ "", {
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
@@ -2093,7 +2096,7 @@ void LoadObjectIds()
 void LoadItems()
 {
 	std::unordered_set<std::string> lift_key_names = { TIDE_CAVERNS_KEY_NAME, DEEP_EARTH_KEY_NAME, LAVA_CAVES_KEY_NAME, RUINS_KEY_NAME };
-	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB }; // TODO: Add other orbs
+	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB, DEEP_EARTH_ORB }; // TODO: Add other orbs
 	std::vector<std::string> custom_potions = { SUSTAINING_POTION_NAME, HEALTH_SALVE_NAME, STAMINA_SALVE_NAME, MANA_SALVE_NAME }; // TODO: Change to unordered_set
 	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME }; // TODO: Change to unordered_set
 
@@ -2421,7 +2424,7 @@ std::map<Classes, int> CountEquippedClassArmor()
 		}
 	}
 
-	class_armor_equipped[Classes::DARK_KNIGHT] = 5; // DEBUG - TESTING
+	//class_armor_equipped[Classes::DARK_KNIGHT] = 5; // DEBUG - TESTING
 	return class_armor_equipped;
 }
 
@@ -2758,9 +2761,29 @@ void ModifyStalagmiteAttackPatterns(bool is_boss_battle, RValue monster)
 	{
 		if (is_boss_battle)
 		{
-			// TODO: Set the mode based on the number of bosses spawned (see Rockclod boss logic) instead of randomizing.
-			Modes mode = magic_enum::enum_value<Modes>(random_mode_distribution(random_generator));
+			Modes mode = Modes::CHECKERBOARD;
 			StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+			boss_monsters_configured++;
+
+			// TODO: Use these if a way to spawn multiple stalagmites on a floor is discovered
+			//if (boss_monsters_configured == 0)
+			//{
+			//	Modes mode = Modes::DONUT_PB;
+			//	StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+			//	boss_monsters_configured++;
+			//}
+			//else if (boss_monsters_configured == 1)
+			//{
+			//	Modes mode = Modes::CROSS_X;
+			//	StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+			//	boss_monsters_configured++;
+			//}
+			//else if (boss_monsters_configured == 2)
+			//{
+			//	Modes mode = Modes::CHECKERBOARD;
+			//	StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+			//	boss_monsters_configured++;
+			//}
 		}
 		else
 		{
@@ -2778,8 +2801,6 @@ void ModifyStalagmiteAttackPatterns(bool is_boss_battle, RValue monster)
 		{
 			// Randomly choose starting attack. Each pattern has two alternating attacks.
 			int starting_pattern = zero_to_one_distribution(random_generator);
-
-			// TODO: Have separate logic for bosses.
 
 			RValue config = monster.GetMember("config");
 			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
@@ -3056,6 +3077,105 @@ void ModifySaplingAttackPatterns(RValue monster, int monster_id)
 	}
 }
 
+void ModifyShroomAttackPatterns(RValue monster)
+{
+	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
+	if (!wait_to_change_attack_pattern_exists.ToBoolean())
+		StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
+	RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
+
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
+
+			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "spew_lava", true);
+			StructVariableSet(config_clone, "lava_damage", 1);
+			StructVariableSet(config_clone, "lava_angle", 90);
+			StructVariableSet(config_clone, "lava_distance", 16);
+			StructVariableSet(config_clone, "lava_timer", 500); // 300
+			StructVariableSet(config_clone, "lava_count", 4);
+			StructVariableSet(config_clone, "attack_radius", 704);
+			StructVariableSet(config_clone, "hide_radius", 360);
+			StructVariableSet(config_clone, "shadow_threshold", 0.1);
+			StructVariableSet(config_clone, "fade_in_rate", 0.1);
+			StructVariableSet(config_clone, "fade_out_rate", 0.1);
+			StructVariableSet(config_clone, "windup_friction", 0.93 ); // 0.93
+			StructVariableSet(config_clone, "push_force", 100);
+			StructVariableSet(config_clone, "ari_bounce_distance", 100);
+
+			RValue acknowledgment = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { acknowledgment, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { acknowledgment, 1, 1 });
+			StructVariableSet(config_clone, "acknowledgment", acknowledgment);
+
+			RValue tired = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { tired, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { tired, 1, 1 });
+			StructVariableSet(config_clone, "tired", tired);
+
+			RValue windup = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { windup, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { windup, 1, 1 });
+			StructVariableSet(config_clone, "windup", windup);
+
+			RValue wiggle = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { wiggle, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { wiggle, 1, 1 });
+			StructVariableSet(config_clone, "wiggle", wiggle);
+
+			StructVariableSet(monster, "config", config_clone);
+			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+		}
+	}
+}
+
+void ModifyEnchanternAttackPatterns(RValue monster)
+{
+	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
+	if (!wait_to_change_attack_pattern_exists.ToBoolean())
+		StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
+	RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
+
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
+
+			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "charge_speed", 3);
+			StructVariableSet(config_clone, "flee_speed", 2);
+			StructVariableSet(config_clone, "attack_radius", 384);
+			StructVariableSet(config_clone, "drops_balls", true);
+
+			RValue charge_timer = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { charge_timer, 0, 360 }); // 540
+			g_ModuleInterface->CallBuiltin("array_set", { charge_timer, 1, 400 }); // 600
+			StructVariableSet(config_clone, "charge_timer", charge_timer);
+
+			RValue projectile_timer = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { projectile_timer, 0, 200 }); // 400
+			g_ModuleInterface->CallBuiltin("array_set", { projectile_timer, 1, 400 }); // 800
+			StructVariableSet(config_clone, "projectile_timer", projectile_timer);
+
+			RValue flee_timer = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { flee_timer, 0, 180 }); // 120
+			g_ModuleInterface->CallBuiltin("array_set", { flee_timer, 1, 200 }); // 160
+			StructVariableSet(config_clone, "flee_timer", flee_timer);
+	
+			StructVariableSet(monster, "config", config_clone);
+			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+		}
+	}
+}
+
 void ModifyDreadBeastAttackPatterns(bool is_boss_battle, RValue monster)
 {
 	int monster_id = monster.GetMember("monster_id").ToInt64();
@@ -3065,6 +3185,10 @@ void ModifyDreadBeastAttackPatterns(bool is_boss_battle, RValue monster)
 		ModifyStalagmiteAttackPatterns(is_boss_battle, monster);
 	if (monster_id == monster_name_to_id_map["sapling"] || monster_id == monster_name_to_id_map["sapling_blue"] || monster_id == monster_name_to_id_map["sapling_purple"] || monster_id == monster_name_to_id_map["sapling_orange"])
 		ModifySaplingAttackPatterns(monster, monster_id);
+	if (monster_id == monster_name_to_id_map["mushroom"] || monster_id == monster_name_to_id_map["mushroom_green"] || monster_id == monster_name_to_id_map["mushroom_blue"] || monster_id == monster_name_to_id_map["mushroom_purple"])
+		ModifyShroomAttackPatterns(monster);
+	if (monster_id == monster_name_to_id_map["enchantern"] || monster_id == monster_name_to_id_map["enchantern_blue"])
+		ModifyEnchanternAttackPatterns(monster);
 }
 
 void CreateNotification(bool ignore_cooldown, std::string notification_localization_str, CInstance* Self, CInstance* Other)
@@ -3267,7 +3391,7 @@ void SetFloorNumber()
 		floor_number = 10;
 	else if (ari_current_gm_room == "rm_mines_upper_elevator15")
 		floor_number = 15;
-	else if (ari_current_gm_room == "rm_water_seal")
+	else if (ari_current_gm_room == "rm_water_seal" || ari_current_gm_room == "rm_mines_tide_ritual_chamber")
 		floor_number = 20;
 	else if (ari_current_gm_room == "rm_mines_tide_floor21")
 		floor_number = 21;
@@ -3277,7 +3401,7 @@ void SetFloorNumber()
 		floor_number = 30;
 	else if (ari_current_gm_room == "rm_mines_tide_elevator35")
 		floor_number = 35;
-	else if (ari_current_gm_room == "rm_earth_seal")
+	else if (ari_current_gm_room == "rm_earth_seal" || ari_current_gm_room == "rm_mines_deep_ritual_chamber")
 		floor_number = 40;
 	else if (ari_current_gm_room == "rm_mines_deep_41")
 		floor_number = 41;
@@ -3287,7 +3411,7 @@ void SetFloorNumber()
 		floor_number = 50;
 	else if (ari_current_gm_room == "rm_mines_deep_55")
 		floor_number = 55;
-	else if (ari_current_gm_room == "rm_fire_seal")
+	else if (ari_current_gm_room == "rm_fire_seal" || ari_current_gm_room == "rm_mines_lava_ritual_chamber")
 		floor_number = 60;
 	else if (ari_current_gm_room == "rm_mines_lava_61")
 		floor_number = 61;
@@ -3297,7 +3421,7 @@ void SetFloorNumber()
 		floor_number = 70;
 	else if (ari_current_gm_room == "rm_mines_lava_75")
 		floor_number = 75;
-	else if (ari_current_gm_room == "rm_ruins_seal")
+	else if (ari_current_gm_room == "rm_ruins_seal" || ari_current_gm_room == "rm_mines_ruins_ritual_chamber")
 		floor_number = 80;
 	// TODO: Add Ruins floors when released.
 	else
@@ -3601,7 +3725,7 @@ std::unordered_set<FloorEnchantments> RandomFloorEnchantments(bool is_first_floo
 	{
 		const std::vector<FloorEnchantments> FIRST_FLOOR_POSSIBLE_ENCHANTMENTS = {
 			//FloorEnchantments::RESTORATION, FloorEnchantments::SECOND_WIND, FloorEnchantments::HASTE
-			FloorEnchantments::HP_PENALTY
+			FloorEnchantments::HP_PENALTY // TESTING
 		};
 
 		std::uniform_int_distribution<size_t> first_floor_distribution(0, FIRST_FLOOR_POSSIBLE_ENCHANTMENTS.size() - 1);
@@ -4693,11 +4817,16 @@ void ObjectCallback(
 									orb_item_used = false;
 									biome_reward_disabled = true;
 
-									// TODO
+									// TODO: Other orbs
 									if (held_item_id == item_name_to_id_map[TIDE_CAVERNS_ORB])
 									{
 										boss_battle = BossBattle::TIDE_CAVERNS_ORB;
 										EnterDungeon(19, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
+									}
+									else if (held_item_id == item_name_to_id_map[DEEP_EARTH_ORB])
+									{
+										boss_battle = BossBattle::DEEP_EARTH_ORB;
+										EnterDungeon(39, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
 									}
 								}
 							}
@@ -4833,7 +4962,20 @@ void ObjectCallback(
 						if (std::isfinite(hit_points))
 						{
 							*monster.GetRefMember("hit_points") = hit_points * 20; // TODO: Tune this.
-
+							StructVariableSet(monster, "__deep_dungeon__boss_monster", true);
+						}
+					}
+					else if (StructVariableExists(monster, "__deep_dungeon__boss_monster"))
+						ModifyDreadBeastAttackPatterns(true, monster);
+				}
+				else if (boss_battle == BossBattle::DEEP_EARTH_ORB)
+				{
+					if (!StructVariableExists(monster, "__deep_dungeon__boss_monster") && StructVariableExists(monster, "hit_points"))
+					{
+						double hit_points = monster.GetMember("hit_points").ToDouble();
+						if (std::isfinite(hit_points))
+						{
+							*monster.GetRefMember("hit_points") = hit_points * 5; // TODO: Tune this.
 							StructVariableSet(monster, "__deep_dungeon__boss_monster", true);
 						}
 					}
@@ -5532,7 +5674,7 @@ RValue& GmlScriptDamageCallback(
 				if (random == 7) // 10% chance to proc
 				{
 					soul_eater_amount = std::trunc(current_health * 0.25);
-					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Current health before \"Soul Eater\" triggered: %d!", MOD_NAME, VERSION, current_health); // DEBUG
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Current health before \"Soul Eater\" triggered: %d!", MOD_NAME, VERSION, static_cast<int>(current_health)); // DEBUG
 					double damage = Arguments[0]->GetMember("damage").ToDouble() + soul_eater_amount;
 					*Arguments[0]->GetRefMember("damage") = damage;
 					*Arguments[0]->GetRefMember("critical") = true;
@@ -6387,8 +6529,19 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		{
 			SpawnMonster(Self, Other, 160, 240, monster_name_to_id_map["rockclod_blue"]); // Left
 			SpawnMonster(Self, Other, 240, 240, monster_name_to_id_map["rockclod_blue"]); // Right
-			SpawnMonster(Self, Other, 200, 256, monster_name_to_id_map["rockclod_blue"]); // Middle
+			SpawnMonster(Self, Other, 192, 272, monster_name_to_id_map["rockclod_blue"]); // Middle
 			PlayConversation(BOSS_BATTLE_TIDE_CAVERNS_ORB_CONVERSATION_KEY, Self, Other);
+		}
+		else if (boss_battle == BossBattle::DEEP_EARTH_ORB)
+		{
+			// TODO: Use these if a way to spawn multiple stalagmites on a floor is discovered
+			//SpawnMonster(Self, Other, 96, 240, monster_name_to_id_map["stalagmite"]); // Left
+			//SpawnMonster(Self, Other, 288, 240, monster_name_to_id_map["stalagmite"]); // Right
+
+			SpawnMonster(Self, Other, 144, 208, monster_name_to_id_map["enchantern_blue"]); // Left
+			SpawnMonster(Self, Other, 240, 208, monster_name_to_id_map["enchantern_blue"]); // Right
+			SpawnMonster(Self, Other, 192, 240, monster_name_to_id_map["stalagmite"]); // Middle
+			PlayConversation(BOSS_BATTLE_DEEP_EARTH_ORB_CONVERSATION_KEY, Self, Other);
 		}
 	}
 
@@ -6414,7 +6567,14 @@ RValue& GmlScriptGoToRoomCallback(
 )
 {
 	ResetCustomDrawFields();
-	if (boss_battle != BossBattle::NONE && ari_current_gm_room.contains("seal"))
+
+	// Teleport Ari to the ritual chamber for boss battles.
+	if(boss_battle == BossBattle::TIDE_CAVERNS_ORB && !ari_current_gm_room.contains("ritual_chamber"))
+		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_tide_ritual_chamber" });
+	else if (boss_battle == BossBattle::DEEP_EARTH_ORB && !ari_current_gm_room.contains("ritual"))
+		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_deep_ritual_chamber" });
+	// End Boss Battles when leaving the ritual floor.
+	else if (boss_battle != BossBattle::NONE && ari_current_gm_room.contains("ritual"))
 		boss_battle = BossBattle::NONE;
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GO_TO_ROOM));
@@ -6430,16 +6590,8 @@ RValue& GmlScriptGoToRoomCallback(
 	RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
 	ari_current_gm_room = room_name.ToString();
 
-	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry")
+	if ((ari_current_gm_room.contains("rm_mines") || ari_current_gm_room.contains("seal")) && ari_current_gm_room != "rm_mines_entry")
 		SetFloorNumber();
-	else if (ari_current_gm_room == "rm_water_seal")
-		floor_number = 20;
-	else if (ari_current_gm_room == "rm_earth_seal")
-		floor_number = 40;
-	else if (ari_current_gm_room == "rm_fire_seal")
-		floor_number = 60;
-	else if (ari_current_gm_room == "rm_ruins_seal")
-		floor_number = 80;
 	else
 		floor_number = 0;
 
@@ -6808,7 +6960,7 @@ RValue& GmlScriptSpawnLadderCallback(
 	IN RValue** Arguments
 )
 {
-	if (ari_current_gm_room.contains("seal"))
+	if (ari_current_gm_room.contains("seal") || ari_current_gm_room.contains("ritual_chamber"))
 		return Result;
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SPAWN_LADDER));
