@@ -15,6 +15,7 @@ static const char* const GML_SCRIPT_GET_ITEM_UI_ICON = "gml_Script_get_ui_icon@a
 static const char* const GML_SCRIPT_DAMAGE = "gml_Script_damage@gml_Object_obj_damage_receiver_Create_0";
 static const char* const GML_SCRIPT_USE_ITEM = "gml_Script_use_item";
 static const char* const GML_SCRIPT_HELD_ITEM = "gml_Script_held_item@Ari@Ari";
+static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 
@@ -56,11 +57,11 @@ static const std::map<std::string, Sigils> item_name_to_sigil_map = {
 static YYTKInterface* g_ModuleInterface = nullptr;
 static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
+static bool unlock_recipes = true;
 static bool sigil_item_used = false;
 static bool sigil_of_silence = false;
 static double ari_x = -1;
 static double ari_y = -1;
-static int floor_number = 0;
 static int held_item_id = -1;
 static std::string ari_current_gm_room = "";
 static std::unordered_set<Sigils> active_sigils = {};
@@ -74,20 +75,16 @@ static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_m
 
 void ResetStaticFields()
 {
+	unlock_recipes = true;
 	sigil_item_used = false;
 	sigil_of_silence = false;
 	ari_x = -1;
 	ari_y = -1;
-	floor_number = 0;
 	held_item_id = -1;
 	ari_current_gm_room = "";
 	active_sigils.clear();
 	notification_name_to_last_display_time_map.clear();
 	script_name_to_reference_map.clear();
-}
-
-uint64_t GetCurrentSystemTime() {
-	return duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 bool GameIsPaused()
@@ -98,14 +95,8 @@ bool GameIsPaused()
 	return paused.ToInt64() > 0;
 }
 
-bool IsNumeric(RValue value)
-{
-	return value.m_Kind == VALUE_INT32 || value.m_Kind == VALUE_INT64 || value.m_Kind == VALUE_REAL;
-}
-
-bool IsObject(RValue value)
-{
-	return value.m_Kind == VALUE_OBJECT;
+uint64_t GetCurrentSystemTime() {
+	return duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
 }
 
 bool StructVariableExists(RValue the_struct, const char* variable_name)
@@ -205,51 +196,17 @@ bool AriCurrentGmRoomIsDungeonFloor()
 	return ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal");
 }
 
-void SetFloorNumber()
+void UnlockRecipe(int item_id, CInstance* Self, CInstance* Other)
 {
-	if (ari_current_gm_room == "rm_mines_upper_floor1")
-		floor_number = 1;
-	else if (ari_current_gm_room == "rm_mines_upper_elevator5")
-		floor_number = 5;
-	else if (ari_current_gm_room == "rm_mines_upper_elevator10")
-		floor_number = 10;
-	else if (ari_current_gm_room == "rm_mines_upper_elevator15")
-		floor_number = 15;
-	else if (ari_current_gm_room == "rm_water_seal")
-		floor_number = 20;
-	else if (ari_current_gm_room == "rm_mines_tide_floor21")
-		floor_number = 21;
-	else if (ari_current_gm_room == "rm_mines_tide_elevator25")
-		floor_number = 25;
-	else if (ari_current_gm_room == "rm_mines_tide_elevator30")
-		floor_number = 30;
-	else if (ari_current_gm_room == "rm_mines_tide_elevator35")
-		floor_number = 35;
-	else if (ari_current_gm_room == "rm_earth_seal")
-		floor_number = 40;
-	else if (ari_current_gm_room == "rm_mines_deep_41")
-		floor_number = 41;
-	else if (ari_current_gm_room == "rm_mines_deep_45")
-		floor_number = 45;
-	else if (ari_current_gm_room == "rm_mines_deep_50")
-		floor_number = 50;
-	else if (ari_current_gm_room == "rm_mines_deep_55")
-		floor_number = 55;
-	else if (ari_current_gm_room == "rm_fire_seal")
-		floor_number = 60;
-	else if (ari_current_gm_room == "rm_mines_lava_61")
-		floor_number = 61;
-	else if (ari_current_gm_room == "rm_mines_lava_65")
-		floor_number = 65;
-	else if (ari_current_gm_room == "rm_mines_lava_70")
-		floor_number = 70;
-	else if (ari_current_gm_room == "rm_mines_lava_75")
-		floor_number = 75;
-	else if (ari_current_gm_room == "rm_ruins_seal")
-		floor_number = 80;
-	// TODO: Add Ruins floors when released.
-	else
-		floor_number++;
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue recipe_unlocks = *__ari.GetRefMember("recipe_unlocks");
+	bool new_recipe_unlocked = false;
+
+	if (recipe_unlocks[item_id].m_Real == 0.0)
+	{
+		recipe_unlocks[item_id] = 1.0; // This value is ultimately what unlocks the recipe.
+		new_recipe_unlocked = true;
+	}
 }
 
 void CreateNotification(bool ignore_cooldown, std::string notification_localization_str, CInstance* Self, CInstance* Other)
@@ -380,56 +337,56 @@ RValue GetDynamicItemSprite(int item_id)
 {
 	if (item_id == sigil_to_item_id_map[Sigils::CONCEALMENT])
 	{
-		if (active_sigils.contains(Sigils::CONCEALMENT) || !AriCurrentGmRoomIsDungeonFloor())
+		if (!GameIsPaused() && (active_sigils.contains(Sigils::CONCEALMENT) || !AriCurrentGmRoomIsDungeonFloor()))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_concealment_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_concealment" });
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::FORTIFICATION])
 	{
-		if (active_sigils.contains(Sigils::FORTIFICATION) || !AriCurrentGmRoomIsDungeonFloor())
+		if (!GameIsPaused() && (active_sigils.contains(Sigils::FORTIFICATION) || !AriCurrentGmRoomIsDungeonFloor()))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_fortification_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_fortification" });
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::FORTUNE])
 	{
-		if (active_sigils.contains(Sigils::FORTUNE) || !AriCurrentGmRoomIsDungeonFloor())
+		if (!GameIsPaused() && (active_sigils.contains(Sigils::FORTUNE) || !AriCurrentGmRoomIsDungeonFloor()))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_fortune_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_fortune" });
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::PROTECTION])
 	{
-		if (active_sigils.contains(Sigils::PROTECTION) || !AriCurrentGmRoomIsDungeonFloor() || GetInvulnerabilityHits() > 0)
+		if (!GameIsPaused() && (active_sigils.contains(Sigils::PROTECTION) || !AriCurrentGmRoomIsDungeonFloor() || GetInvulnerabilityHits() > 0))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_protection_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_protection" });
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::RAGE])
 	{
-		if (active_sigils.contains(Sigils::RAGE) || !AriCurrentGmRoomIsDungeonFloor())
+		if (!GameIsPaused() && (active_sigils.contains(Sigils::RAGE) || !AriCurrentGmRoomIsDungeonFloor()))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_rage_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_rage" });
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::REDEMPTION])
 	{
-		if (active_sigils.contains(Sigils::REDEMPTION) || !AriCurrentGmRoomIsDungeonFloor() || FairyBuffIsActive())
+		if (!GameIsPaused() && (active_sigils.contains(Sigils::REDEMPTION) || !AriCurrentGmRoomIsDungeonFloor() || FairyBuffIsActive()))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_redemption_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_redemption" });
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::SILENCE])
 	{
-		if (active_sigils.contains(Sigils::SILENCE) || !AriCurrentGmRoomIsDungeonFloor())
+		if (!GameIsPaused() && (active_sigils.contains(Sigils::SILENCE) || !AriCurrentGmRoomIsDungeonFloor()))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_silence_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_silence" });
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::STRENGTH])
 	{
-		if (active_sigils.contains(Sigils::STRENGTH) || !AriCurrentGmRoomIsDungeonFloor())
+		if (!GameIsPaused() && (active_sigils.contains(Sigils::STRENGTH) || !AriCurrentGmRoomIsDungeonFloor()))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_strength_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_faux_sigil_of_strength" });
@@ -850,6 +807,33 @@ RValue& GmlScriptHeldItemCallback(
 	return Result;
 }
 
+RValue& GmlScriptGetWeatherCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (unlock_recipes)
+	{
+		unlock_recipes = false;
+		for (auto& entry : sigil_to_item_id_map)
+			UnlockRecipe(entry.second, Self, Other);
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_WEATHER));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
 RValue& GmlScriptGoToRoomCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -870,19 +854,6 @@ RValue& GmlScriptGoToRoomCallback(
 	RValue gm_room = Result.GetMember("gm_room");
 	RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
 	ari_current_gm_room = room_name.ToString();
-
-	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry")
-		SetFloorNumber();
-	else if (ari_current_gm_room == "rm_water_seal")
-		floor_number = 20;
-	else if (ari_current_gm_room == "rm_earth_seal")
-		floor_number = 40;
-	else if (ari_current_gm_room == "rm_fire_seal")
-		floor_number = 60;
-	else if (ari_current_gm_room == "rm_ruins_seal")
-		floor_number = 80;
-	else
-		floor_number = 0;
 
 	if (active_sigils.contains(Sigils::SILENCE))
 		sigil_of_silence = true;
@@ -1135,6 +1106,33 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptGetWeather(AurieStatus& status)
+{
+	CScript* gml_script_get_weather = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_WEATHER,
+		(PVOID*)&gml_script_get_weather
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_WEATHER);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GET_WEATHER,
+		gml_script_get_weather->m_Functions->m_ScriptFunction,
+		GmlScriptGetWeatherCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_WEATHER);
+	}
+}
+
 void CreateHookGmlScriptGoToRoom(AurieStatus& status)
 {
 	CScript* gml_script_go_to_room = nullptr;
@@ -1254,6 +1252,13 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptHeldItem(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptGetWeather(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
