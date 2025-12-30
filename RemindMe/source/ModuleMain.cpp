@@ -17,7 +17,8 @@ static const char* const GML_SCRIPT_CALENDAR_DAY = "gml_Script_day@Calendar@Cale
 static const char* const GML_SCRIPT_CALENDAR_SEASON = "gml_Script_season@Calendar@Calendar";
 static const char* const GML_SCRIPT_CALENDAR_YEAR = "gml_Script_year@Calendar@Calendar";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
-// OnDayEnd
+static const char* const GML_SCRIPT_NEW_DAY = "gml_Script_new_day";
+static const char* const GML_SCRIPT_CUTSCENE_IS_RUNNING = "gml_Script_is_running@Mist@Mist";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const std::string REMINDER_NOTIFICATION_PLACEHOLDER_KEY = "Notifications/Mods/Remind Me/reminder_notification_placeholder";
 static const std::string REMINDERS_KEY = "reminders";
@@ -31,7 +32,16 @@ static const std::string YEAR_KEY = "year";
 static const std::string WEATHER_KEY = "weather";
 static const std::string CURRENT_LOCATION_KEY = "current_location";
 static const std::string NPC_NEARBY_KEY = "npc_nearby";
+static const std::string RESET_AFTER_KEY = "reset_after";
 static const std::string CAN_TRIGGER_AFTER_KEY = "can_trigger_after";
+
+static enum class ResetAfter {
+	TIME,
+	LOCATION,
+	DAY // TODO: Hook a script for new day, iterate over ALL reminders, and set reset_after_time_incremement = -1 and has_triggered = false.
+};
+static const std::string LOCATION = "LOCATION";
+static const std::string DAY = "DAY";
 
 static const std::string MONDAY = "MONDAY";
 static const std::string TUESDAY = "TUESDAY";
@@ -124,8 +134,11 @@ static struct Reminder {
 	int weather = -1;
 	int location = -1;
 	int npc = -1;
-	bool can_trigger_after = false;
+	int last_triggered_time = -1;
+	int reset_after_time_incremement = -1;
 	bool has_triggered = false;
+	bool can_trigger_after = false;
+	ResetAfter reset_after = ResetAfter::DAY;
 	std::string notification;
 	
 	bool HasTimeCondition(){ return time != -1; }
@@ -147,6 +160,7 @@ static YYTKInterface* g_ModuleInterface = nullptr;
 static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
 static bool game_is_active = false;
+static bool cutscene_is_running = false;
 static int current_time_in_seconds = -1;
 static int current_day = -1;
 static int current_season = -1;
@@ -171,6 +185,7 @@ void ResetStaticFields(bool title_screen)
 	}
 
 	game_is_active = false;
+	cutscene_is_running = false;
 	current_time_in_seconds = -1;
 	current_day = -1;
 	current_season = -1;
@@ -306,9 +321,7 @@ bool IsValidTime(const std::string& s)
 		return false;
 
 	// Check fixed format
-	if (!std::isdigit(s[0]) || !std::isdigit(s[1]) ||
-		s[2] != ':' ||
-		!std::isdigit(s[3]) || !std::isdigit(s[4]))
+	if (!std::isdigit(s[0]) || !std::isdigit(s[1]) || s[2] != ':' || !std::isdigit(s[3]) || !std::isdigit(s[4]))
 		return false;
 
 	// Convert to numbers
@@ -369,6 +382,41 @@ bool IsValidNPC(const std::string& s)
 
 	std::string s_lower = to_lower(s);
 	return NPC_NAMES.contains(s_lower);
+}
+
+// Valid values are "HH:MM", "NEW_LOCATION", "NEW_DAY"
+std::optional<ResetAfter> IsValidResetAfter(const std::string& s)
+{
+	// "HH:MM"
+	if (s.size() == 5)
+	{
+		// Check fixed format
+		if (!std::isdigit(s[0]) || !std::isdigit(s[1]) || s[2] != ':' || !std::isdigit(s[3]) || !std::isdigit(s[4]))
+			return std::nullopt;
+
+		// Convert to numbers
+		int hour = (s[0] - '0') * 10 + (s[1] - '0');
+		int minute = (s[3] - '0') * 10 + (s[4] - '0');
+
+		// Validate ranges
+		if (hour < 0 || hour > 20)
+			return std::nullopt;
+		if (minute < 0 || minute > 59)
+			return std::nullopt;
+		if (hour == 0 && minute < 10)
+			return std::nullopt;
+		if (hour == 20 && minute > 0)
+			return std::nullopt;
+
+		return ResetAfter::TIME;
+	}
+
+	if (s == LOCATION)
+		return ResetAfter::LOCATION;
+	if (s == DAY)
+		return ResetAfter::DAY;
+
+	return std::nullopt;
 }
 
 void PrintError(std::exception_ptr eptr)
@@ -466,14 +514,14 @@ void CreateOrLoadConfigFile()
 							{
 								if (!json_reminder.contains(CONDITIONS_KEY))
 								{
-									g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" value in a reminder!", MOD_NAME, VERSION, CONDITIONS_KEY);
+									g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" value in a reminder!", MOD_NAME, VERSION, CONDITIONS_KEY.c_str());
 									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The reminder will be ignored.", MOD_NAME, VERSION);
 									continue;
 								}
 
 								if (!json_reminder.contains(NOTIFICATION_KEY))
 								{
-									g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" value in a reminder!", MOD_NAME, VERSION, NOTIFICATION_KEY);
+									g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" value in a reminder!", MOD_NAME, VERSION, NOTIFICATION_KEY.c_str());
 									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The reminder will be ignored.", MOD_NAME, VERSION);
 									continue;
 								}
@@ -481,7 +529,7 @@ void CreateOrLoadConfigFile()
 								json reminder_conditions = json_reminder[CONDITIONS_KEY];
 								if (reminder_conditions.empty())
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - No conditions were set in a reminder!", MOD_NAME, VERSION, REMINDERS_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - No conditions were set in a reminder!", MOD_NAME, VERSION, REMINDERS_KEY.c_str(), config_file.c_str());
 									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The reminder will be ignored.", MOD_NAME, VERSION);
 									continue;
 								}
@@ -489,7 +537,7 @@ void CreateOrLoadConfigFile()
 								std::string reminder_notification = json_reminder[NOTIFICATION_KEY];
 								if (reminder_notification.size() == 0)
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - No notification was set in a reminder!", MOD_NAME, VERSION, REMINDERS_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - No notification was set in a reminder!", MOD_NAME, VERSION, REMINDERS_KEY.c_str(), config_file.c_str());
 									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The reminder will be ignored.", MOD_NAME, VERSION);
 									continue;
 								}
@@ -497,7 +545,7 @@ void CreateOrLoadConfigFile()
 								Reminder reminder = Reminder();
 								reminder.notification = reminder_notification;
 
-								// Load the conditions.
+								// 26h_time condition.
 								if (reminder_conditions.contains(TWENTY_SIX_HOUR_TIME_KEY))
 								{
 									std::string time_str = reminder_conditions[TWENTY_SIX_HOUR_TIME_KEY];
@@ -509,11 +557,12 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, TWENTY_SIX_HOUR_TIME_KEY, time_str.c_str());
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, TWENTY_SIX_HOUR_TIME_KEY.c_str(), time_str.c_str());
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
 
+								// day_of_week condition.
 								if (reminder_conditions.contains(DAY_OF_WEEK_KEY))
 								{
 									std::string day_of_week_str = reminder_conditions[DAY_OF_WEEK_KEY];
@@ -537,11 +586,12 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, DAY_OF_WEEK_KEY, day_of_week_str.c_str());
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, DAY_OF_WEEK_KEY.c_str(), day_of_week_str.c_str());
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
 
+								// day_of_month condition.
 								if (reminder_conditions.contains(DAY_OF_MONTH_KEY))
 								{
 									int day_of_month = reminder_conditions[DAY_OF_MONTH_KEY];
@@ -551,11 +601,12 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %d!", MOD_NAME, VERSION, DAY_OF_MONTH_KEY, day_of_month);
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %d!", MOD_NAME, VERSION, DAY_OF_MONTH_KEY.c_str(), day_of_month);
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
 
+								// season condition.
 								if (reminder_conditions.contains(SEASON_KEY))
 								{
 									std::string season_str = reminder_conditions[SEASON_KEY];
@@ -573,11 +624,12 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, SEASON_KEY, season_str.c_str());
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, SEASON_KEY.c_str(), season_str.c_str());
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
 
+								// year condition.
 								if (reminder_conditions.contains(YEAR_KEY))
 								{
 									int year = reminder_conditions[YEAR_KEY];
@@ -587,11 +639,12 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %d!", MOD_NAME, VERSION, YEAR_KEY, year);
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %d!", MOD_NAME, VERSION, YEAR_KEY.c_str(), year);
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
 
+								// weather condition.
 								if (reminder_conditions.contains(WEATHER_KEY))
 								{
 									std::string weather_str = reminder_conditions[WEATHER_KEY];
@@ -609,11 +662,12 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, WEATHER_KEY, weather_str.c_str());
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, WEATHER_KEY.c_str(), weather_str.c_str());
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
 
+								// location condition.
 								if (reminder_conditions.contains(CURRENT_LOCATION_KEY))
 								{
 									std::string current_location_str = reminder_conditions[CURRENT_LOCATION_KEY];
@@ -643,11 +697,12 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, CURRENT_LOCATION_KEY, current_location_str.c_str());
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, CURRENT_LOCATION_KEY.c_str(), current_location_str.c_str());
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
 
+								// npc condition.
 								if (reminder_conditions.contains(NPC_NEARBY_KEY))
 								{
 									std::string npc_str = reminder_conditions[NPC_NEARBY_KEY];
@@ -658,15 +713,50 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, CURRENT_LOCATION_KEY, npc_str.c_str());
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, CURRENT_LOCATION_KEY.c_str(), npc_str.c_str());
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
 
+								// can_trigger_after instruction.
 								if (reminder_conditions.contains(CAN_TRIGGER_AFTER_KEY))
 								{
 									bool can_trigger_after = reminder_conditions[CAN_TRIGGER_AFTER_KEY];
 									reminder.can_trigger_after = can_trigger_after;
+								}
+								else
+								{
+									g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" value in a condition!", MOD_NAME, VERSION, CAN_TRIGGER_AFTER_KEY.c_str());
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will use the default \"%s\" value.", MOD_NAME, VERSION, CAN_TRIGGER_AFTER_KEY.c_str());
+								}
+
+								// reset_after instruction.
+								if (reminder_conditions.contains(RESET_AFTER_KEY))
+								{
+									std::string reset_after_str = reminder_conditions[RESET_AFTER_KEY];
+									auto opt_reset_after = IsValidResetAfter(reset_after_str);
+									if (opt_reset_after.has_value())
+									{
+										ResetAfter reset_after = opt_reset_after.value();
+										reminder.reset_after = reset_after;
+
+										if (reset_after == ResetAfter::TIME)
+										{
+											int hour = (reset_after_str[0] - '0') * 10 + (reset_after_str[1] - '0');
+											int minute = (reset_after_str[3] - '0') * 10 + (reset_after_str[4] - '0');
+											reminder.reset_after_time_incremement = (hour * 60 * 60) + (minute * 60);
+										}
+									}
+									else
+									{
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, RESET_AFTER_KEY.c_str(), reset_after_str.c_str());
+										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will use the default \"%s\" value.", MOD_NAME, VERSION, RESET_AFTER_KEY.c_str());
+									}
+								}
+								else
+								{
+									g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" value in a condition!", MOD_NAME, VERSION, RESET_AFTER_KEY.c_str());
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will use the default \"%s\" value.", MOD_NAME, VERSION, RESET_AFTER_KEY.c_str());
 								}
 								
 								// Final validation. Confirm the reminder has at least one valid condition.
@@ -674,21 +764,21 @@ void CreateOrLoadConfigFile()
 									reminders.push_back(reminder);
 								else
 								{
-									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - No conditions were set in a reminder!", MOD_NAME, VERSION, REMINDERS_KEY, config_file.c_str());
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - No conditions were set in a reminder!", MOD_NAME, VERSION, REMINDERS_KEY.c_str(), config_file.c_str());
 									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The reminder will be ignored.", MOD_NAME, VERSION);
 								}
 							}
 						}
 						else
 						{
-							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - No reminders were set in mod configuration file: %s!", MOD_NAME, VERSION, REMINDERS_KEY, config_file.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - No reminders were set in mod configuration file: %s!", MOD_NAME, VERSION, REMINDERS_KEY.c_str(), config_file.c_str());
 							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Creating a default configuration file.", MOD_NAME, VERSION);
 							create_config_file = true;
 						}
 					}
 					else
 					{
-						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, REMINDERS_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, REMINDERS_KEY.c_str(), config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Creating a default configuration file.", MOD_NAME, VERSION);
 						create_config_file = true;
 					}
@@ -776,7 +866,7 @@ void ObjectCallback(
 	if (!self->m_Object)
 		return;
 
-	if (!GameIsPaused())
+	if (!GameIsPaused() && !cutscene_is_running)
 	{
 		UpdateTrackedNPCs();
 
@@ -910,6 +1000,12 @@ RValue& GmlScriptGoToRoomCallback(
 	if (ari_current_gm_room != "rm_mines_entry" && (ari_current_gm_room.contains("rm_mines") || ari_current_gm_room.contains("seal")) && !gm_room_name_to_location_id_map.contains(ari_current_gm_room))
 		gm_room_name_to_location_id_map[ari_current_gm_room] = location_name_to_id_map["dungeon"];
 
+	npc_name_to_tracker_map.clear();
+
+	for (Reminder& reminder : reminders)
+		if (reminder.reset_after == ResetAfter::LOCATION)
+			reminder.has_triggered = false;
+	
 	return Result;
 }
 
@@ -930,7 +1026,7 @@ RValue& GmlScriptGetMinutesCallback(
 		Arguments
 	);
 
-	if (game_is_active && !GameIsPaused())
+	if (game_is_active && !GameIsPaused() && !cutscene_is_running)
 	{
 		RValue time = global_instance->GetMember("__clock").GetMember("time");
 		current_time_in_seconds = time.ToInt64();
@@ -938,6 +1034,9 @@ RValue& GmlScriptGetMinutesCallback(
 		// TODO
 		for (Reminder& reminder : reminders)
 		{
+			if (reminder.reset_after == ResetAfter::TIME && reminder.last_triggered_time != -1 && current_time_in_seconds > (reminder.last_triggered_time + reminder.reset_after_time_incremement))
+				reminder.has_triggered = false;
+			
 			if (reminder.has_triggered)
 				continue;
 
@@ -967,6 +1066,7 @@ RValue& GmlScriptGetMinutesCallback(
 			if (trigger)
 			{
 				reminder.has_triggered = true;
+				reminder.last_triggered_time = current_time_in_seconds;
 				notification_text = reminder.notification;
 				CreateNotification(REMINDER_NOTIFICATION_PLACEHOLDER_KEY, Self, Other);
 			}
@@ -1066,6 +1166,52 @@ RValue& GmlScriptGetWeatherCallback(
 		current_weather = Result.ToInt64();
 
 	game_is_active = true;
+	return Result;
+}
+
+RValue& GmlScriptNewDayCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_NEW_DAY));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	for (Reminder& reminder : reminders)
+		reminder.has_triggered = false;
+
+	return Result;
+}
+
+RValue& GmlScriptCutsceneIsRunningCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CUTSCENE_IS_RUNNING));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (game_is_active && Result.m_Kind == VALUE_BOOL)
+		cutscene_is_running = Result.ToBoolean();
+
 	return Result;
 }
 
@@ -1309,6 +1455,60 @@ void CreateHookGmlScriptGetWeather(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptNewDay(AurieStatus& status)
+{
+	CScript* gml_script_new_day = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_NEW_DAY,
+		(PVOID*)&gml_script_new_day
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_NEW_DAY);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_NEW_DAY,
+		gml_script_new_day->m_Functions->m_ScriptFunction,
+		GmlScriptNewDayCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_NEW_DAY);
+	}
+}
+
+void CreateHookGmlScriptCutsceneIsRunning(AurieStatus& status)
+{
+	CScript* gml_script_cutscene_is_running = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CUTSCENE_IS_RUNNING,
+		(PVOID*)&gml_script_cutscene_is_running
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CUTSCENE_IS_RUNNING);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CUTSCENE_IS_RUNNING,
+		gml_script_cutscene_is_running->m_Functions->m_ScriptFunction,
+		GmlScriptCutsceneIsRunningCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CUTSCENE_IS_RUNNING);
+	}
+}
+
 void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 {
 	CScript* gml_script_setup_main_screen = nullptr;
@@ -1401,6 +1601,20 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptGetWeather(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptNewDay(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCutsceneIsRunning(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
