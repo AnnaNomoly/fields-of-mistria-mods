@@ -18,6 +18,7 @@ static const char* const GML_SCRIPT_CALENDAR_SEASON = "gml_Script_season@Calenda
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR = "gml_Script_vertigo_draw_with_color";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
+static const int EIGHT_PM_IN_SECONDS = 72000;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static CInstance* global_instance = nullptr;
@@ -52,6 +53,21 @@ bool GameIsPaused()
 	g_ModuleInterface->GetGlobalInstance(&global_instance);
 	RValue paused = global_instance->GetMember("__pause_status");
 	return paused.ToInt64() > 0;
+}
+
+std::vector<std::string> split(const std::string& s, char delimiter)
+{
+	std::vector<std::string> tokens;
+	std::size_t start = 0;
+	std::size_t end;
+
+	while ((end = s.find(delimiter, start)) != std::string::npos) {
+		tokens.push_back(s.substr(start, end - start));
+		start = end + 1;
+	}
+
+	tokens.push_back(s.substr(start));
+	return tokens;
 }
 
 bool IsNumeric(RValue value)
@@ -133,140 +149,63 @@ bool AriIsIndoors()
 	return true;
 }
 
+bool IsNight()
+{
+	return current_time_in_seconds >= EIGHT_PM_IN_SECONDS;
+}
+
+std::string GetDynamicPortraitName(std::string npc_name, std::string season, std::string custom_portrait_name, std::string modifier)
+{
+	return "spr_portrait_" + npc_name + "_" + season + "_" + custom_portrait_name + "_" + modifier;
+}
+
 RValue GetDynamicNpcPortrait(std::string sprite_name)
 {
-	if (sprite_name == "spr_portrait_balor_spring_angry_blush")
+	/*
+	if(daytime and (location==INN or location==BALOR_BEDROOM))
+	  DrawPortraitType(spring_indoor) // You don't want this drawn if Balor is indoors elsewhere, like the General Store?
+	else if(nighttime and (location==BALOR_BEDROOM or location==SAUNA_ENTRY))
+	  DrawPortraitType(spring_room)
+	else if(location==OUTDOORS and (weather==INCLEMENT or weather==HEAVY_INCLEMENT))
+	  DrawPortraitType(spring_weather)
+	else if(day==spring_festival)
+	  DrawPortraitType(spring_festival) // Will only draw this if none of the above conditions are met.
+	else
+	  DrawPortraitType(spring_portraits) // Technically not needed, since these are the modified base spring portraits
+	*/
+
+	// Example: spr_portrait_balor_spring_sincere_special
+	std::vector<std::string> sprite_name_parts = split(sprite_name, '_');
+	std::string npc_name = sprite_name_parts[2];
+	std::string season = sprite_name_parts[3];
+	std::string modifier = "";
+
+	for (int i = 4; i < sprite_name_parts.size(); i++)
 	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_angry_blush" });
-		//else
-		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
+		modifier += sprite_name_parts[i];
+		if (i != sprite_name_parts.size() - 1)
+			modifier += "_";
 	}
-	if (sprite_name == "spr_portrait_balor_spring_blush")
+
+	if (npc_name == "balor" && season == "spring")
 	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_blush" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_concerned")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_concerned" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_embarrassed")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_embarrassed" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_happy")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_happy" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_mad")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_mad" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_neutral")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_neutral" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_sad")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_sad" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_sigh")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_sigh" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_sly")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_sly" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_think")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_think" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_ugh")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_ugh" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_wink")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_wink" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_sincere_special")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_sincere_special" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_hope_special")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_hope_special" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_blush_special")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_blush_special" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_sad_special")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_sad_special" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_hurt")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_hurt" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
-	}
-	if (sprite_name == "spr_portrait_balor_spring_happy_blush")
-	{
-		if (AriIsIndoors())
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_portrait_balor_spring_indoor_happy_blush" });
-		//else
-			//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
+		std::string dynamic_portrait_name = sprite_name;
+
+		if (!IsNight() && (current_location == location_name_to_id_map["balors_room"] || current_location == location_name_to_id_map["inn"]))
+			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "indoor", modifier);
+		else if (IsNight() && (current_location == location_name_to_id_map["balors_room"] || current_location == location_name_to_id_map["bathhouse_change_room"]))
+			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "room", modifier);
+		else if (!AriIsIndoors() && (current_weather == weather_name_to_id_map["inclement"] || current_weather == weather_name_to_id_map["heavy_inclement"]))
+			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "weather", modifier);
+		else if (current_season == 1 && current_day == 17) // spring festival
+			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "festival", modifier);
+
+		if (dynamic_portrait_name != sprite_name)
+		{
+			RValue dynamic_portrait = g_ModuleInterface->CallBuiltin("asset_get_index", { dynamic_portrait_name.c_str() });
+			if (dynamic_portrait.m_Kind == VALUE_REF)
+				return dynamic_portrait;
+		}
 	}
 }
 
@@ -452,9 +391,12 @@ RValue& GmlScriptVertigoDrawWithColorCallback(
 			RValue name = g_ModuleInterface->CallBuiltin("sprite_get_name", { *Arguments[0] });
 			std::string name_str = name.ToString();
 
-			RValue dynamic_sprite = GetDynamicNpcPortrait(name_str);
-			if (dynamic_sprite.m_Kind == VALUE_REF)
-				*Arguments[0] = dynamic_sprite;
+			if (name_str.contains("spr_portrait"))
+			{
+				RValue dynamic_sprite = GetDynamicNpcPortrait(name_str);
+				if (dynamic_sprite.m_Kind == VALUE_REF)
+					*Arguments[0] = dynamic_sprite;
+			}
 		}
 	}
 
