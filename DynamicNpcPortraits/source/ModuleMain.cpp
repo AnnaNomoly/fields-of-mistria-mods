@@ -193,7 +193,7 @@ RValue GetDynamicNpcPortrait(std::string sprite_name)
 
 		if (!IsNight() && (current_location == location_name_to_id_map["balors_room"] || current_location == location_name_to_id_map["inn"]))
 			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "indoor", modifier);
-		else if (IsNight() && (current_location == location_name_to_id_map["balors_room"] || current_location == location_name_to_id_map["bathhouse_change_room"]))
+		else if ((IsNight() && (current_location == location_name_to_id_map["balors_room"]) || current_location == location_name_to_id_map["bathhouse_change_room"]))
 			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "room", modifier);
 		else if (!AriIsIndoors() && (current_weather == weather_name_to_id_map["inclement"] || current_weather == weather_name_to_id_map["heavy_inclement"]))
 			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "weather", modifier);
