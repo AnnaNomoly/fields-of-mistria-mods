@@ -175,13 +175,13 @@ static std::map<int, std::string> npc_id_to_name_map = {}; // __npc_id__
 static std::map<std::string, int> weather_name_to_id_map = {}; // __weather__
 static std::map<std::string, int> location_name_to_id_map = {}; // __location_id__
 static std::map<std::string, int> gm_room_name_to_location_id_map = {};
-static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {}; // Tracks when a notification was last displayed.
 
 void ResetStaticFields(bool title_screen)
 {
 	if (title_screen)
 	{
-		notification_name_to_last_display_time_map = {};
+		for (Reminder& reminder : reminders)
+			reminder.has_triggered = false;
 	}
 
 	game_is_active = false;
