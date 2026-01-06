@@ -15,44 +15,94 @@ static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_
 static const char* const GML_SCRIPT_GET_MINUTES = "gml_Script_get_minutes";
 static const char* const GML_SCRIPT_CALENDAR_DAY = "gml_Script_day@Calendar@Calendar";
 static const char* const GML_SCRIPT_CALENDAR_SEASON = "gml_Script_season@Calendar@Calendar";
+static const char* const GML_SCRIPT_CALENDAR_YEAR = "gml_Script_year@Calendar@Calendar";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
+static const char* const GML_SCRIPT_CUTSCENE_IS_RUNNING = "gml_Script_is_running@Mist@Mist";
 static const char* const GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR = "gml_Script_vertigo_draw_with_color";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const int EIGHT_PM_IN_SECONDS = 72000;
+static const std::string INDOORS = "indoors";
+static const std::string OUTDOORS = "outdoors";
+static const std::string MOD_NAME_KEY = "mod_name";
+static const std::string DYNAMIC_PORTRAITS_KEY = "dynamic_portraits";
+static const std::string CONDITIONS_KEY = "conditions";
+static const std::string SPRITE_NAME_KEY = "sprite_name";
+static const std::string TIME_OF_DAY_KEY = "time_of_day"; // DAY or NIGHT
+static const std::string DAY_OF_WEEK_KEY = "day_of_week";
+static const std::string DAY_OF_MONTH_KEY = "day_of_month"; // 1 - 28
+static const std::string SEASON_KEY = "season";
+static const std::string YEAR_KEY = "year";
+static const std::string WEATHER_KEY = "weather";
+static const std::string LOCATION_KEY = "location"; // INDOORS, OUTDOORS, <LOCATION_NAME>
+static const std::string NPC_KEY = "npc";
+
+static struct DynamicPortrait {
+	int time_of_day = -1;
+	int week_day = -1;
+	int month_day = -1;
+	int season = -1;
+	int year = -1;
+	int weather = -1;
+	int location = -1;
+	int npc = -1;
+	std::string sprite_name;
+	std::string_view mod_name;
+
+	bool HasTimeOfDayCondition() { return time_of_day != -1; }
+	bool HasWeekDayCondition() { return week_day != -1; }
+	bool HasMonthDayCondition() { return month_day != -1; }
+	bool HasSeasonCondition() { return season != -1; }
+	bool HasYearCondition() { return year != -1; }
+	bool HasWeatherCondition() { return weather != -1; }
+	bool HasLocationCondition() { return location != -1; }
+	bool HasNpcCondition() { return npc != -1; }
+};
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
 static bool game_is_active = false;
 static bool ari_is_in_dungeon = false;
+static bool cutscene_is_running = false;
 static int current_time_in_seconds = -1;
 static int current_day = -1;
+static int current_year = -1;
 static int current_season = -1;
 static int current_weather = -1;
 static int current_location = -1;
 static std::string ari_current_gm_room = "";
+static std::unordered_set<std::string> mod_names = {};
+static std::vector<DynamicPortrait> dynamic_portraits = {};
 static std::map<int, bool> location_id_to_outdoor_map = {};
+static std::map<std::string, int> daytime_to_id_map = {}; // __daytime__
+static std::map<int, std::string> id_to_daytime_map = {}; // __daytime__
+static std::map<std::string, int> day_name_to_id_map = {}; // __day__
+static std::map<int, std::string> day_id_to_name_map = {}; // __day__
+static std::map<std::string, int> season_name_to_id_map = {}; // __season__
+static std::map<int, std::string> season_id_to_name_map = {}; // __season__
 static std::map<std::string, int> weather_name_to_id_map = {}; // __weather__
+static std::map<int, std::string> weather_id_to_name_map = {}; // __weather__
 static std::map<std::string, int> location_name_to_id_map = {}; // __location_id__
+static std::map<int, std::string> location_id_to_name_map = {}; // __location_id__
+static std::map<std::string, int> npc_name_to_id_map = {}; // __npc_id__
+static std::map<int, std::string> npc_id_to_name_map = {}; // __npc_id__
 
 void ResetStaticFields(bool title_screen)
 {
-	game_is_active = false;
+	if (title_screen)
+	{
+		game_is_active = false;
+		ari_current_gm_room = "";
+	}
+	
 	ari_is_in_dungeon = false;
+	cutscene_is_running = false;
 	current_time_in_seconds = -1;
 	current_day = -1;
 	current_season = -1;
+	current_year = -1;
 	current_weather = -1;
 	current_location = -1;
-	ari_current_gm_room = "";
-}
-
-bool GameIsPaused()
-{
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-	RValue paused = global_instance->GetMember("__pause_status");
-	return paused.ToInt64() > 0;
 }
 
 std::vector<std::string> split(const std::string& s, char delimiter)
@@ -68,6 +118,14 @@ std::vector<std::string> split(const std::string& s, char delimiter)
 
 	tokens.push_back(s.substr(start));
 	return tokens;
+}
+
+bool GameIsPaused()
+{
+	CInstance* global_instance = nullptr;
+	g_ModuleInterface->GetGlobalInstance(&global_instance);
+	RValue paused = global_instance->GetMember("__pause_status");
+	return paused.ToInt64() > 0;
 }
 
 bool IsNumeric(RValue value)
@@ -98,6 +156,62 @@ RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue va
 	);
 }
 
+std::string to_upper(std::string s)
+{
+	std::transform(s.begin(), s.end(), s.begin(),
+		[](unsigned char c) { return std::toupper(c); });
+	return s;
+}
+
+std::string to_lower(std::string s)
+{
+	std::transform(s.begin(), s.end(), s.begin(),
+		[](unsigned char c) { return std::tolower(c); });
+	return s;
+}
+
+void LoadDaytime()
+{
+	size_t array_length = 0;
+	RValue daytime = global_instance->GetMember("__daytime__");
+	g_ModuleInterface->GetArraySize(daytime, array_length);
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(daytime, i, array_element);
+		daytime_to_id_map[array_element->ToString()] = i;
+		id_to_daytime_map[i] = array_element->ToString();
+	}
+}
+
+void LoadDays()
+{
+	size_t array_length = 0;
+	RValue days = global_instance->GetMember("__day__");
+	g_ModuleInterface->GetArraySize(days, array_length);
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(days, i, array_element);
+		day_name_to_id_map[array_element->ToString()] = i;
+		day_id_to_name_map[i] = array_element->ToString();
+	}
+}
+
+void LoadSeasons()
+{
+	size_t array_length = 0;
+	RValue seasons = global_instance->GetMember("__season__");
+	g_ModuleInterface->GetArraySize(seasons, array_length);
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(seasons, i, array_element);
+		season_name_to_id_map[array_element->ToString()] = i;
+		season_id_to_name_map[i] = array_element->ToString();
+	}
+}
+
 void LoadWeather()
 {
 	size_t array_length = 0;
@@ -108,10 +222,10 @@ void LoadWeather()
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(weather, i, array_element);
 		weather_name_to_id_map[array_element->ToString()] = i;
+		weather_id_to_name_map[i] = array_element->ToString();
 	}
 }
 
-// TODO
 void LoadLocations()
 {
 	// Location IDs
@@ -121,7 +235,14 @@ void LoadLocations()
 	{
 		RValue location = g_ModuleInterface->CallBuiltin("array_get", { location_ids, i });
 		location_name_to_id_map[location.ToString()] = i;
+		location_id_to_name_map[i] = location.ToString();
 	}
+
+	// Append "indoors" and "outdoors" to location maps.
+	location_name_to_id_map[INDOORS] = location_name_to_id_map.size();
+	location_name_to_id_map[OUTDOORS] = location_name_to_id_map.size();
+	location_id_to_name_map[location_name_to_id_map[INDOORS]] = INDOORS;
+	location_id_to_name_map[location_name_to_id_map[OUTDOORS]] = OUTDOORS;
 
 	// Default location data
 	RValue locations = global_instance->GetMember("__locations");
@@ -132,6 +253,20 @@ void LoadLocations()
 		RValue location = g_ModuleInterface->CallBuiltin("array_get", { locations, i });
 		RValue outdoor = g_ModuleInterface->CallBuiltin("struct_get", { location, "outdoor" });
 		location_id_to_outdoor_map[i] = outdoor.ToBoolean();
+	}
+}
+
+void LoadNpcs()
+{
+	size_t array_length = 0;
+	RValue npcs = global_instance->GetMember("__npc_id__");
+	g_ModuleInterface->GetArraySize(npcs, array_length);
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(npcs, i, array_element);
+		npc_name_to_id_map[array_element->ToString()] = i;
+		npc_id_to_name_map[i] = array_element->ToString();
 	}
 }
 
@@ -154,58 +289,335 @@ bool IsNight()
 	return current_time_in_seconds >= EIGHT_PM_IN_SECONDS;
 }
 
-std::string GetDynamicPortraitName(std::string npc_name, std::string season, std::string custom_portrait_name, std::string modifier)
+bool IsValidTimeOfDay(const std::string& s)
 {
-	return "spr_portrait_" + npc_name + "_" + season + "_" + custom_portrait_name + "_" + modifier;
+	if (s.empty() || s.size() == 0)
+		return false;
+
+	std::string s_lower = to_lower(s);
+	return daytime_to_id_map.contains(s_lower);
+}
+
+bool IsValidDayOfWeek(const std::string& s)
+{
+	if (s.empty() || s.size() == 0)
+		return false;
+
+	std::string s_lower = to_lower(s);
+	return day_name_to_id_map.contains(s_lower);
+}
+
+bool IsValidSeason(const std::string& s)
+{
+	if (s.empty() || s.size() == 0)
+		return false;
+
+	std::string s_lower = to_lower(s);
+	return season_name_to_id_map.contains(s_lower);
+}
+
+bool IsValidWeather(const std::string& s)
+{
+	if (s.empty() || s.size() == 0)
+		return false;
+
+	std::string s_lower = to_lower(s);
+	return weather_name_to_id_map.contains(s_lower);
+}
+
+bool IsValidLocation(const std::string& s)
+{
+	if (s.empty() || s.size() == 0)
+		return false;
+
+	std::string s_lower = to_lower(s);
+	return location_name_to_id_map.contains(s_lower);
+}
+
+bool IsValidNpc(const std::string& s)
+{
+	if (s.empty() || s.size() == 0)
+		return false;
+
+	std::string s_lower = to_lower(s);
+	return npc_name_to_id_map.contains(s_lower);
+}
+
+void PrintError(std::exception_ptr eptr)
+{
+	try {
+		if (eptr) {
+			std::rethrow_exception(eptr);
+		}
+	}
+	catch (const std::exception& e) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
+	}
+}
+
+void CreateOrLoadConfigFile()
+{
+	// Load config file.
+	std::exception_ptr eptr;
+	try
+	{
+		// Try to find the mod_data directory.
+		std::string current_dir = std::filesystem::current_path().string();
+		std::string mod_data_folder = current_dir + "\\mod_data";
+		if (!std::filesystem::exists(mod_data_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
+			std::filesystem::create_directory(mod_data_folder);
+		}
+
+		// Try to find the mod_data/DynamicNpcPortraits directory.
+		std::string dynamic_npc_portraits_folder = mod_data_folder + "\\DynamicNpcPortraits";
+		if (!std::filesystem::exists(dynamic_npc_portraits_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"DynamicNpcPortraits\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, dynamic_npc_portraits_folder.c_str());
+			std::filesystem::create_directory(dynamic_npc_portraits_folder);
+		}
+
+		// Iterate over all files in the mod_data/DynamicNpcPortraits directory.
+		try
+		{
+			for (const auto& file : fs::directory_iterator(dynamic_npc_portraits_folder))
+			{
+				if (file.is_regular_file() && file.path().extension() == ".json")
+				{
+					std::string filename = file.path().filename().string();
+					
+					std::ifstream in_stream(file.path());
+					if (in_stream.good())
+					{
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Reading JSON file: %s", MOD_NAME, VERSION, filename.c_str());
+
+						try
+						{
+							json json_object = json::parse(in_stream);
+
+							// Check if the json_object is empty.
+							if (json_object.empty())
+							{
+								g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in file: %s", MOD_NAME, VERSION, filename.c_str());
+								g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Ignoring file: %s", MOD_NAME, VERSION, filename.c_str());
+							}
+							else
+							{
+								// Try loading the mod_name value.
+								std::string_view mod_name_view;
+								if (json_object.contains(MOD_NAME_KEY) && json_object.at(MOD_NAME_KEY).is_string())
+								{
+									std::string mod_name = json_object[MOD_NAME_KEY];
+									if (!mod_name.empty() && mod_name.size() > 0)
+									{
+										if(!mod_names.contains(mod_name))
+											mod_names.insert(mod_name);
+										mod_name_view = *mod_names.find(mod_name);
+									}
+								}
+
+								// Try loading the conditions value.
+								if (json_object.contains(DYNAMIC_PORTRAITS_KEY) && json_object.at(DYNAMIC_PORTRAITS_KEY).is_array())
+								{
+									std::vector<json> json_dynamic_portraits = json_object[DYNAMIC_PORTRAITS_KEY];
+									if (!json_dynamic_portraits.empty())
+									{
+										for (json json_dynamic_portrait : json_dynamic_portraits)
+										{
+											if (!json_dynamic_portrait.contains(CONDITIONS_KEY) || !json_dynamic_portrait.at(CONDITIONS_KEY).is_object() || !json_dynamic_portrait.contains(SPRITE_NAME_KEY) || !json_dynamic_portrait.at(SPRITE_NAME_KEY).is_string() || !json_dynamic_portrait.contains(NPC_KEY) || !json_dynamic_portrait.at(NPC_KEY).is_string())
+												continue;
+
+											json json_dynamic_portrait_conditions = json_dynamic_portrait[CONDITIONS_KEY];
+											if (json_dynamic_portrait_conditions.empty())
+												continue;
+											
+											std::string json_dynamic_portrait_sprite_name = json_dynamic_portrait[SPRITE_NAME_KEY];
+											if (json_dynamic_portrait_sprite_name.empty() || json_dynamic_portrait_sprite_name.size() == 0)
+												continue;
+
+											std::string json_dynamic_portrait_npc = json_dynamic_portrait[NPC_KEY];
+											if (json_dynamic_portrait_npc.empty() || json_dynamic_portrait_npc.size() == 0 || !IsValidNpc(json_dynamic_portrait_npc))
+												continue;
+
+											// Test the base_sprite_name using the neutral expression.
+											std::string test_base_sprite_neutral_expression = json_dynamic_portrait_sprite_name + "_neutral";
+											RValue asset_index = g_ModuleInterface->CallBuiltin("asset_get_index", { test_base_sprite_neutral_expression.c_str() });
+											if (asset_index.m_Kind != VALUE_REF)
+											{
+												g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - The provided base sprite doesn't exist: %s", MOD_NAME, VERSION, json_dynamic_portrait_sprite_name.c_str());
+												continue;
+											}
+
+											DynamicPortrait dynamic_portrait = DynamicPortrait();
+											dynamic_portrait.mod_name = mod_name_view;
+											dynamic_portrait.sprite_name = json_dynamic_portrait_sprite_name;
+											dynamic_portrait.npc = npc_name_to_id_map[json_dynamic_portrait_npc];
+
+											// time_of_day condition.
+											if (json_dynamic_portrait_conditions.contains(TIME_OF_DAY_KEY) && json_dynamic_portrait_conditions.at(TIME_OF_DAY_KEY).is_string())
+											{
+												std::string time_of_day_str = json_dynamic_portrait_conditions[TIME_OF_DAY_KEY];
+												if (IsValidTimeOfDay(time_of_day_str))
+													dynamic_portrait.time_of_day = daytime_to_id_map[time_of_day_str];
+											}
+
+											// day_of_week condition.
+											if (json_dynamic_portrait_conditions.contains(DAY_OF_WEEK_KEY) && json_dynamic_portrait_conditions.at(DAY_OF_WEEK_KEY).is_string())
+											{
+												std::string day_of_week_str = json_dynamic_portrait_conditions[DAY_OF_WEEK_KEY];
+												if (IsValidDayOfWeek(day_of_week_str))
+													dynamic_portrait.week_day = day_name_to_id_map[day_of_week_str];
+											}
+
+											// day_of_month condition.
+											if (json_dynamic_portrait_conditions.contains(DAY_OF_MONTH_KEY) && json_dynamic_portrait_conditions.at(DAY_OF_MONTH_KEY).is_number_integer())
+											{
+												int day_of_month = json_dynamic_portrait_conditions[DAY_OF_MONTH_KEY];
+												if (day_of_month > 0 && day_of_month < 29)
+													dynamic_portrait.month_day = day_of_month;
+											}
+
+											// season condition.
+											if (json_dynamic_portrait_conditions.contains(SEASON_KEY) && json_dynamic_portrait_conditions.at(SEASON_KEY).is_string())
+											{
+												std::string season_str = json_dynamic_portrait_conditions[SEASON_KEY];
+												if (IsValidSeason(season_str))
+													dynamic_portrait.season = season_name_to_id_map[season_str];
+											}
+
+											// year condition.
+											if (json_dynamic_portrait_conditions.contains(YEAR_KEY) && json_dynamic_portrait_conditions.at(YEAR_KEY).is_number_integer())
+											{
+												int year = json_dynamic_portrait_conditions[YEAR_KEY];
+												if (year > 0)
+													dynamic_portrait.year = year;
+											}
+
+											// weather condition.
+											if (json_dynamic_portrait_conditions.contains(WEATHER_KEY) && json_dynamic_portrait_conditions.at(WEATHER_KEY).is_string())
+											{
+												std::string weather_str = json_dynamic_portrait_conditions[WEATHER_KEY];
+												if (IsValidWeather(weather_str))
+													dynamic_portrait.weather = weather_name_to_id_map[weather_str];
+											}
+
+											// location condition.
+											if (json_dynamic_portrait_conditions.contains(LOCATION_KEY) && json_dynamic_portrait_conditions.at(LOCATION_KEY).is_string())
+											{
+												std::string location_str = json_dynamic_portrait_conditions[LOCATION_KEY];
+												if (IsValidLocation(location_str))
+													dynamic_portrait.location = location_name_to_id_map[location_str];
+													
+											}
+
+											// Final validation. Confirm the reminder has at least one valid condition.
+											if (dynamic_portrait.HasTimeOfDayCondition() || dynamic_portrait.HasWeekDayCondition() || dynamic_portrait.HasMonthDayCondition() || dynamic_portrait.HasSeasonCondition() || dynamic_portrait.HasYearCondition() || dynamic_portrait.HasWeatherCondition() || dynamic_portrait.HasLocationCondition())
+											{
+												dynamic_portraits.push_back(dynamic_portrait);
+												g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Dynamic Portrait config loaded for sprite: %s", MOD_NAME, VERSION, json_dynamic_portrait_sprite_name.c_str());
+											}
+										}
+									}
+									else
+									{
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No conditions were set in file: %s", MOD_NAME, VERSION, filename.c_str());
+										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Ignoring the file.", MOD_NAME, VERSION);
+									}
+								}
+								else
+								{
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s", MOD_NAME, VERSION, DYNAMIC_PORTRAITS_KEY.c_str(), filename.c_str());
+									g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Ignoring the file.", MOD_NAME, VERSION);
+								}
+
+							}
+						}
+						catch (...)
+						{
+							eptr = std::current_exception();
+							PrintError(eptr);
+
+							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from file: %s", MOD_NAME, VERSION, filename.c_str());
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the file is valid JSON!", MOD_NAME, VERSION);
+						}
+
+						in_stream.close();
+					}
+					else
+					{
+						in_stream.close();
+						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to load JSON file: %s", MOD_NAME, VERSION, filename.c_str());
+					}
+				}
+			}
+		}
+		catch (...)
+		{
+			eptr = std::current_exception();
+			PrintError(eptr);
+
+			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error reading dynamic portrait config files in folder: %s", MOD_NAME, VERSION, dynamic_npc_portraits_folder.c_str());
+		}
+	}
+	catch (...)
+	{
+		eptr = std::current_exception();
+		PrintError(eptr);
+
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred reading the dynamic portrait config files.", MOD_NAME, VERSION);
+	}
 }
 
 RValue GetDynamicNpcPortrait(std::string sprite_name)
 {
-	/*
-	if(daytime and (location==INN or location==BALOR_BEDROOM))
-	  DrawPortraitType(spring_indoor) // You don't want this drawn if Balor is indoors elsewhere, like the General Store?
-	else if(nighttime and (location==BALOR_BEDROOM or location==SAUNA_ENTRY))
-	  DrawPortraitType(spring_room)
-	else if(location==OUTDOORS and (weather==INCLEMENT or weather==HEAVY_INCLEMENT))
-	  DrawPortraitType(spring_weather)
-	else if(day==spring_festival)
-	  DrawPortraitType(spring_festival) // Will only draw this if none of the above conditions are met.
-	else
-	  DrawPortraitType(spring_portraits) // Technically not needed, since these are the modified base spring portraits
-	*/
-
 	// Example: spr_portrait_balor_spring_sincere_special
 	std::vector<std::string> sprite_name_parts = split(sprite_name, '_');
 	std::string npc_name = sprite_name_parts[2];
-	std::string season = sprite_name_parts[3];
-	std::string modifier = "";
 
+	std::string expression = "";
 	for (int i = 4; i < sprite_name_parts.size(); i++)
 	{
-		modifier += sprite_name_parts[i];
+		expression += sprite_name_parts[i];
 		if (i != sprite_name_parts.size() - 1)
-			modifier += "_";
+			expression += "_";
 	}
 
-	if (npc_name == "balor" && season == "spring")
+	for (DynamicPortrait dynamic_portrait : dynamic_portraits)
 	{
-		std::string dynamic_portrait_name = sprite_name;
+		if (npc_name != npc_id_to_name_map[dynamic_portrait.npc])
+			continue;
 
-		if (!IsNight() && (current_location == location_name_to_id_map["balors_room"] || current_location == location_name_to_id_map["inn"]))
-			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "indoor", modifier);
-		else if ((IsNight() && (current_location == location_name_to_id_map["balors_room"]) || current_location == location_name_to_id_map["bathhouse_change_room"]))
-			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "room", modifier);
-		else if (!AriIsIndoors() && (current_weather == weather_name_to_id_map["inclement"] || current_weather == weather_name_to_id_map["heavy_inclement"]))
-			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "weather", modifier);
-		else if (current_season == 1 && current_day == 17) // spring festival
-			dynamic_portrait_name = GetDynamicPortraitName(npc_name, season, "festival", modifier);
-
-		if (dynamic_portrait_name != sprite_name)
+		if (dynamic_portrait.HasTimeOfDayCondition())
 		{
-			RValue dynamic_portrait = g_ModuleInterface->CallBuiltin("asset_get_index", { dynamic_portrait_name.c_str() });
-			if (dynamic_portrait.m_Kind == VALUE_REF)
-				return dynamic_portrait;
+			if (dynamic_portrait.time_of_day == daytime_to_id_map["day"] && IsNight())
+				continue;
+			if (dynamic_portrait.time_of_day == daytime_to_id_map["night"] && !IsNight())
+				continue;
 		}
+
+		if (dynamic_portrait.HasWeekDayCondition() && ((current_day - 1) % 7) != dynamic_portrait.week_day)
+			continue;
+
+		if (dynamic_portrait.HasMonthDayCondition() && current_day != dynamic_portrait.month_day)
+			continue;
+
+		if (dynamic_portrait.HasSeasonCondition() && current_season != dynamic_portrait.season)
+			continue;
+
+		if (dynamic_portrait.HasYearCondition() && current_year != dynamic_portrait.year)
+			continue;
+
+		if (dynamic_portrait.HasWeatherCondition() && current_weather != dynamic_portrait.weather)
+			continue;
+
+		if (dynamic_portrait.HasLocationCondition() && current_location != dynamic_portrait.location)
+			continue;
+
+		std::string sprite_name = dynamic_portrait.sprite_name + "_" + expression;
+		RValue sprite = g_ModuleInterface->CallBuiltin("asset_get_index", { sprite_name.c_str() });
+		if (sprite.m_Kind == VALUE_REF)
+			return sprite;
 	}
 }
 
@@ -351,6 +763,29 @@ RValue& GmlScriptCalendarSeasonCallback(
 	return Result;
 }
 
+RValue& GmlScriptCalendarYearCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CALENDAR_YEAR));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (game_is_active)
+		current_year = Result.ToInt64() + 1; // Result is a VALUE_REAL that is the 0-indexed calendar year
+
+	return Result;
+}
+
 RValue& GmlScriptGetWeatherCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -372,6 +807,29 @@ RValue& GmlScriptGetWeatherCallback(
 		current_weather = Result.ToInt64();
 
 	game_is_active = true;
+	return Result;
+}
+
+RValue& GmlScriptCutsceneIsRunningCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CUTSCENE_IS_RUNNING));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (game_is_active && Result.m_Kind == VALUE_BOOL)
+		cutscene_is_running = Result.ToBoolean();
+
 	return Result;
 }
 
@@ -425,8 +883,13 @@ RValue& GmlScriptSetupMainScreenCallback(
 		load_on_start = false;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 		
+		LoadDaytime();
+		LoadDays();
+		LoadSeasons();
 		LoadWeather();
 		LoadLocations();
+		LoadNpcs();
+		CreateOrLoadConfigFile();
 	}
 	else
 		ResetStaticFields(true);
@@ -607,6 +1070,34 @@ void CreateHookGmlScriptCalendarSeason(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptCalendarYear(AurieStatus& status)
+{
+	CScript* gml_script_calendar_year = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CALENDAR_YEAR,
+		(PVOID*)&gml_script_calendar_year
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CALENDAR_YEAR);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CALENDAR_YEAR,
+		gml_script_calendar_year->m_Functions->m_ScriptFunction,
+		GmlScriptCalendarYearCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CALENDAR_YEAR);
+	}
+}
+
 void CreateHookGmlScriptGetWeather(AurieStatus& status)
 {
 	CScript* gml_script_get_weather = nullptr;
@@ -631,6 +1122,33 @@ void CreateHookGmlScriptGetWeather(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_WEATHER);
+	}
+}
+
+void CreateHookGmlScriptCutsceneIsRunning(AurieStatus& status)
+{
+	CScript* gml_script_cutscene_is_running = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CUTSCENE_IS_RUNNING,
+		(PVOID*)&gml_script_cutscene_is_running
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CUTSCENE_IS_RUNNING);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CUTSCENE_IS_RUNNING,
+		gml_script_cutscene_is_running->m_Functions->m_ScriptFunction,
+		GmlScriptCutsceneIsRunningCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CUTSCENE_IS_RUNNING);
 	}
 }
 
@@ -745,7 +1263,21 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		return status;
 	}
 
+	CreateHookGmlScriptCalendarYear(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
 	CreateHookGmlScriptGetWeather(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCutsceneIsRunning(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
