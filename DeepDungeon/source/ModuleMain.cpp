@@ -1,4 +1,5 @@
 #include <random>
+#include <complex>
 #include <fstream>
 #include <iostream>
 #include <filesystem>
@@ -1576,6 +1577,132 @@ double GetWindowHeight()
 
 uint64_t GetCurrentSystemTime() {
 	return duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+int euclidean_modulo(int a, int m)
+{
+	int r = a % m;
+	return (r < 0) ? r + m : r;
+}
+
+std::vector<double> linspace(double start, double end, std::size_t num)
+{
+	std::vector<double> result;
+	result.reserve(num);
+
+	if (num == 0)
+		return result;
+
+	if (num == 1)
+	{
+		result.push_back(start);
+		return result;
+	}
+
+	double step = (end - start) / static_cast<double>(num - 1);
+	for (std::size_t i = 0; i < num; ++i)
+		result.push_back(start + step * static_cast<double>(i));
+
+	return result;
+}
+
+double round_n(double value, int decimals)
+{
+	double factor = std::pow(10.0, decimals);
+	return std::round(value * factor) / factor;
+}
+
+std::complex<double> round_complex(const std::complex<double>& z, int decimals)
+{
+	return {
+		round_n(z.real(), decimals),
+		round_n(z.imag(), decimals)
+	};
+}
+
+std::vector<std::vector<double>> generate_circle(const std::vector<int>& Ns)
+{
+	static constexpr double PI = 3.14159265358979323846;
+	std::vector<std::vector<double>> points = {};
+
+	for (int N : Ns)
+	{
+		auto ts = linspace(0.0, 1.0, static_cast<std::size_t>(N));
+
+		for (double t : ts)
+		{
+			std::complex<double> z = static_cast<double>(N - 1) * std::exp(std::complex<double>(0.0, 2.0 * PI * t));
+			std::complex<double> c = round_complex(z, 2);
+			points.push_back({c.real(), c.imag()});
+		}
+	}
+
+	return points;
+}
+
+std::vector<std::vector<double>> generate_cross(int threshold, int lower_bound, int upper_bound, int increment, bool rotate)
+{
+	static const std::complex<double> SQRT_I = std::sqrt(std::complex<double>(0.0, 1.0));
+
+	std::vector<std::vector<double>> points;
+	for (int y = lower_bound; y <= upper_bound; y += increment)
+	{
+		for (int x = lower_bound; x <= upper_bound; x += increment)
+		{
+			if (min(std::abs(x), std::abs(y)) < threshold && (std::abs(x) + std::abs(y)) != 0)
+			{
+				std::complex<double> z(x, y);
+				std::complex<double> c;
+
+				if (!rotate)
+					c = round_complex(z, 2); // Cross
+				else
+					c = round_complex(z * SQRT_I, 2); // X
+
+				points.push_back({c.real(), c.imag()});
+			}
+		}
+	}
+
+	return points;
+}
+
+std::vector<std::vector<double>> generate_checkerboard()
+{
+	std::vector<std::vector<double>> positions;
+
+	for (int y = -24; y <= 24; ++y)
+	{
+		for (int x = -24; x <= 24; ++x)
+		{
+			int xm = euclidean_modulo(x, 10);
+			int ym = euclidean_modulo(y, 10);
+
+			if ((xm < 5 && ym < 5) || (xm >= 5 && ym >= 5))
+				positions.push_back({8.0 * (x + 0.5), 8.0 * (y + 0.5)});
+		}
+	}
+
+	return positions;
+}
+
+std::vector<std::vector<double>> generate_inverted_checkerboard()
+{
+	std::vector<std::vector<double>> positions;
+
+	for (int y = -24; y <= 24; ++y)
+	{
+		for (int x = -24; x <= 24; ++x)
+		{
+			int xm = euclidean_modulo(x, 10);
+			int ym = euclidean_modulo(y, 10);
+
+			if (!((xm < 5 && ym < 5) || (xm >= 5 && ym >= 5)))
+				positions.push_back({8.0 * (x + 0.5), 8.0 * (y + 0.5)});
+		}
+	}
+
+	return positions;
 }
 
 double GetDistance(int x1, int y1, int x2, int y2) {
@@ -4576,129 +4703,15 @@ void PrintError(std::exception_ptr eptr)
 
 void LoadStalagmiteAttackData()
 {
-	// Load config file.
-	std::exception_ptr eptr;
-	try
-	{
-		// Try to find the mod_data directory.
-		std::string current_dir = std::filesystem::current_path().string();
-		std::string stalagmite_json = current_dir + "\\mods\\Deep Dungeon\\data\\stalagmite_attacks.json";
-		std::ifstream in_stream(stalagmite_json);
-		if (in_stream.good())
-		{
-			try
-			{
-				json json_object = json::parse(in_stream);
+	const std::vector<int> smallNs = { 9, 17, 25, 33, 41, 49 };
+	const std::vector<int> bigNs = { 57, 65, 73, 81, 89, 97 };
 
-				if (json_object.empty())
-				{
-					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in JSON file: %s!", MOD_NAME, VERSION, stalagmite_json.c_str());
-				}
-				else
-				{
-					if (json_object.contains("donut_aoe_points"))
-					{
-						donut_aoe_points = json_object["donut_aoe_points"];
-						if (donut_aoe_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "donut_aoe_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "donut_aoe_points", stalagmite_json.c_str());
-					}
-
-					if (json_object.contains("pb_aoe_points"))
-					{
-						pb_aoe_points = json_object["pb_aoe_points"];
-						if (donut_aoe_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "pb_aoe_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "pb_aoe_points", stalagmite_json.c_str());
-					}
-
-					if (json_object.contains("cross_aoe_points"))
-					{
-						cross_aoe_points = json_object["cross_aoe_points"];
-						if (cross_aoe_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "cross_aoe_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "cross_aoe_points", stalagmite_json.c_str());
-					}
-
-					if (json_object.contains("x_aoe_points"))
-					{
-						x_aoe_points = json_object["x_aoe_points"];
-						if (x_aoe_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "x_aoe_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "x_aoe_points", stalagmite_json.c_str());
-
-					}
-
-					if (json_object.contains("checkerboard_room_wide_a_points"))
-					{
-						checkerboard_room_wide_a_points = json_object["checkerboard_room_wide_a_points"];
-						if (checkerboard_room_wide_a_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
-					}
-
-					if (json_object.contains("checkerboard_room_wide_b_points"))
-					{
-						checkerboard_room_wide_b_points = json_object["checkerboard_room_wide_b_points"];
-						if (checkerboard_room_wide_b_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_b_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_b_points", stalagmite_json.c_str());
-					}
-				}
-			}
-			catch (...)
-			{
-				eptr = std::current_exception();
-				PrintError(eptr);
-
-				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from file: %s", MOD_NAME, VERSION, stalagmite_json.c_str());
-			}
-
-			in_stream.close();
-		}
-		else
-		{
-			in_stream.close();
-			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - The JSON file was not found: %s", MOD_NAME, VERSION, stalagmite_json.c_str());
-		}
-	}
-	catch (...)
-	{
-		eptr = std::current_exception();
-		PrintError(eptr);
-
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred loading the \"stalagmite_attacks.json\" JSON file!", MOD_NAME, VERSION);
-	}
+	pb_aoe_points = generate_circle(smallNs);
+	donut_aoe_points = generate_circle(bigNs);
+	cross_aoe_points = generate_cross(18, -96, 96, 8, false);
+	x_aoe_points = generate_cross(18, -96, 96, 8, true);
+	checkerboard_room_wide_a_points = generate_checkerboard();
+	checkerboard_room_wide_b_points = generate_inverted_checkerboard();
 }
 
 void ObjectCallback(
