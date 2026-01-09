@@ -1451,7 +1451,6 @@ static int sigil_of_alteration_count = 0;
 static int dread_beast_monster_id = -1;
 static int boss_monsters_configured = 0;
 static BossBattle boss_battle = BossBattle::NONE; // TODO
-
 static std::string ari_current_location = "";
 static std::string ari_current_gm_room = "";
 static std::unordered_set<int> orb_items = {};
@@ -1490,6 +1489,7 @@ static std::map<AriResources, bool> ari_resource_to_penalty_map = {}; // Used to
 static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script.
 static std::map<std::string, std::unordered_set<int>> dungeon_biome_to_candidate_monsters_map = {}; // Holds the candidate monster spawns for each dungeon biome.
 static std::map<int, std::string> floor_number_to_biome_name_map = {}; // Maps floor numbers to the dungeon biome name.
+static std::vector<int> initial_floor_monsters = {}; // Holds the IDs of monsters spawned on the current floor.
 static std::vector<CInstance*> current_floor_monsters = {}; // Holds CInstance refs to all monsters on the current floor.
 static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {}; // Tracks when a notification was last displayed.
 static std::map<int, RValue> item_id_to_prototype_map = {}; // Used to serialize LiveItem instances for a given item prototype.
@@ -4638,10 +4638,13 @@ void GenerateFloorTraps()
 	}
 }
 
-std::vector<int> GenerateRandomMonstersIdsForCurrentFloor(int monsters_to_spawn)
+std::vector<int> GenerateRandomMonstersIdsForCurrentFloor(int monsters_to_spawn, const int monster_id_to_exclude = -1)
 {
 	static thread_local std::mt19937 random_generator(std::random_device{}());
 	std::vector<int> candidate_monsters(dungeon_biome_to_candidate_monsters_map[floor_number_to_biome_name_map[floor_number]].begin(), dungeon_biome_to_candidate_monsters_map[floor_number_to_biome_name_map[floor_number]].end());
+
+	if(monster_id_to_exclude != -1)
+		candidate_monsters.erase(std::remove(candidate_monsters.begin(), candidate_monsters.end(), monster_id_to_exclude), candidate_monsters.end());
 
 	std::vector<int> random_monsters = {};
 	for (int i = 0; i < monsters_to_spawn; i++)
@@ -4688,6 +4691,36 @@ void SpawnDreadBeast(CInstance* Self, CInstance* Other)
 		dread_beast_monster_id = monster_id;
 		SpawnMonster(Self, Other, spawn_point.first, spawn_point.second, monster_id);
 	}
+}
+
+void SelectDreadBeast(CInstance* Self, CInstance* Other)
+{
+	// TODO: Update this as Dread Beasts are implemented by removing the prune statements below.
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["barrel"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["bat"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["bat_blue"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["cat"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["copperclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["goldclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["ironclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["mimic"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["mistrilclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["rock_stack"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["rock_stack_lava"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["sapling_cool"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["sapling_orange_mini"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["silverclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["spirit"]), initial_floor_monsters.end());
+
+	if (initial_floor_monsters.size() > 0)
+	{
+		static thread_local std::mt19937 random_generator(std::random_device{}());
+		std::uniform_int_distribution<int> initial_floor_monster_distribution(0, initial_floor_monsters.size() - 1);
+
+		dread_beast_monster_id = initial_floor_monsters[initial_floor_monster_distribution(random_generator)];
+	}
+	else
+		SpawnDreadBeast(Self, Other);
 }
 
 void CancelStatusEffect(CInstance* Self, CInstance* Other, RValue status_effect_id)
@@ -5088,10 +5121,21 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			}
 			if (trap == Traps::LURING)
 			{
+				std::uniform_int_distribution<int> random_position_offset_distribution(-12, 12);
+
 				PlaySoundEffect("snd_ScrollRaise", 100);
 				CreateNotification(true, LURING_TRAP_NOTIFICATION_KEY, Self, Other);
-				std::vector<int> random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2); // TODO: Scale the number of monsters spawned?
-				std::uniform_int_distribution<int> random_position_offset_distribution(-12, 12);
+
+				// TODO: Restrict stalagmite spawns in the ruins if necessary (stalagmite_pink? TBD)
+				std::vector<int> random_monsters;
+				if (std::find(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["stalagmite"]) != initial_floor_monsters.end())
+					random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2, monster_name_to_id_map["stalagmite"]);
+				else if (std::find(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["stalagmite_green"]) != initial_floor_monsters.end())
+					random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2, monster_name_to_id_map["stalagmite_green"]);
+				else if (std::find(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["stalagmite_purple"]) != initial_floor_monsters.end())
+					random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2, monster_name_to_id_map["stalagmite_purple"]);
+				else 
+					random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2);
 
 				for (int i = 0; i < random_monsters.size(); i++)
 					SpawnMonster(Self, Other, floor_trap->first + random_position_offset_distribution(random_generator), floor_trap->second + random_position_offset_distribution(random_generator), random_monsters[i]);
@@ -5589,7 +5633,7 @@ void ObjectCallback(
 
 						dread_beast_configured = true;
 						StructVariableSet(monster, "__deep_dungeon__dread_beast", true);
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Spawned Dread Beast: %s", MOD_NAME, VERSION, monster_id_to_name_map[monster_id.ToInt64()].c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Configured Dread Beast: %s", MOD_NAME, VERSION, monster_id_to_name_map[monster_id.ToInt64()].c_str());
 					}
 				}
 				else if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
@@ -5922,7 +5966,6 @@ RValue& GmlScriptSpawnMonsterCallback(
 	IN RValue** Arguments
 )
 {
-	// TODO: Test this new condition!
 	if (!active_traps.contains(Traps::LURING))
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
@@ -5988,6 +6031,9 @@ RValue& GmlScriptSpawnMonsterCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	if (std::find(initial_floor_monsters.begin(), initial_floor_monsters.end(), Arguments[2]->ToInt64()) == initial_floor_monsters.end())
+		initial_floor_monsters.push_back(Arguments[2]->ToInt64());
 
 	return Result;
 }
@@ -6608,7 +6654,7 @@ RValue& GmlScriptUseItemCallback(
 	{
 		if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari"))
 		{
-			if (deep_dungeon_items.contains(held_item_id) && held_item_id != sigil_to_item_id_map[Sigils::SERENITY] && held_item_id != item_name_to_id_map[MISTPOOL_SWORD_NAME]) // TODO: Test this new logic
+			if (deep_dungeon_items.contains(held_item_id) && held_item_id != sigil_to_item_id_map[Sigils::SERENITY] && held_item_id != item_name_to_id_map[MISTPOOL_SWORD_NAME])
 			{
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use that item due to the Item Penalty floor enchantment!!", MOD_NAME, VERSION);
 				CreateNotification(false, ITEM_PENALTY_NOTIFICATION_KEY, Self, Other);
@@ -7117,8 +7163,9 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	}
 	show_dashes = active_offerings.contains(Offerings::DREAD) || boss_battle != BossBattle::NONE;
 	show_danger_banner = active_offerings.contains(Offerings::DREAD) || boss_battle != BossBattle::NONE;
-	if(active_offerings.contains(Offerings::DREAD))
-		SpawnDreadBeast(Self, Other);
+	if (active_offerings.contains(Offerings::DREAD))
+		SelectDreadBeast(Self, Other);
+	initial_floor_monsters.clear();
 
 	DisableAllPerks();
 	ModifySpellCosts(true);
