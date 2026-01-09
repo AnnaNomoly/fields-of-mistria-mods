@@ -1439,8 +1439,8 @@ static bool obj_dungeon_elevator_focused = false;
 static bool obj_dungeon_ladder_down_focused = false;
 static double ari_x = -1;
 static double ari_y = -1;
-static double floor_number = 0;
-static double unmodified_base_health = -1; // TODO
+static int floor_number = 0;
+static int unmodified_base_health = -1;
 static int floor_start_time = 0;
 static int current_time_in_seconds = -1;
 static int time_of_last_restoration_tick = -1;
@@ -2989,7 +2989,7 @@ void ScaleMistpoolWeapon(bool in_dungeon)
 
 	if (in_dungeon)
 	{
-		double damage = std::trunc(floor_number / 4.0) + 3;
+		int damage = (floor_number / 4) + 3; // TODO: Make sure this is scaling correctly with code change
 		*sword_scrap_metal->GetRefMember("damage") = damage;
 	}
 	else
@@ -3006,7 +3006,7 @@ void ScaleMistpoolArmor(bool in_dungeon)
 
 		if (in_dungeon)
 		{
-			double defense = std::trunc(floor_number / 20.0);
+			int defense = floor_number / 20; // TODO: Make sure this is scaling correctly with code change
 			*mistpool_armor_piece->GetRefMember("defense") = defense;
 		}
 		else
@@ -3068,7 +3068,7 @@ void ScaleClassArmor(bool in_dungeon)
 
 		if (in_dungeon)
 		{
-			double defense = std::trunc(floor_number / 20.0);
+			int defense = floor_number / 20; // TODO: Make sure this is scaling correctly with code change
 			*class_armor_piece->GetRefMember("defense") = defense;
 		}
 		else
@@ -3296,10 +3296,14 @@ void SpawnMonster(CInstance* Self, CInstance* Other, int room_x, int room_y, int
 
 void ModifyRockClodAttackPatterns(bool is_boss_battle, RValue monster)
 {
-	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
-	if (!wait_to_change_attack_pattern_exists.ToBoolean())
-		StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
-	RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
+	const enum class Patterns {
+		WALL, // Shoots a wall of 10 pellets repeatedly 5 times
+		SPIN, // Rotates 18-degrees at a time while shooting 5 pellets in a line at various angles
+		SPLIT // Shoots a single pellet that then splits into many that repeatedly split
+	};
+
+	static thread_local std::mt19937 random_generator(std::random_device{}());
+	std::uniform_int_distribution<size_t> random_pattern_distribution(0, magic_enum::enum_count<Patterns>() - 1);
 
 	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
 	if (!custom_attack_pattern_exists.ToBoolean())
@@ -3308,46 +3312,27 @@ void ModifyRockClodAttackPatterns(bool is_boss_battle, RValue monster)
 		{
 			RValue config = monster.GetMember("config");
 			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
-
+			
+			Patterns pattern = magic_enum::enum_value<Patterns>(random_pattern_distribution(random_generator));
 			if (is_boss_battle)
 			{
 				if (boss_monsters_configured < 2)
 				{
-					// Rotates 18-degrees at a time while shooting 5 pellets in a small cone
-					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
-					StructVariableSet(config_clone, "attack_sequence", 20.0);
-					StructVariableSet(config_clone, "attack_legion", 5.0);
-					StructVariableSet(config_clone, "attack_sequence_turn", 18.0);
-					StructVariableSet(config_clone, "attack_sequence_image_speed", 2.0);
-					StructVariableSet(config_clone, "projectile_speed", 3.0);
-					StructVariableSet(config_clone, "split_distance", -1.0);
-					StructVariableSet(config_clone, "split_depth", -1.0);
-					StructVariableSet(config_clone, "split_angle", -1.0);
-					StructVariableSet(monster, "config", config_clone);
-					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 1);
+					pattern = Patterns::SPIN;
 					boss_monsters_configured++;
 				}
-				else if (boss_monsters_configured == 2)
+				else
 				{
-					// Shoots a single pellet that then splits into many that repeatedly split
-					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
-					StructVariableSet(config_clone, "attack_sequence", 5.0);
-					StructVariableSet(config_clone, "attack_legion", 1.0);
-					StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
-					StructVariableSet(config_clone, "attack_sequence_image_speed", -1.0);
-					StructVariableSet(config_clone, "projectile_speed", 3.0);
-					StructVariableSet(config_clone, "split_distance", 20.0);
-					StructVariableSet(config_clone, "split_depth", 5.0);
-					StructVariableSet(config_clone, "split_angle", 20.0);
-					StructVariableSet(monster, "config", config_clone);
-					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 2);
+					pattern = Patterns::SPLIT;
 					boss_monsters_configured++;
 				}
 			}
-			else
+
+			if (pattern == Patterns::WALL)
 			{
 				// Shoots a wall of 10 pellets repeatedly 5 times
 				StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+				StructVariableSet(config_clone, "launcher", false);
 				StructVariableSet(config_clone, "attack_sequence", 5.0);
 				StructVariableSet(config_clone, "attack_legion", 10.0);
 				StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
@@ -3359,73 +3344,38 @@ void ModifyRockClodAttackPatterns(bool is_boss_battle, RValue monster)
 				StructVariableSet(monster, "config", config_clone);
 				StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 			}
-		}
-	}
-
-	if (custom_attack_pattern_exists.ToBoolean() && StructVariableExists(monster, "fsm"))
-	{
-		RValue state_id = monster.GetMember("fsm").GetMember("state").GetMember("state_id");
-		if (state_id.ToInt64() == monster_category_to_state_id_map["clod"]["attack"])
-			*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = false;
-
-		if (state_id.ToInt64() == monster_category_to_state_id_map["clod"]["tired"] && !wait_to_change_attack_pattern.ToBoolean())
-		{
-			*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = true;
-
-			int custom_attack_pattern = monster.GetMember("__deep_dungeon__custom_attack_pattern").ToInt64();
-			if (custom_attack_pattern > 2)
-				custom_attack_pattern = 0;
-
-			if (custom_attack_pattern == 0)
+			else if (pattern == Patterns::SPIN)
 			{
-				if (StructVariableExists(monster, "config"))
-				{
-					// Shoots a wall of 10 pellets repeatedly 5 times
-					RValue config = *monster.GetRefMember("config");
-					*config.GetRefMember("attack_sequence") = 5.0;
-					*config.GetRefMember("attack_legion") = 10.0;
-					*config.GetRefMember("attack_sequence_turn") = -1.0;
-					*config.GetRefMember("attack_sequence_image_speed") = -1.0;
-					*config.GetRefMember("projectile_speed") = 3.0;
-					*config.GetRefMember("split_distance") = -1.0;
-					*config.GetRefMember("split_depth") = -1.0;
-					*config.GetRefMember("split_angle") = -1.0;
-				}
+				// Rotates 18-degrees at a time while shooting 5 pellets in a small cone
+				StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+				StructVariableSet(config_clone, "launcher", false);
+				StructVariableSet(config_clone, "attack_sequence", 20.0);
+				StructVariableSet(config_clone, "attack_legion", 5.0);
+				StructVariableSet(config_clone, "attack_sequence_turn", 18.0);
+				StructVariableSet(config_clone, "attack_sequence_image_speed", 3.0);
+				StructVariableSet(config_clone, "projectile_speed", 3.0);
+				StructVariableSet(config_clone, "split_distance", 5.0);
+				StructVariableSet(config_clone, "split_depth", 2.0);
+				StructVariableSet(config_clone, "split_angle", 40.0);
+				StructVariableSet(monster, "config", config_clone);
+				StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 			}
-			if (custom_attack_pattern == 1)
+			else if (pattern == Patterns::SPLIT)
 			{
-				if (StructVariableExists(monster, "config"))
-				{
-					// Rotates 18-degrees at a time while shooting 5 pellets in a small cone
-					RValue config = *monster.GetRefMember("config");
-					*config.GetRefMember("attack_sequence") = 20.0;
-					*config.GetRefMember("attack_legion") = 5.0;
-					*config.GetRefMember("attack_sequence_turn") = 18.0;
-					*config.GetRefMember("attack_sequence_image_speed") = 2.0;
-					*config.GetRefMember("projectile_speed") = 3.0;
-					*config.GetRefMember("split_distance") = -1.0;
-					*config.GetRefMember("split_depth") = -1.0;
-					*config.GetRefMember("split_angle") = -1.0;
-				}
+				// Shoots a single pellet that then splits into many that repeatedly split
+				StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+				StructVariableSet(config_clone, "launcher", false);
+				StructVariableSet(config_clone, "attack_sequence", 5.0);
+				StructVariableSet(config_clone, "attack_legion", 1.0);
+				StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
+				StructVariableSet(config_clone, "attack_sequence_image_speed", -1.0);
+				StructVariableSet(config_clone, "projectile_speed", 3.0);
+				StructVariableSet(config_clone, "split_distance", 20.0);
+				StructVariableSet(config_clone, "split_depth", 5.0);
+				StructVariableSet(config_clone, "split_angle", 20.0);
+				StructVariableSet(monster, "config", config_clone);
+				StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 			}
-			if (custom_attack_pattern == 2)
-			{
-				if (StructVariableExists(monster, "config"))
-				{
-					// Shoots a single pellet that then splits into many that repeatedly split
-					RValue config = *monster.GetRefMember("config");
-					*config.GetRefMember("attack_sequence") = 5.0;
-					*config.GetRefMember("attack_legion") = 1.0;
-					*config.GetRefMember("attack_sequence_turn") = -1.0;
-					*config.GetRefMember("attack_sequence_image_speed") = -1.0;
-					*config.GetRefMember("projectile_speed") = 3.0;
-					*config.GetRefMember("split_distance") = 20.0;
-					*config.GetRefMember("split_depth") = 5.0;
-					*config.GetRefMember("split_angle") = 20.0;
-				}
-			}
-
-			*monster.GetRefMember("__deep_dungeon__custom_attack_pattern") = custom_attack_pattern + 1;
 		}
 	}
 }
@@ -3757,6 +3707,7 @@ void ModifySaplingAttackPatterns(RValue monster, int monster_id)
 			StructVariableSet(config_clone, "free_fly", true);
 			StructVariableSet(config_clone, "air_speed_modifier", 0.6);
 			StructVariableSet(config_clone, "use_circle", true);
+			StructVariableSet(config_clone, "speed", 0.75);
 			StructVariableSet(config_clone, "attack_radius", 624);
 			StructVariableSet(config_clone, "max_jump_radius", 624);
 			StructVariableSet(config_clone, "aggro_radius", 624);
@@ -3794,9 +3745,9 @@ void ModifyShroomAttackPatterns(RValue monster)
 			StructVariableSet(config_clone, "lava_count", 4);
 			StructVariableSet(config_clone, "attack_radius", 704);
 			StructVariableSet(config_clone, "hide_radius", 360);
-			StructVariableSet(config_clone, "shadow_threshold", 0.2);
-			StructVariableSet(config_clone, "fade_in_rate", 0.2);
-			StructVariableSet(config_clone, "fade_out_rate", 0.2);
+			StructVariableSet(config_clone, "shadow_threshold", 0.18); // 0.2
+			StructVariableSet(config_clone, "fade_in_rate", 0.18); // 0.2
+			StructVariableSet(config_clone, "fade_out_rate", 0.18); // 0.2
 			StructVariableSet(config_clone, "windup_friction", 0.93 ); // 0.93
 			StructVariableSet(config_clone, "push_force", 500);
 			StructVariableSet(config_clone, "ari_bounce_distance", 500);
@@ -4615,7 +4566,7 @@ void GenerateFloorTraps()
 			return;
 
 		int min_traps = 2;
-		int biome_adjusted_max_traps = min(6, std::trunc(floor_number / 20) + 2); // Scale the number of traps per floor with progression. Capped at 6.
+		int biome_adjusted_max_traps = min(6, (floor_number / 20) + 2); // Scale the number of traps per floor with progression. Capped at 6.
 
 		std::uniform_int_distribution<size_t> traps_for_room_distribution(min_traps, biome_adjusted_max_traps);
 		int random_trap_count = traps_for_room_distribution(random_generator);
@@ -4858,26 +4809,26 @@ RValue GetMaxHealth(CInstance* Self, CInstance* Other)
 	return result;
 }
 
-void SetMaxHealth(CInstance* Self, CInstance* Other, double value)
+void SetMaxHealth(CInstance* Self, CInstance* Other, int value)
 {
 	RValue __ari = *global_instance->GetRefMember("__ari");
 	*__ari.GetRefMember("base_health") = value;
 
 	RValue current_health = GetHealth(Self, Other);
-	if (current_health.ToDouble() > value)
+	if (current_health.ToInt64() > value)
 		SetHealth(Self, Other, value);
 }
 
-double ModifyMaxHealth(CInstance* Self, CInstance* Other, double value)
+int ModifyMaxHealth(CInstance* Self, CInstance* Other, int value)
 {
 	RValue __ari = *global_instance->GetRefMember("__ari");
-	double max_health = __ari.GetMember("base_health").ToDouble() + value;
+	int max_health = __ari.GetMember("base_health").ToInt64() + value;
 	*__ari.GetRefMember("base_health") = max_health;
 
 	return max_health;
 }
 
-void VitalsMenuSetHealth(CInstance* Self, CInstance* Other, RValue current_health, RValue max_health)
+void VitalsMenuSetHealth(CInstance* Self, CInstance* Other, int current_health_value, int max_health_value)
 {
 	CScript* gml_script_vitals_menu_set_health = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
@@ -4886,6 +4837,8 @@ void VitalsMenuSetHealth(CInstance* Self, CInstance* Other, RValue current_healt
 	);
 
 	RValue result;
+	RValue current_health = current_health_value;
+	RValue max_health = max_health_value;
 	RValue* current_health_ptr = &current_health;
 	RValue* max_health_ptr = &max_health;
 	RValue arg2 = false;
@@ -4901,7 +4854,7 @@ void VitalsMenuSetHealth(CInstance* Self, CInstance* Other, RValue current_healt
 	);
 }
 
-void VitalsMenuSetMaxHealth(CInstance* Self, CInstance* Other, double value)
+void VitalsMenuSetMaxHealth(CInstance* Self, CInstance* Other, int value)
 {
 	CScript* gml_script_vitals_menu_set_max_health = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
@@ -5312,9 +5265,9 @@ void ObjectCallback(
 		if (active_traps.contains(Traps::EXPLODING))
 		{
 			// Apply damage to Ari
-			RValue health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
-			int penalty = std::trunc(health.ToDouble() * 0.8);
-			SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, health.ToDouble() - penalty);
+			int current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self).ToInt64();
+			int penalty = current_health * 4 / 5;
+			SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, current_health - penalty);
 
 			// Apply damage to monsters
 			for (CInstance* monster : current_floor_monsters)
@@ -5490,23 +5443,11 @@ void ObjectCallback(
 		// Drain (Dark Knight Set Bonus)
 		if (class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN] > 0)
 		{
-			int recovery = 0;
-			int drain_multiplier = class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN];
-			RValue max_health = GetMaxHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
-
-			if (active_floor_enchantments.contains(FloorEnchantments::HP_PENALTY))
-			{	
-				RValue current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
-				int penalty = std::trunc(max_health.ToDouble() * 0.25);
-				int adjusted_max_health = max_health.ToInt64() - penalty;
-				recovery = std::trunc(adjusted_max_health * GetDarkKnightDrainPotency());
-			}
-			else
-			{
-				recovery = std::trunc(max_health.ToDouble() * GetDarkKnightDrainPotency());
-			}
+			//int drain_multiplier = class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN];
+			int max_health = GetMaxHealth(global_instance->GetRefMember("__ari")->ToInstance(), self).ToInt64(); // TODO: Make this is accounting for HP_PENALTY
+			int recovery = max_health * GetDarkKnightDrainPotency();
 			
-			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery * drain_multiplier);
+			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery);
 			class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN] = 0;
 		}
 
@@ -5601,7 +5542,7 @@ void ObjectCallback(
 						double hit_points = monster.GetMember("hit_points").ToDouble();
 						if (std::isfinite(hit_points))
 						{
-							*monster.GetRefMember("hit_points") = hit_points * 20; // TODO: Tune this.
+							*monster.GetRefMember("hit_points") = hit_points * 20;
 							StructVariableSet(monster, "__deep_dungeon__boss_monster", true);
 						}
 					}
@@ -5615,7 +5556,7 @@ void ObjectCallback(
 						double hit_points = monster.GetMember("hit_points").ToDouble();
 						if (std::isfinite(hit_points))
 						{
-							*monster.GetRefMember("hit_points") = hit_points * 5; // TODO: Tune this.
+							*monster.GetRefMember("hit_points") = hit_points * 3;
 							StructVariableSet(monster, "__deep_dungeon__boss_monster", true);
 						}
 					}
@@ -5629,7 +5570,7 @@ void ObjectCallback(
 					double hit_points = monster.GetMember("hit_points").ToDouble();
 					if (std::isfinite(hit_points))
 					{
-						*monster.GetRefMember("hit_points") = hit_points * 3; // TODO: Tune this.
+						*monster.GetRefMember("hit_points") = hit_points * 3;
 
 						dread_beast_configured = true;
 						StructVariableSet(monster, "__deep_dungeon__dread_beast", true);
@@ -6064,7 +6005,7 @@ RValue& GmlScriptCanCastSpellCallback(
 		Result = 0.0;
 	
 	// Dark Seal (Dark Knight Set Bonus)
-	if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0)
 		Result = 0.0;
 
 	return Result;
@@ -6094,10 +6035,10 @@ RValue& GmlScriptCastSpellCallback(
 					hit_points -= siphon_life_amount;
 
 					*monster->GetRefMember("hit_points") = hit_points;
-					double max_health = ModifyMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], siphon_life_amount);					
+					int max_health = ModifyMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], siphon_life_amount);					
 					ModifyHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], siphon_life_amount);
 					
-					double current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToDouble();
+					int current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
 					VitalsMenuSetMaxHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], max_health);
 					VitalsMenuSetHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], current_health, max_health);
 				}
@@ -6405,7 +6346,7 @@ RValue& GmlScriptTakePressCallback(
 	);
 
 	// Chance for an Offering event when using a ladder on a dungeon floor.
-	if (game_is_active && obj_dungeon_ladder_down_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean() && !offering_chance_occurred)
+	if (game_is_active && obj_dungeon_ladder_down_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean() && !offering_chance_occurred && (floor_number < 19 || floor_number % 10 != 9))
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
 		std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
@@ -7152,7 +7093,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	dread_beast_configured = false;
 	dread_beast_monster_id = -1;
 	boss_monsters_configured = 0;
-	if (!active_offerings.contains(Offerings::DREAD))
+	if (active_offerings.empty())
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
 		std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
@@ -7177,6 +7118,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	SetInvulnerabilityHits(0);
 	SetFireBreathTime(0);
 	drop_biome_reward = false;
+	fire_breath_cast = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
 	offering_chance_occurred = false;
@@ -7187,14 +7129,14 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
 
 	// Track Unmodified Max HP
-	unmodified_base_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToDouble();
+	unmodified_base_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
 
 	// Toggle reward on seal rooms when dungeon lift is disabled
 	if (configuration.disable_dungeon_lift && ari_current_gm_room.contains("seal") && !biome_reward_disabled)
 		drop_biome_reward = true;
 	biome_reward_disabled = false;
 
-	if (ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal") && !ari_current_gm_room.contains("ritual") && !ari_current_gm_room.contains("treasure") && !ari_current_gm_room.contains("milestone"))
+	if (ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal") && !ari_current_gm_room.contains("ritual") && !ari_current_gm_room.contains("treasure"))
 	{
 		GenerateFloorTraps();
 
@@ -7235,12 +7177,12 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		// HP Penalty
 		if (active_floor_enchantments.contains(FloorEnchantments::HP_PENALTY))
 		{
-			RValue max_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]);
-			int penalty = std::trunc(max_health.ToDouble() * 0.25);
-			int adjusted_max_health = max_health.ToInt64() - penalty;
+			int max_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
+			int penalty = max_health / 4;
+			int adjusted_max_health = max_health - penalty;
 
 			SetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], adjusted_max_health);
-			double current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToDouble();
+			int current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
 
 			VitalsMenuSetMaxHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], adjusted_max_health);
 			VitalsMenuSetHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], current_health, adjusted_max_health);
@@ -7256,9 +7198,9 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 
 		if (boss_battle == BossBattle::TIDE_CAVERNS_ORB)
 		{
-			SpawnMonster(Self, Other, 144, 208, monster_name_to_id_map["rockclod_blue"]); // Left
-			SpawnMonster(Self, Other, 240, 208, monster_name_to_id_map["rockclod_blue"]); // Right
-			SpawnMonster(Self, Other, 192, 240, monster_name_to_id_map["rockclod_blue"]); // Middle
+			SpawnMonster(Self, Other, 144 + 8, 208 + 8, monster_name_to_id_map["rockclod_blue"]); // Left
+			SpawnMonster(Self, Other, 240 + 8, 208 + 8, monster_name_to_id_map["rockclod_blue"]); // Right
+			SpawnMonster(Self, Other, 192 + 8, 240 + 8, monster_name_to_id_map["rockclod_blue"]); // Middle
 			PlayConversation(BOSS_BATTLE_TIDE_CAVERNS_ORB_CONVERSATION_KEY, Self, Other);
 		}
 		else if (boss_battle == BossBattle::DEEP_EARTH_ORB)
@@ -7267,9 +7209,9 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 			//SpawnMonster(Self, Other, 96, 240, monster_name_to_id_map["stalagmite"]); // Left
 			//SpawnMonster(Self, Other, 288, 240, monster_name_to_id_map["stalagmite"]); // Right
 
-			SpawnMonster(Self, Other, 144, 208, monster_name_to_id_map["enchantern_blue"]); // Left
-			SpawnMonster(Self, Other, 240, 208, monster_name_to_id_map["enchantern_blue"]); // Right
-			SpawnMonster(Self, Other, 192, 240, monster_name_to_id_map["stalagmite"]); // Middle
+			SpawnMonster(Self, Other, 144 + 8, 208 + 8, monster_name_to_id_map["enchantern_blue"]); // Left
+			SpawnMonster(Self, Other, 240 + 8, 208 + 8, monster_name_to_id_map["enchantern_blue"]); // Right
+			SpawnMonster(Self, Other, 192 + 8, 240 + 8, monster_name_to_id_map["stalagmite"]); // Middle
 			PlayConversation(BOSS_BATTLE_DEEP_EARTH_ORB_CONVERSATION_KEY, Self, Other);
 		}
 	}
@@ -7341,7 +7283,7 @@ RValue& GmlScriptGoToRoomCallback(
 	if (unmodified_base_health != -1)
 	{
 		SetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], unmodified_base_health);
-		double current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToDouble();
+		int current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
 
 		VitalsMenuSetMaxHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], unmodified_base_health);
 		VitalsMenuSetHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], current_health, unmodified_base_health);
@@ -7373,7 +7315,7 @@ RValue& GmlScriptGoToRoomCallback(
 		drop_biome_reward = false;
 		biome_reward_disabled = false;
 		dread_beast_configured = false;
-		fire_breath_cast = false; // Different than OnDungeonRoomStart
+		fire_breath_cast = false;
 		reckoning_applied = false;
 		fairy_buff_applied = false;
 		offering_chance_occurred = false;
