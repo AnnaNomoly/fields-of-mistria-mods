@@ -1,4 +1,5 @@
 #include <random>
+#include <complex>
 #include <fstream>
 #include <iostream>
 #include <filesystem>
@@ -26,16 +27,19 @@ struct pair_hash {
 };
 
 static const char* const MOD_NAME = "DeepDungeon";
-static const char* const VERSION = "0.5.3";
+static const char* const VERSION = "0.6.0";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_PLAY_CONVERSATION = "gml_Script_play_conversation";
+static const char* const GML_SCRIPT_SCENE_AUDIO_PLAYER_STOP = "gml_Script_stop@SceneAudioPlayer@SceneAudioPlayer";
 static const char* const GML_SCRIPT_SPAWN_TUTORIAL = "gml_Script_spawn_tutorial";
 static const char* const GML_SCRIPT_UPDATE_TOOLBAR_MENU = "gml_Script_update@ToolbarMenu@ToolbarMenu";
 static const char* const GML_SCRIPT_ENTER_DUNGEON = "gml_Script_enter_dungeon";
 static const char* const GML_SCRIPT_CANCEL_STATUS_EFFECT = "gml_Script_cancel@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_REGISTER_STATUS_EFFECT = "gml_Script_register@StatusEffectManager@StatusEffectManager";
+static const char* const GML_SCRIPT_VITALS_MENU_SET_HEALTH = "gml_Script_set_health@VitalsMenu@VitalsMenu";
+static const char* const GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH = "gml_Script_set_max_health@VitalsMenu@VitalsMenu";
 static const char* const GML_SCRIPT_GET_MAX_HEALTH = "gml_Script_get_max_health@Ari@Ari";
 static const char* const GML_SCRIPT_GET_HEALTH = "gml_Script_get_health@Ari@Ari";
 static const char* const GML_SCRIPT_SET_HEALTH = "gml_Script_set_health@Ari@Ari";
@@ -74,6 +78,27 @@ static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script
 static const char* const GML_SCRIPT_CRAFTING_MENU_INITIALIZE = "gml_Script_initialize@CraftingMenu@CraftingMenu";
 static const char* const GML_SCRIPT_CRAFTING_MENU_CLOSE = "gml_Script_on_close@CraftingMenu@CraftingMenu";
 static const char* const GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR = "gml_Script_vertigo_draw_with_color";
+static const char* const GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY = "gml_Script_play@SceneAudioPlayer@SceneAudioPlayer";
+static const char* const DISABLE_DUNGEON_LIFT_JSON_KEY = "disable_dungeon_lift"; // Controls the dungeon lift
+static const char* const RESTRICT_ITEMS_JSON_KEY = "restrict_items"; // Determines if items are restricted in the dungeon
+static const char* const RESTRICT_ARMOR_JSON_KEY = "restrict_armor"; // Determines if armor is restricted in the dungeon
+static const char* const RESTRICT_TOOLS_JSON_KEY = "restrict_tools"; // Determines if tools are restricted in the dungeon
+static const char* const RESTRICT_WEAPONS_JSON_KEY = "restrict_weapons"; // Determines if weapons are restricted in the dungeon
+static const char* const LIMIT_SALVES_JSON_KEY = "limit_salves"; // Determines if salves have a single use limit per floor
+static const char* const HEALTH_SALVE_POTENCY_JSON_KEY = "health_salve_potency"; // Controls how much the health salve restores
+static const char* const STAMINA_SALVE_POTENCY_JSON_KEY = "stamina_salve_potency"; // Controls how much the stamina salve restores
+static const char* const MANA_SALVE_POTENCY_JSON_KEY = "mana_salve_potency"; // Controls how much the mana salve restores
+static const char* const SUSTAINING_POTION_DURATION_MODIFIER_JSON_KEY = "sustaining_potion_duration_modifier"; // Controls the duration of the sustaining potion
+static const char* const RANDOMIZE_DUNGEON_MUSIC_JSON_KEY = "randomize_dungeon_music"; // Controls music randomizer
+static const char* const RANDOM_DREAD_BEAST_SPAWN_CHANCE_JSON_KEY = "random_dread_beast_spawn_chance"; // Controls the random (not Offering) dread beast spawn chance
+static const char* const OFFERING_EVENT_CHANCE_JSON_KEY = "offering_event_chance"; // Controls the chance for offering events
+static const char* const OFFERING_HEALTH_REQUIREMENT_JSON_KEY = "offering_health_requirement"; // Controls the HP needed for an offering
+static const char* const OFFERING_STAMINA_REQUIREMENT_JSON_KEY = "offering_stamina_requirement"; // Controls the STA needed for an offering
+static const char* const OFFERING_MANA_REQUIREMENT_JSON_KEY = "offering_mana_requirement"; // Controls the MP needed for an offering
+static const char* const CURSED_ARMOR_DROP_CHANCE_MODIFIER_JSON_KEY = "cursed_armor_drop_chance_modifier"; // Controls cursed armor drop rate
+static const char* const SOUL_STONE_DROP_CHANCE_JSON_KEY = "soul_stone_drop_chance"; // Controls soul stone drop rate
+static const char* const LIFT_KEY_DROP_CHANCE_JSON_KEY = "lift_key_drop_chance"; // Controls lift key drop rates
+static const char* const ENABLE_BOSS_FIGHT_RESTRICTIONS_JSON_KEY = "enable_boss_fight_restrictions"; // Controls if sigils and spells are restricted during boss fights
 static const std::string SIGIL_OF_ALTERATION_NAME = "sigil_of_alteration";
 static const std::string SIGIL_OF_CONCEALMENT_NAME = "sigil_of_concealment";
 static const std::string SIGIL_OF_FORTIFICATION_NAME = "sigil_of_fortification";
@@ -91,6 +116,7 @@ static const std::string HEALTH_SALVE_NAME = "health_salve";
 static const std::string STAMINA_SALVE_NAME = "stamina_salve";
 static const std::string MANA_SALVE_NAME = "mana_salve";
 static const std::string MISTPOOL_SWORD_NAME = "sword_scrap_metal";
+static const std::string MISTPOOL_PICK_AXE_NAME = "pick_axe_worn";
 static const std::string MISTPOOL_HELMET_NAME = "scrap_metal_helmet";
 static const std::string MISTPOOL_CHESTPIECE_NAME = "scrap_metal_chestpiece";
 static const std::string MISTPOOL_PANTS_NAME = "scrap_metal_pants";
@@ -101,13 +127,17 @@ static const std::string CURSED_CHESTPIECE_NAME = "cursed_chestpiece";
 static const std::string CURSED_PANTS_NAME = "cursed_pants";
 static const std::string CURSED_BOOTS_NAME = "cursed_boots";
 static const std::string CURSED_GLOVES_NAME = "cursed_gloves";
-static const std::string CURSED_BRACELET_NAME = "cursed_bracelet";
 static const std::string CLERIC_HELMET_NAME = "cleric_helmet";
 static const std::string CLERIC_CHESTPIECE_NAME = "cleric_chestpiece";
 static const std::string CLERIC_GLOVES_NAME = "cleric_gloves";
 static const std::string CLERIC_PANTS_NAME = "cleric_pants";
 static const std::string CLERIC_BOOTS_NAME = "cleric_boots";
-// TODO: Class gear
+static const std::string DARK_KNIGHT_HELMET_NAME = "dark_knight_helmet";
+static const std::string DARK_KNIGHT_CHESTPIECE_NAME = "dark_knight_chestpiece";
+static const std::string DARK_KNIGHT_GLOVES_NAME = "dark_knight_gloves";
+static const std::string DARK_KNIGHT_PANTS_NAME = "dark_knight_pants";
+static const std::string DARK_KNIGHT_BOOTS_NAME = "dark_knight_boots";
+// TODO: More class gear
 static const std::string TREASURE_CHEST_WOOD_NAME = "treasure_chest_wood";
 static const std::string TREASURE_CHEST_COPPER_NAME = "treasure_chest_copper";
 static const std::string TREASURE_CHEST_SILVER_NAME = "treasure_chest_silver";
@@ -117,7 +147,11 @@ static const std::string DEEP_EARTH_KEY_NAME = "deep_earth_key";
 static const std::string LAVA_CAVES_KEY_NAME = "lava_caves_key";
 static const std::string RUINS_KEY_NAME = "ruins_key";
 static const std::string TIDE_CAVERNS_ORB = "tide_caverns_orb";
-// TODO: Orbs
+static const std::string DEEP_EARTH_ORB = "deep_earth_orb";
+// TODO: More orbs
+static const std::string SOUL_STONE_CLERIC = "soul_stone_cleric";
+static const std::string SOUL_STONE_DARK_KNIGHT = "soul_stone_dark_knight";
+// TODO: More soul stones
 static const std::string LIFT_KEY_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/lift_key_restricted";
 static const std::string ORB_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/orb_restricted";
 static const std::string SIGIL_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_restricted";
@@ -139,8 +173,9 @@ static const std::string FLOOR_ENCHANTMENT_CONVERSATION_KEY = "Conversations/Mod
 static const std::string DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning";
 static const std::string FLOOR_TEN_CONVERSATION_KEY = "Conversations/floor_10/mines_floor_ten";
 static const std::string FLOOR_ENCHANTMENT_AND_DREAD_BEAST_WARNING_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/dread_beast_warning_and_floor_enchantments";
-static const std::string PROGRESSION_MODE_ELEVATOR_LOCKED_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Progression Mode/elevator_locked";
+static const std::string ELEVATOR_LOCKED_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Progression Mode/elevator_locked";
 static const std::string BOSS_BATTLE_TIDE_CAVERNS_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/tide_caverns_orb";
+static const std::string BOSS_BATTLE_DEEP_EARTH_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/deep_earth_orb";
 static const std::string OFFERINGS_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/offerings/result";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
 static const std::string DREAD_BEAST_WARNING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Special/dread";
@@ -161,21 +196,56 @@ static const std::string INNER_FIRE_OFFERING_LOCALIZED_TEXT_KEY = "Conversations
 static const std::string LEECH_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Positive/leech";
 static const std::string PERIL_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/peril";
 static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/reckoning";
+static const std::string TIDE_CAVERNS_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Orbs/tide_caverns_orb/description";
+static const std::string DEEP_EARTH_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Orbs/deep_earth_orb/description";
+static const std::string HEALTH_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Salves/health_salve/description";
+static const std::string STAMINA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Salves/stamina_salve/description";
+static const std::string MANA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Salves/mana_salve/description";
+static const std::string VALUE_PLACEHOLDER_TEXT = "<VALUE>";
+// TODO: Other classes
 static const std::string CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Armor/cleric/description";
-
+static const std::string DARK_KNIGHT_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Armor/dark_knight/description";
 static const std::string SET_PIECES_EQUIPPED_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/set_bonuses/equipped";
 static const std::string CLERIC_SET_BONUS_AUTO_REGEN_ONE_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/auto_regen/1";
 static const std::string CLERIC_SET_BONUS_AUTO_REGEN_TWO_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/auto_regen/2";
 static const std::string CLERIC_SET_BONUS_AUTO_REGEN_THREE_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/auto_regen/3";
 static const std::string CLERIC_SET_BONUS_DIVINE_SEAL_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/divine_seal";
 static const std::string CLERIC_SET_BONUS_AFFLATUS_MISERY_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/afflatus_misery";
+static const std::string DARK_KNIGHT_SET_BONUS_DRAIN_ONE_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Dark Knight/set_bonuses/drain/1";
+static const std::string DARK_KNIGHT_SET_BONUS_DRAIN_TWO_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Dark Knight/set_bonuses/drain/2";
+static const std::string DARK_KNIGHT_SET_BONUS_DRAIN_THREE_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Dark Knight/set_bonuses/drain/3";
+static const std::string DARK_KNIGHT_SET_BONUS_DARK_SEAL_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Dark Knight/set_bonuses/dark_seal";
+static const std::string DARK_KNIGHT_SET_BONUS_SOUL_EATER_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Dark Knight/set_bonuses/soul_eater";
 
 static const int TWO_MINUTES_IN_SECONDS = 120;
 static const int TRAP_ACTIVATION_DISTANCE = 16;
 
+// Configuration defaults
+static const bool DEFAULT_DISABLE_DUNGEON_LIFT = true;
+static const bool DEFAULT_RESTRICT_ITEMS = true;
+static const bool DEFAULT_RESTRICT_ARMOR = true;
+static const bool DEFAULT_RESTRICT_TOOLS = true;
+static const bool DEFAULT_RESTRICT_WEAPONS = true;
+static const bool DEFAULT_LIMIT_SALVES = true;
+static const int DEFAULT_HEALTH_SALVE_POTENCY = 30; // TODO: Allow values 30 to 999.
+static const int DEFAULT_STAMINA_SALVE_POTENCY = 30; // TODO: Allow values 30 to 999.
+static const int DEFAULT_MANA_SALVE_POTENCY = 1; // TODO: Allow values 1 to 999.
+static const double DEFAULT_SUSTAINING_POTION_DURATION_MODIFIER = 0.5; // TODO: Allow values 0.5 to 1.0
+static const bool DEFAULT_RANDOMIZE_DUNGEON_MUSIC = true;
+static const int DEFAULT_RANDOM_DREAD_BEAST_SPAWN_CHANCE = 2; // TODO: Tune this.
+static const int DEFAULT_OFFERING_EVENT_CHANCE = 15;
+static const int DEFAULT_OFFERING_HEALTH_REQUIREMENT = 25; // TODO: Tune this.
+static const int DEFAULT_OFFERING_STAMINA_REQUIREMENT = 20; // TODO: Tune this.
+static const int DEFAULT_OFFERING_MANA_REQUIREMENT = 1;
+static const double DEFAULT_CURSED_ARMOR_DROP_CHANCE_MODIFIER = 1.0; // Allow values 1.0 to 10.0
+static const int DEFAULT_SOUL_STONE_DROP_CHANCE = 35; // Allow values 35 to 100
+static const int DEFAULT_LIFT_KEY_DROP_CHANCE = 2; // Allow values 2 to 100
+static const bool DEFAULT_ENABLE_BOSS_FIGHT_RESTRICTIONS = true;
+
 static enum class BossBattle {
 	NONE,
-	TIDE_CAVERNS_ORB
+	TIDE_CAVERNS_ORB,
+	DEEP_EARTH_ORB
 	// TODO
 };
 
@@ -188,11 +258,15 @@ static enum class Classes {
 };
 
 static enum class ManagedSetBonuses { // Set bonuses that have actively managed values.
-	AFFLATUS_MISERY
+	AFFLATUS_MISERY, // Cleric
+	DARK_SEAL, // Dark Knight
+	DRAIN, // Dark Knight
+	SOUL_EATER // Dark Knight
 };
 
 static enum class AriResources {
 	HEALTH,
+	MAX_HEALTH,
 	STAMINA,
 	MANA
 };
@@ -271,12 +345,26 @@ static const std::vector<std::string> MISTPOOL_ARMOR_NAMES = {
 
 static const std::unordered_set<std::string> CLASS_ARMOR_NAMES = {
 	// TODO: Add other class armor
-	CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME
+	CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME,
+	DARK_KNIGHT_HELMET_NAME, DARK_KNIGHT_CHESTPIECE_NAME, DARK_KNIGHT_GLOVES_NAME, DARK_KNIGHT_PANTS_NAME, DARK_KNIGHT_BOOTS_NAME
 };
 
 static const std::map<Classes, std::unordered_set<std::string>> CLASS_NAME_TO_ARMOR_NAMES_MAP = {
-	{ Classes::CLERIC, { CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME } },
 	// TODO: Add other class armor
+	{ Classes::CLERIC, { CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME } },
+	{ Classes::DARK_KNIGHT, { DARK_KNIGHT_HELMET_NAME, DARK_KNIGHT_CHESTPIECE_NAME, DARK_KNIGHT_GLOVES_NAME, DARK_KNIGHT_PANTS_NAME, DARK_KNIGHT_BOOTS_NAME } }
+};
+
+static const std::vector<std::string> SOUL_STONE_NAMES = {
+	// TODO: Add other soul stones
+	SOUL_STONE_CLERIC,
+	SOUL_STONE_DARK_KNIGHT
+};
+
+static const std::vector<std::string> ORB_NAMES = {
+	// TODO: Add other orbs
+	TIDE_CAVERNS_ORB,
+	DEEP_EARTH_ORB
 };
 
 static const std::vector<FloorEnchantments> GROUP_ONE_FLOOR_ENCHANTMENTS = {
@@ -708,6 +796,558 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 		{ 400 + 8, 560 + 8 },
 		{ 384 + 8, 672 + 8 },
 	}},
+	{ "rm_mines_deep_runner", {
+		{ 496 + 8, 128 + 8 },
+		{ 640 + 8, 176 + 8 },
+		{ 720 + 8, 112 + 8 },
+		{ 896 + 8, 128 + 8 },
+		{ 992 + 8, 176 + 8 },
+		{ 1248 + 8, 144 + 8 },
+	}},
+	{ "rm_mines_deep_winding", {
+		{ 464 + 8, 384 + 8 },
+		{ 224 + 8, 560 + 8 },
+		{ 528 + 8, 656 + 8 },
+		{ 608 + 8, 400 + 8 },
+		{ 544 + 8, 256 + 8 },
+		{ 704 + 8, 112 + 8 },
+	}},
+	{ "rm_mines_deep_leap", {
+		{ 448 + 8, 192 + 8 },
+		{ 272 + 8, 288 + 8 },
+		{ 144 + 8, 480 + 8 },
+		{ 544 + 8, 432 + 8 },
+		{ 432 + 8, 544 + 8 },
+		{ 512 + 8, 592 + 8 },
+	}},
+	{ "rm_mines_deep_chambers", {
+		{ 128 + 8, 432 + 8 },
+		{ 304 + 8, 400 + 8 },
+		{ 336 + 8, 176 + 8 },
+		{ 464 + 8, 512 + 8 },
+		{ 368 + 8, 768 + 8 },
+		{ 400 + 8, 896 + 8 },
+	}},
+	{ "rm_mines_deep_spiral", {
+		{ 144 + 8, 560 + 8 },
+		{ 160 + 8, 384 + 8 },
+		{ 352 + 8, 128 + 8 },
+		{ 464 + 8, 256 + 8 },
+		{ 720 + 8, 432 + 8 },
+		{ 608 + 8, 496 + 8 },
+	}},
+	{ "rm_mines_deep_wishbone", {
+		{ 768 + 8, 512 + 8 },
+		{ 736 + 8, 320 + 8 },
+		{ 592 + 8, 368 + 8 },
+		{ 448 + 8, 432 + 8 },
+		{ 464 + 8, 224 + 8 },
+		{ 240 + 8, 304 + 8 },
+	}},
+	{ "rm_mines_deep_key", {
+		{ 240 + 8, 288 + 8 },
+		{ 400 + 8, 400 + 8 },
+		{ 624 + 8, 432 + 8 },
+		{ 832 + 8, 336 + 8 },
+		{ 768 + 8, 576 + 8 },
+		{ 1184 + 8, 272 + 8 },
+	}},
+	{ "rm_mines_deep_scorpio", {
+		{ 240 + 8, 368 + 8 },
+		{ 304 + 8, 272 + 8 },
+		{ 384 + 8, 368 + 8 },
+		{ 512 + 8, 304 + 8 },
+		{ 704 + 8, 496 + 8 },
+		{ 784 + 8, 416 + 8 },
+	}},
+	{ "rm_mines_deep_butterfly", {
+		{ 640 + 8, 240 + 8 },
+		{ 528 + 8, 256 + 8 },
+		{ 160 + 8, 240 + 8 },
+		{ 240 + 8, 528 + 8 },
+		{ 400 + 8, 464 + 8 },
+		{ 576 + 8, 528 + 8 },
+	}},
+	{ "rm_mines_deep_41", {
+		{ 432 + 8, 176 + 8 },
+		{ 256 + 8, 272 + 8 },
+		{ 320 + 8, 384 + 8 },
+		{ 416 + 8, 384 + 8 },
+		{ 512 + 8, 448 + 8 },
+		{ 560 + 8, 352 + 8 },
+	}},
+	{ "rm_mines_deep_45", {
+		{ 368 + 8, 352 + 8 },
+		{ 512 + 8, 336 + 8 },
+		{ 544 + 8, 240 + 8 },
+		{ 672 + 8, 272 + 8 },
+		{ 624 + 8, 384 + 8 },
+		{ 576 + 8, 528 + 8 },
+	}},
+	{ "rm_mines_deep_50", {
+		{ 656 + 8, 368 + 8 },
+		{ 512 + 8, 448 + 8 },
+		{ 416 + 8, 512 + 8 },
+		{ 384 + 8, 304 + 8 },
+		{ 448 + 8, 224 + 8 },
+		{ 512 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_deep_55", {
+		{ 592 + 8, 464 + 8 },
+		{ 736 + 8, 448 + 8 },
+		{ 832 + 8, 416 + 8 },
+		{ 832 + 8, 224 + 8 },
+		{ 688 + 8, 144 + 8 },
+		{ 528 + 8, 256 + 8 },
+	}},
+	{ "rm_mines_deep_switch1", {
+		{ 464 + 8, 368 + 8 },
+		{ 400 + 8, 208 + 8 },
+		{ 272 + 8, 160 + 8 },
+		{ 208 + 8, 368 + 8 },
+		{ 288 + 8, 432 + 8 },
+		{ 400 + 8, 592 + 8 },
+	}},
+	{ "rm_mines_deep_switch2", {
+		{ 208 + 8, 288 + 8 },
+		{ 192 + 8, 624 + 8 },
+		{ 368 + 8, 624 + 8 },
+		{ 352 + 8, 416 + 8 },
+		{ 448 + 8, 432 + 8 },
+		{ 464 + 8, 336 + 8 },
+	}},
+	{ "rm_mines_deep_switch3", {
+		{ 672 + 8, 608 + 8 },
+		{ 512 + 8, 416 + 8 },
+		{ 576 + 8, 352 + 8 },
+		{ 672 + 8, 416 + 8 },
+		{ 752 + 8, 240 + 8 },
+		{ 816 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_deep_switch4", {
+		{ 704 + 8, 528 + 8 },
+		{ 768 + 8, 368 + 8 },
+		{ 624 + 8, 448 + 8 },
+		{ 496 + 8, 384 + 8 },
+		{ 432 + 8, 416 + 8 },
+		{ 384 + 8, 624 + 8 },
+	}},
+	{ "rm_mines_deep_whirlpool1", {
+		{ 528 + 8, 192 + 8 },
+		{ 640 + 8, 560 + 8 },
+		{ 576 + 8, 624 + 8 },
+		{ 464 + 8, 656 + 8 },
+		{ 384 + 8, 624 + 8 },
+		{ 304 + 8, 560 + 8 },
+	}},
+	{ "rm_mines_deep_whirlpool2", {
+		{ 272 + 8, 224 + 8 },
+		{ 160 + 8, 240 + 8 },
+		{ 256 + 8, 560 + 8 },
+		{ 384 + 8, 624 + 8 },
+		{ 592 + 8, 624 + 8 },
+		{ 752 + 8, 608 + 8 },
+	}},
+	{ "rm_mines_deep_shrine2", {
+		{ 304 + 8, 480 + 8 },
+		{ 368 + 8, 384 + 8 },
+		{ 480 + 8, 368 + 8 },
+		{ 608 + 8, 464 + 8 },
+		{ 656 + 8, 560 + 8 },
+		{ 496 + 8, 640 + 8 },
+	}},
+	{ "rm_mines_deep_shrine1", {
+		{ 480 + 8, 240 + 8 },
+		{ 592 + 8, 320 + 8 },
+		{ 592 + 8, 400 + 8 },
+		{ 640 + 8, 464 + 8 },
+		{ 800 + 8, 464 + 8 },
+		{ 752 + 8, 256 + 8 },
+	}},
+	{ "rm_mines_deep_shrine3", {
+		{ 320 + 8, 272 + 8 },
+		{ 384 + 8, 368 + 8 },
+		{ 464 + 8, 256 + 8 },
+		{ 640 + 8, 272 + 8 },
+		{ 576 + 8, 336 + 8 },
+		{ 592 + 8, 448 + 8 },
+	}},
+	{ "rm_mines_deep_shrine4", {
+		{ 400 + 8, 512 + 8 },
+		{ 288 + 8, 480 + 8 },
+		{ 336 + 8, 384 + 8 },
+		{ 192 + 8, 272 + 8 },
+		{ 560 + 8, 192 + 8 },
+		{ 496 + 8, 144 + 8 },
+	}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
+	//{ "", {
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//	{ 0 + 8, 0 + 8 },
+	//}},
 	//{ "", {
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
@@ -734,13 +1374,55 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 	//}},
 };
 
+static const std::vector<std::string> MUSIC_INTERNAL_NAMES = {
+	"Music/Events/DragonCutscene",
+	"Music/Events/SharedLight",
+	"Music/Events/TheSeal",
+	"Music/Events/ThemeOfDarkness",
+	"Music/Location Tracks/AnimalFestival",
+	"Music/Location Tracks/Bathhouse",
+	"Music/Location Tracks/Blacksmith",
+	"Music/Location Tracks/Carpenter",
+	"Music/Location Tracks/Clinic",
+	"Music/Location Tracks/Deep Woods",
+	"Music/Location Tracks/Festival",
+	"Music/Location Tracks/General Store",
+	"Music/Location Tracks/HarvestFestivalTheme",
+	"Music/Location Tracks/InnLessBusy",
+	"Music/Location Tracks/InnMoreBusy",
+	"Music/Location Tracks/MinesEntry",
+	"Music/Location Tracks/Player Home/Day",
+	"Music/Location Tracks/Player Home/Night",
+	"Music/Location Tracks/ShootingStarFestival",
+	"Music/Location Tracks/SpringFestival",
+	"Music/Npc Tracks/Adeline",
+	"Music/Npc Tracks/Balor",
+	"Music/Npc Tracks/Caldarus/Caldarus",
+	"Music/Npc Tracks/Celine/Celine",
+	"Music/Npc Tracks/Eiland",
+	"Music/Npc Tracks/Hayden",
+	"Music/Npc Tracks/Juniper",
+	"Music/Npc Tracks/March",
+	"Music/Npc Tracks/Reina",
+	"Music/Npc Tracks/Ryis",
+	"Music/Npc Tracks/Valen",
+	"Music/Playlists/MinesDeepEarth",
+	"Music/Playlists/MinesLavaCaves",
+	"Music/Playlists/MinesTideCaverns",
+	"Music/Playlists/MinesUpper",
+	"Music/Playlists/Spring",
+	"Music/Playlists/Summer",
+	"Music/Playlists/Fall",
+	"Music/Playlists/Winter",
+};
+
 static YYTKInterface* g_ModuleInterface = nullptr;
 static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
 static bool localize_mod_text = false;
 static bool game_is_active = false;
+static bool unlock_recipes = false;
 static bool crafting_menu_open = false;
-static bool progression_mode = true; // TODO: Make this configurable
 static bool drop_biome_reward = false;
 static bool biome_reward_disabled = false;
 static bool dread_beast_configured = false;
@@ -757,7 +1439,8 @@ static bool obj_dungeon_elevator_focused = false;
 static bool obj_dungeon_ladder_down_focused = false;
 static double ari_x = -1;
 static double ari_y = -1;
-static double floor_number = 0;
+static int floor_number = 0;
+static int unmodified_base_health = -1;
 static int floor_start_time = 0;
 static int current_time_in_seconds = -1;
 static int time_of_last_restoration_tick = -1;
@@ -768,7 +1451,6 @@ static int sigil_of_alteration_count = 0;
 static int dread_beast_monster_id = -1;
 static int boss_monsters_configured = 0;
 static BossBattle boss_battle = BossBattle::NONE; // TODO
-
 static std::string ari_current_location = "";
 static std::string ari_current_gm_room = "";
 static std::unordered_set<int> orb_items = {};
@@ -780,7 +1462,7 @@ static std::map<int, Sigils> item_id_to_sigil_map = {};
 static std::map<std::string, int> perk_name_to_id_map = {};
 static std::map<std::string, int> spell_name_to_id_map = {};
 static std::map<int, int> spell_id_to_default_cost_map = {};
-static std::map<std::string, int> salve_name_to_id_map = {};
+static std::map<std::string, int> salve_name_to_id_map = {}; // TODO: Remove and use item_name_to_id_map instead.
 static std::map<int, std::string> object_id_to_name_map = {};
 static std::map<std::string, int> player_state_to_id_map = {};
 static std::map<std::string, std::map<std::string, int>> monster_category_to_state_id_map = {};
@@ -789,8 +1471,6 @@ static std::map<int, std::string> monster_id_to_name_map = {};
 static std::map<std::string, int> tutorial_name_to_id_map = {};
 static std::map<std::string, int> infusion_name_to_id_map = {};
 static std::map<std::string, int> status_effect_name_to_id_map = {};
-static std::map<std::string, int> mistpool_gear_to_item_id_map = {}; // TODO: Remove this. Use item_name_to_id_map instead.
-static std::map<std::string, int> cursed_gear_to_item_id_map = {}; // TODO: Remove this. Use item_name_to_id_map instead.
 static std::map<std::string, int> item_name_to_id_map = {};
 std::unordered_set<std::pair<int,int>, pair_hash> floor_trap_positions = {};
 static std::unordered_set<int> salves_used = {};
@@ -809,6 +1489,7 @@ static std::map<AriResources, bool> ari_resource_to_penalty_map = {}; // Used to
 static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map; // Vector<CInstance*> holds references to Self and Other for each script.
 static std::map<std::string, std::unordered_set<int>> dungeon_biome_to_candidate_monsters_map = {}; // Holds the candidate monster spawns for each dungeon biome.
 static std::map<int, std::string> floor_number_to_biome_name_map = {}; // Maps floor numbers to the dungeon biome name.
+static std::vector<int> initial_floor_monsters = {}; // Holds the IDs of monsters spawned on the current floor.
 static std::vector<CInstance*> current_floor_monsters = {}; // Holds CInstance refs to all monsters on the current floor.
 static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {}; // Tracks when a notification was last displayed.
 static std::map<int, RValue> item_id_to_prototype_map = {}; // Used to serialize LiveItem instances for a given item prototype.
@@ -830,6 +1511,347 @@ static bool show_danger_banner = false;
 static bool fade_initialized = false;
 static uint64_t fade_start_time = 0;
 
+// Configuration Options
+static struct Configuration {
+	bool disable_dungeon_lift = DEFAULT_DISABLE_DUNGEON_LIFT;
+	bool restrict_items = DEFAULT_RESTRICT_ITEMS;
+	bool restrict_armor = DEFAULT_RESTRICT_ARMOR;
+	bool restrict_tools = DEFAULT_RESTRICT_TOOLS;
+	bool restrict_weapons = DEFAULT_RESTRICT_WEAPONS;
+	bool limit_salves = DEFAULT_LIMIT_SALVES;
+	int health_salve_potency = DEFAULT_HEALTH_SALVE_POTENCY;
+	int stamina_salve_potency = DEFAULT_STAMINA_SALVE_POTENCY;
+	int mana_salve_potency = DEFAULT_MANA_SALVE_POTENCY;
+	double sustaining_potion_duration_modifier = DEFAULT_SUSTAINING_POTION_DURATION_MODIFIER;
+	bool randomize_dungeon_music = DEFAULT_RANDOMIZE_DUNGEON_MUSIC;
+	int random_dread_beast_spawn_chance = DEFAULT_RANDOM_DREAD_BEAST_SPAWN_CHANCE;
+	int offering_event_chance = DEFAULT_OFFERING_EVENT_CHANCE;
+	int offering_health_requirement = DEFAULT_OFFERING_HEALTH_REQUIREMENT;
+	int offering_stamina_requirement = DEFAULT_OFFERING_STAMINA_REQUIREMENT;
+	int offering_mana_requirement = DEFAULT_OFFERING_MANA_REQUIREMENT;
+	double cursed_armor_drop_chance_modifier = DEFAULT_CURSED_ARMOR_DROP_CHANCE_MODIFIER;
+	int soul_stone_drop_chance = DEFAULT_SOUL_STONE_DROP_CHANCE;
+	int lift_key_drop_chance = DEFAULT_LIFT_KEY_DROP_CHANCE;
+	bool enable_boss_fight_restrictions = DEFAULT_ENABLE_BOSS_FIGHT_RESTRICTIONS;
+};
+static Configuration configuration = Configuration();
+
+void PrintError(std::exception_ptr eptr)
+{
+	try {
+		if (eptr) {
+			std::rethrow_exception(eptr);
+		}
+	}
+	catch (const std::exception& e) {
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
+	}
+}
+
+json CreateConfigJson(bool use_defaults)
+{
+	json config_json = {
+		{ DISABLE_DUNGEON_LIFT_JSON_KEY, use_defaults ? DEFAULT_DISABLE_DUNGEON_LIFT : configuration.disable_dungeon_lift },
+		{ RESTRICT_ITEMS_JSON_KEY, use_defaults ? DEFAULT_RESTRICT_ITEMS : configuration.restrict_items },
+		{ RESTRICT_ARMOR_JSON_KEY, use_defaults ? DEFAULT_RESTRICT_ARMOR : configuration.restrict_armor },
+		{ RESTRICT_TOOLS_JSON_KEY, use_defaults ? DEFAULT_RESTRICT_TOOLS : configuration.restrict_tools },
+		{ RESTRICT_WEAPONS_JSON_KEY, use_defaults ? DEFAULT_RESTRICT_WEAPONS : configuration.restrict_weapons },
+		{ LIMIT_SALVES_JSON_KEY, use_defaults ? DEFAULT_LIMIT_SALVES : configuration.limit_salves },
+		{ HEALTH_SALVE_POTENCY_JSON_KEY, use_defaults ? DEFAULT_HEALTH_SALVE_POTENCY : configuration.health_salve_potency },
+		{ STAMINA_SALVE_POTENCY_JSON_KEY, use_defaults ? DEFAULT_STAMINA_SALVE_POTENCY : configuration.stamina_salve_potency },
+		{ MANA_SALVE_POTENCY_JSON_KEY, use_defaults ? DEFAULT_MANA_SALVE_POTENCY : configuration.mana_salve_potency },
+		{ SUSTAINING_POTION_DURATION_MODIFIER_JSON_KEY, use_defaults ? DEFAULT_SUSTAINING_POTION_DURATION_MODIFIER : configuration.sustaining_potion_duration_modifier },
+		{ RANDOMIZE_DUNGEON_MUSIC_JSON_KEY, use_defaults ? DEFAULT_RANDOMIZE_DUNGEON_MUSIC : configuration.randomize_dungeon_music },
+		{ RANDOM_DREAD_BEAST_SPAWN_CHANCE_JSON_KEY, use_defaults ? DEFAULT_RANDOM_DREAD_BEAST_SPAWN_CHANCE : configuration.random_dread_beast_spawn_chance },
+		{ OFFERING_EVENT_CHANCE_JSON_KEY, use_defaults ? DEFAULT_OFFERING_EVENT_CHANCE : configuration.offering_event_chance },
+		{ OFFERING_HEALTH_REQUIREMENT_JSON_KEY, use_defaults ? DEFAULT_OFFERING_HEALTH_REQUIREMENT : configuration.offering_health_requirement },
+		{ OFFERING_STAMINA_REQUIREMENT_JSON_KEY, use_defaults ? DEFAULT_OFFERING_STAMINA_REQUIREMENT : configuration.offering_stamina_requirement },
+		{ OFFERING_MANA_REQUIREMENT_JSON_KEY, use_defaults ? DEFAULT_OFFERING_MANA_REQUIREMENT : configuration.offering_mana_requirement },
+		{ CURSED_ARMOR_DROP_CHANCE_MODIFIER_JSON_KEY, use_defaults ? DEFAULT_CURSED_ARMOR_DROP_CHANCE_MODIFIER : configuration.cursed_armor_drop_chance_modifier },
+		{ SOUL_STONE_DROP_CHANCE_JSON_KEY, use_defaults ? DEFAULT_SOUL_STONE_DROP_CHANCE : configuration.soul_stone_drop_chance },
+		{ LIFT_KEY_DROP_CHANCE_JSON_KEY, use_defaults ? DEFAULT_LIFT_KEY_DROP_CHANCE : configuration.lift_key_drop_chance },
+		{ ENABLE_BOSS_FIGHT_RESTRICTIONS_JSON_KEY, use_defaults ? DEFAULT_ENABLE_BOSS_FIGHT_RESTRICTIONS : configuration.enable_boss_fight_restrictions }
+	};
+	return config_json;
+}
+
+void CreateOrLoadConfigFile()
+{
+	// Load config file.
+	std::exception_ptr eptr;
+	try
+	{
+		// Try to find the mod_data directory.
+		std::string current_dir = std::filesystem::current_path().string();
+		std::string mod_data_folder = current_dir + "\\mod_data";
+		if (!std::filesystem::exists(mod_data_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"mod_data\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, mod_data_folder.c_str());
+			std::filesystem::create_directory(mod_data_folder);
+		}
+
+		// Try to find the mod_data/DeepDungeon directory.
+		std::string deep_dungeon_folder = mod_data_folder + "\\DeepDungeon";
+		if (!std::filesystem::exists(deep_dungeon_folder))
+		{
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"DeepDungeon\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, deep_dungeon_folder.c_str());
+			std::filesystem::create_directory(deep_dungeon_folder);
+		}
+
+		// Try to find the mod_data/DeepDungeon/DeepDungeon.json config file.
+		bool update_config_file = false;
+		std::string config_file = deep_dungeon_folder + "\\" + "DeepDungeon.json";
+		std::ifstream in_stream(config_file);
+		if (in_stream.good())
+		{
+			try
+			{
+				json json_object = json::parse(in_stream);
+
+				// Check if the json_object is empty.
+				if (json_object.empty())
+				{
+					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in mod configuration file: %s!", MOD_NAME, VERSION, config_file.c_str());
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Add values to the configuration file, otherwise defaults will be used.", MOD_NAME, VERSION);
+				}
+				else
+				{
+					// Try loading the disable_dungeon_lift value.
+					if (json_object.contains(DISABLE_DUNGEON_LIFT_JSON_KEY) && json_object.at(DISABLE_DUNGEON_LIFT_JSON_KEY).is_boolean())
+						configuration.disable_dungeon_lift = json_object[DISABLE_DUNGEON_LIFT_JSON_KEY];
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, DISABLE_DUNGEON_LIFT_JSON_KEY, config_file.c_str());
+
+					// Try loading the restrict_items value.
+					if (json_object.contains(RESTRICT_ITEMS_JSON_KEY) && json_object.at(RESTRICT_ITEMS_JSON_KEY).is_boolean())
+						configuration.restrict_items = json_object[RESTRICT_ITEMS_JSON_KEY];
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, RESTRICT_ITEMS_JSON_KEY, config_file.c_str());
+
+					// Try loading the restrict_armor value.
+					if (json_object.contains(RESTRICT_ARMOR_JSON_KEY) && json_object.at(RESTRICT_ARMOR_JSON_KEY).is_boolean())
+						configuration.restrict_armor = json_object[RESTRICT_ARMOR_JSON_KEY];
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, RESTRICT_ARMOR_JSON_KEY, config_file.c_str());
+
+					// Try loading the restrict_tools value.
+					if (json_object.contains(RESTRICT_TOOLS_JSON_KEY) && json_object.at(RESTRICT_TOOLS_JSON_KEY).is_boolean())
+						configuration.restrict_tools = json_object[RESTRICT_TOOLS_JSON_KEY];
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, RESTRICT_TOOLS_JSON_KEY, config_file.c_str());
+
+					// Try loading the restrict_weapons value.
+					if (json_object.contains(RESTRICT_WEAPONS_JSON_KEY) && json_object.at(RESTRICT_WEAPONS_JSON_KEY).is_boolean())
+						configuration.restrict_weapons = json_object[RESTRICT_WEAPONS_JSON_KEY];
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, RESTRICT_WEAPONS_JSON_KEY, config_file.c_str());
+
+					// Try loading the limit_salves value.
+					if (json_object.contains(LIMIT_SALVES_JSON_KEY) && json_object.at(LIMIT_SALVES_JSON_KEY).is_boolean())
+						configuration.limit_salves = json_object[LIMIT_SALVES_JSON_KEY];
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, LIMIT_SALVES_JSON_KEY, config_file.c_str());
+
+					// Try loading the health_salve_potency value.
+					if (json_object.contains(HEALTH_SALVE_POTENCY_JSON_KEY) && json_object.at(HEALTH_SALVE_POTENCY_JSON_KEY).is_number_integer())
+					{
+						int health_salve_potency = json_object[HEALTH_SALVE_POTENCY_JSON_KEY];
+						if (health_salve_potency > 0 && health_salve_potency <= 999)
+							configuration.health_salve_potency = health_salve_potency;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, HEALTH_SALVE_POTENCY_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, HEALTH_SALVE_POTENCY_JSON_KEY, config_file.c_str());
+
+					// Try loading the stamina_salve_potency value.
+					if (json_object.contains(STAMINA_SALVE_POTENCY_JSON_KEY) && json_object.at(STAMINA_SALVE_POTENCY_JSON_KEY).is_number_integer())
+					{
+						int stamina_salve_potency = json_object[STAMINA_SALVE_POTENCY_JSON_KEY];
+						if (stamina_salve_potency > 0 && stamina_salve_potency <= 999)
+							configuration.stamina_salve_potency = stamina_salve_potency;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, STAMINA_SALVE_POTENCY_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, STAMINA_SALVE_POTENCY_JSON_KEY, config_file.c_str());
+
+					// Try loading the mana_salve_potency value.
+					if (json_object.contains(MANA_SALVE_POTENCY_JSON_KEY) && json_object.at(MANA_SALVE_POTENCY_JSON_KEY).is_number_integer())
+					{
+						int mana_salve_potency = json_object[MANA_SALVE_POTENCY_JSON_KEY];
+						if (mana_salve_potency > 0 && mana_salve_potency <= 999)
+							configuration.mana_salve_potency = mana_salve_potency;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, MANA_SALVE_POTENCY_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, MANA_SALVE_POTENCY_JSON_KEY, config_file.c_str());
+
+					// Try loading the sustaining_potion_duration_modifier value.
+					if (json_object.contains(SUSTAINING_POTION_DURATION_MODIFIER_JSON_KEY) && json_object.at(SUSTAINING_POTION_DURATION_MODIFIER_JSON_KEY).is_number_float())
+					{
+						double sustaining_potion_duration_modifier = json_object[SUSTAINING_POTION_DURATION_MODIFIER_JSON_KEY];
+						if (sustaining_potion_duration_modifier >= 0.5 && sustaining_potion_duration_modifier <= 2.0)
+							configuration.sustaining_potion_duration_modifier = sustaining_potion_duration_modifier;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, SUSTAINING_POTION_DURATION_MODIFIER_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, SUSTAINING_POTION_DURATION_MODIFIER_JSON_KEY, config_file.c_str());
+
+					// Try loading the randomize_dungeon_music value.
+					if (json_object.contains(RANDOMIZE_DUNGEON_MUSIC_JSON_KEY) && json_object.at(RANDOMIZE_DUNGEON_MUSIC_JSON_KEY).is_boolean())
+						configuration.randomize_dungeon_music = json_object[RANDOMIZE_DUNGEON_MUSIC_JSON_KEY];
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, RANDOMIZE_DUNGEON_MUSIC_JSON_KEY, config_file.c_str());
+
+					// Try loading the random_dread_beast_spawn_chance value.
+					if (json_object.contains(RANDOM_DREAD_BEAST_SPAWN_CHANCE_JSON_KEY) && json_object.at(RANDOM_DREAD_BEAST_SPAWN_CHANCE_JSON_KEY).is_number_integer())
+					{
+						int random_dread_beast_spawn_chance = json_object[RANDOM_DREAD_BEAST_SPAWN_CHANCE_JSON_KEY];
+						if (random_dread_beast_spawn_chance >= 0 && random_dread_beast_spawn_chance <= 100)
+							configuration.random_dread_beast_spawn_chance = random_dread_beast_spawn_chance;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, RANDOM_DREAD_BEAST_SPAWN_CHANCE_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, RANDOM_DREAD_BEAST_SPAWN_CHANCE_JSON_KEY, config_file.c_str());
+
+					// Try loading the offering_event_chance value.
+					if (json_object.contains(OFFERING_EVENT_CHANCE_JSON_KEY) && json_object.at(OFFERING_EVENT_CHANCE_JSON_KEY).is_number_integer())
+					{
+						int offering_event_chance = json_object[OFFERING_EVENT_CHANCE_JSON_KEY];
+						if (offering_event_chance >= 0 && offering_event_chance <= 100)
+							configuration.offering_event_chance = offering_event_chance;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, OFFERING_EVENT_CHANCE_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, OFFERING_EVENT_CHANCE_JSON_KEY, config_file.c_str());
+
+					// Try loading the offering_health_requirement value.
+					if (json_object.contains(OFFERING_HEALTH_REQUIREMENT_JSON_KEY) && json_object.at(OFFERING_HEALTH_REQUIREMENT_JSON_KEY).is_number_integer())
+					{
+						int offering_health_requirement = json_object[OFFERING_HEALTH_REQUIREMENT_JSON_KEY];
+						if (offering_health_requirement >= 0 && offering_health_requirement <= 90)
+							configuration.offering_health_requirement = offering_health_requirement;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, OFFERING_HEALTH_REQUIREMENT_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, OFFERING_HEALTH_REQUIREMENT_JSON_KEY, config_file.c_str());
+
+					// Try loading the offering_stamina_requirement value.
+					if (json_object.contains(OFFERING_STAMINA_REQUIREMENT_JSON_KEY) && json_object.at(OFFERING_STAMINA_REQUIREMENT_JSON_KEY).is_number_integer())
+					{
+						int offering_stamina_requirement = json_object[OFFERING_STAMINA_REQUIREMENT_JSON_KEY];
+						if (offering_stamina_requirement >= 0 && offering_stamina_requirement <= 90)
+							configuration.offering_stamina_requirement = offering_stamina_requirement;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, OFFERING_STAMINA_REQUIREMENT_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, OFFERING_STAMINA_REQUIREMENT_JSON_KEY, config_file.c_str());
+
+					// Try loading the offering_mana_requirement value.
+					if (json_object.contains(OFFERING_MANA_REQUIREMENT_JSON_KEY) && json_object.at(OFFERING_MANA_REQUIREMENT_JSON_KEY).is_number_integer())
+					{
+						int offering_mana_requirement = json_object[OFFERING_MANA_REQUIREMENT_JSON_KEY];
+						if (offering_mana_requirement >= 0 && offering_mana_requirement <= 16)
+							configuration.offering_mana_requirement = offering_mana_requirement;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, OFFERING_MANA_REQUIREMENT_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, OFFERING_MANA_REQUIREMENT_JSON_KEY, config_file.c_str());
+
+					// Try loading the cursed_armor_drop_chance_modifier value.
+					if (json_object.contains(CURSED_ARMOR_DROP_CHANCE_MODIFIER_JSON_KEY) && json_object.at(CURSED_ARMOR_DROP_CHANCE_MODIFIER_JSON_KEY).is_number_float())
+					{
+						double cursed_armor_drop_chance_modifier = json_object[CURSED_ARMOR_DROP_CHANCE_MODIFIER_JSON_KEY];
+						if (cursed_armor_drop_chance_modifier >= 1.0 && cursed_armor_drop_chance_modifier <= 10.0)
+							configuration.cursed_armor_drop_chance_modifier = cursed_armor_drop_chance_modifier;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, CURSED_ARMOR_DROP_CHANCE_MODIFIER_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, CURSED_ARMOR_DROP_CHANCE_MODIFIER_JSON_KEY, config_file.c_str());
+
+					// Try loading the soul_stone_drop_chance value.
+					if (json_object.contains(SOUL_STONE_DROP_CHANCE_JSON_KEY) && json_object.at(SOUL_STONE_DROP_CHANCE_JSON_KEY).is_number_integer())
+					{
+						int soul_stone_drop_chance = json_object[SOUL_STONE_DROP_CHANCE_JSON_KEY];
+						if (soul_stone_drop_chance >= 35 && soul_stone_drop_chance <= 100)
+							configuration.soul_stone_drop_chance = soul_stone_drop_chance;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, SOUL_STONE_DROP_CHANCE_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, SOUL_STONE_DROP_CHANCE_JSON_KEY, config_file.c_str());
+
+					// Try loading the lift_key_drop_chance value.
+					if (json_object.contains(LIFT_KEY_DROP_CHANCE_JSON_KEY) && json_object.at(LIFT_KEY_DROP_CHANCE_JSON_KEY).is_number_integer())
+					{
+						int lift_key_drop_chance = json_object[LIFT_KEY_DROP_CHANCE_JSON_KEY];
+						if (lift_key_drop_chance >= 2 && lift_key_drop_chance <= 100)
+							configuration.lift_key_drop_chance = lift_key_drop_chance;
+						else
+							g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, LIFT_KEY_DROP_CHANCE_JSON_KEY, config_file.c_str());
+					}
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, LIFT_KEY_DROP_CHANCE_JSON_KEY, config_file.c_str());
+
+					// Try loading the enable_boss_fight_restrictions value.
+					if (json_object.contains(ENABLE_BOSS_FIGHT_RESTRICTIONS_JSON_KEY) && json_object.at(ENABLE_BOSS_FIGHT_RESTRICTIONS_JSON_KEY).is_boolean())
+						configuration.enable_boss_fight_restrictions = json_object[ENABLE_BOSS_FIGHT_RESTRICTIONS_JSON_KEY];
+					else
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing or invalid \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, ENABLE_BOSS_FIGHT_RESTRICTIONS_JSON_KEY, config_file.c_str());
+				}
+
+				update_config_file = true;
+			}
+			catch (...)
+			{
+				eptr = std::current_exception();
+				PrintError(eptr);
+
+				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from configuration file: %s", MOD_NAME, VERSION, config_file.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Make sure the file is valid JSON!", MOD_NAME, VERSION);
+			}
+
+			in_stream.close();
+		}
+		else
+		{
+			in_stream.close();
+
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"DeepDungeon.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
+
+			json default_config_json = CreateConfigJson(true);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << default_config_json << std::endl;
+			out_stream.close();
+		}
+
+		if (update_config_file)
+		{
+			json config_json = CreateConfigJson(false);
+			std::ofstream out_stream(config_file);
+			out_stream << std::setw(4) << config_json << std::endl;
+			out_stream.close();
+		}
+	}
+	catch (...)
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred loading the mod configuration file.", MOD_NAME, VERSION);
+
+		eptr = std::current_exception();
+		PrintError(eptr);
+	}
+}
+
+
 void ResetFade()
 {
 	fade_initialized = false;
@@ -848,6 +1870,7 @@ void ResetStaticFields(bool returned_to_title_screen)
 	if (returned_to_title_screen)
 	{
 		game_is_active = false;
+		unlock_recipes = true;
 		is_restoration_tracked_interval = false;
 		is_second_wind_tracked_interval = false;
 		ari_x = -1;
@@ -894,8 +1917,6 @@ void ResetStaticFields(bool returned_to_title_screen)
 
 bool GameIsPaused()
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
 	RValue paused = global_instance->GetMember("__pause_status");
 	return paused.ToInt64() > 0;
 }
@@ -942,6 +1963,132 @@ double GetWindowHeight()
 
 uint64_t GetCurrentSystemTime() {
 	return duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+int euclidean_modulo(int a, int m)
+{
+	int r = a % m;
+	return (r < 0) ? r + m : r;
+}
+
+std::vector<double> linspace(double start, double end, std::size_t num)
+{
+	std::vector<double> result;
+	result.reserve(num);
+
+	if (num == 0)
+		return result;
+
+	if (num == 1)
+	{
+		result.push_back(start);
+		return result;
+	}
+
+	double step = (end - start) / static_cast<double>(num - 1);
+	for (std::size_t i = 0; i < num; ++i)
+		result.push_back(start + step * static_cast<double>(i));
+
+	return result;
+}
+
+double round_n(double value, int decimals)
+{
+	double factor = std::pow(10.0, decimals);
+	return std::round(value * factor) / factor;
+}
+
+std::complex<double> round_complex(const std::complex<double>& z, int decimals)
+{
+	return {
+		round_n(z.real(), decimals),
+		round_n(z.imag(), decimals)
+	};
+}
+
+std::vector<std::vector<double>> generate_circle(const std::vector<int>& Ns)
+{
+	static constexpr double PI = 3.14159265358979323846;
+	std::vector<std::vector<double>> points = {};
+
+	for (int N : Ns)
+	{
+		auto ts = linspace(0.0, 1.0, static_cast<std::size_t>(N));
+
+		for (double t : ts)
+		{
+			std::complex<double> z = static_cast<double>(N - 1) * std::exp(std::complex<double>(0.0, 2.0 * PI * t));
+			std::complex<double> c = round_complex(z, 2);
+			points.push_back({c.real(), c.imag()});
+		}
+	}
+
+	return points;
+}
+
+std::vector<std::vector<double>> generate_cross(int threshold, int lower_bound, int upper_bound, int increment, bool rotate)
+{
+	static const std::complex<double> SQRT_I = std::sqrt(std::complex<double>(0.0, 1.0));
+
+	std::vector<std::vector<double>> points;
+	for (int y = lower_bound; y <= upper_bound; y += increment)
+	{
+		for (int x = lower_bound; x <= upper_bound; x += increment)
+		{
+			if (min(std::abs(x), std::abs(y)) < threshold && (std::abs(x) + std::abs(y)) != 0)
+			{
+				std::complex<double> z(x, y);
+				std::complex<double> c;
+
+				if (!rotate)
+					c = round_complex(z, 2); // Cross
+				else
+					c = round_complex(z * SQRT_I, 2); // X
+
+				points.push_back({c.real(), c.imag()});
+			}
+		}
+	}
+
+	return points;
+}
+
+std::vector<std::vector<double>> generate_checkerboard()
+{
+	std::vector<std::vector<double>> positions;
+
+	for (int y = -24; y <= 24; ++y)
+	{
+		for (int x = -24; x <= 24; ++x)
+		{
+			int xm = euclidean_modulo(x, 10);
+			int ym = euclidean_modulo(y, 10);
+
+			if ((xm < 5 && ym < 5) || (xm >= 5 && ym >= 5))
+				positions.push_back({8.0 * (x + 0.5), 8.0 * (y + 0.5)});
+		}
+	}
+
+	return positions;
+}
+
+std::vector<std::vector<double>> generate_inverted_checkerboard()
+{
+	std::vector<std::vector<double>> positions;
+
+	for (int y = -24; y <= 24; ++y)
+	{
+		for (int x = -24; x <= 24; ++x)
+		{
+			int xm = euclidean_modulo(x, 10);
+			int ym = euclidean_modulo(y, 10);
+
+			if (!((xm < 5 && ym < 5) || (xm >= 5 && ym >= 5)))
+				positions.push_back({8.0 * (x + 0.5), 8.0 * (y + 0.5)});
+		}
+	}
+
+	return positions;
 }
 
 double GetDistance(int x1, int y1, int x2, int y2) {
@@ -1492,9 +2639,9 @@ void LoadObjectIds()
 void LoadItems()
 {
 	std::unordered_set<std::string> lift_key_names = { TIDE_CAVERNS_KEY_NAME, DEEP_EARTH_KEY_NAME, LAVA_CAVES_KEY_NAME, RUINS_KEY_NAME };
-	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB }; // TODO: Add other orbs
+	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB, DEEP_EARTH_ORB }; // TODO: Add other orbs
 	std::vector<std::string> custom_potions = { SUSTAINING_POTION_NAME, HEALTH_SALVE_NAME, STAMINA_SALVE_NAME, MANA_SALVE_NAME }; // TODO: Change to unordered_set
-	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME, CURSED_BRACELET_NAME }; // TODO: Change to unordered_set
+	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME }; // TODO: Change to unordered_set
 
 	size_t array_length;
 	RValue item_data = global_instance->GetMember("__item_data");
@@ -1540,22 +2687,20 @@ void LoadItems()
 				}
 			}
 
-			// Cursed armor
-			for (std::string cursed_armor_name : cursed_armor)
-				if (item_name == cursed_armor_name)
-					cursed_gear_to_item_id_map[cursed_armor_name] = item_id;
-
-			// All consumable items
-			if (name_key.ToString().contains("cooked_dishes"))
-				restricted_items.insert(item_id);
-			else
+			// All consumable items (except Deep Dungeon items)
+			if (configuration.restrict_items && !deep_dungeon_items.contains(item_id))
 			{
-				RValue edible = item->GetMember("edible");
-				if (edible.m_Kind == VALUE_BOOL && edible.m_Real == 1.0)
+				if (name_key.ToString().contains("cooked_dishes"))
 					restricted_items.insert(item_id);
+				else
+				{
+					RValue edible = item->GetMember("edible");
+					if (edible.m_Kind == VALUE_BOOL && edible.m_Real == 1.0)
+						restricted_items.insert(item_id);
+				}
 			}
 
-			// All armor and weapons
+			// Armor, Weapons, Tools, etc.
 			if (StructVariableExists(*item, "tags"))
 			{
 				RValue tags = item->GetMember("tags");
@@ -1568,31 +2713,27 @@ void LoadItems()
 					RValue* array_element;
 					g_ModuleInterface->GetArrayEntry(buffer, i, array_element);
 
-					if (array_element->ToString() == "armor")
-					{
-						if (!CLASS_ARMOR_NAMES.contains(item_name))
-							*item->GetRefMember("defense") = 0;
-
-						for (std::string mistpool_armor_name : MISTPOOL_ARMOR_NAMES)
-							if(item_name == mistpool_armor_name)
-								mistpool_gear_to_item_id_map[mistpool_armor_name] = item_id;
-					}
+					if (configuration.restrict_armor && array_element->ToString() == "armor")
+						*item->GetRefMember("defense") = 0;
 
 					if (array_element->ToString() == "weapon")
 					{
 						if (item_name == MISTPOOL_SWORD_NAME)
-						{
 							deep_dungeon_items.insert(item_id);
-							mistpool_gear_to_item_id_map[MISTPOOL_SWORD_NAME] = item_id;
-						}
-						else
+						else if(configuration.restrict_weapons)
 						{
 							*item->GetRefMember("damage") = 0;
 							restricted_items.insert(item_id);
 						}
 					}
 
-					if (array_element->ToString() == "bomb")
+					if (configuration.restrict_tools && array_element->ToString() == "pick_axe")
+					{
+						if (item_name != MISTPOOL_PICK_AXE_NAME)
+							restricted_items.insert(item_id);
+					}
+
+					if (configuration.restrict_items && array_element->ToString() == "bomb")
 					{
 						*item->GetRefMember("damage") = 0;
 						*item->GetRefMember("bomb")->GetRefMember("damage") = 0;
@@ -1602,7 +2743,7 @@ void LoadItems()
 			}
 
 			// All snake oils
-			if (item_name.contains("snake_oil"))
+			if (configuration.restrict_items && item_name.contains("snake_oil"))
 			{
 				/*
 				   - [string] __infusion__[1] = 'fire_sword'
@@ -1615,6 +2756,37 @@ void LoadItems()
 			}
 		}
 	}
+}
+
+void SetItemHealthModifier(int item_id, double health_modifier)
+{
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
+	RValue item = g_ModuleInterface->CallBuiltin("array_get", { __item_data, item_id });
+
+	g_ModuleInterface->CallBuiltin("struct_set", { item, "health_modifier", health_modifier });
+}
+
+void SetItemStaminaModifier(int item_id, double stamina_modifier)
+{
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
+	RValue item = g_ModuleInterface->CallBuiltin("array_get", { __item_data, item_id });
+
+	g_ModuleInterface->CallBuiltin("struct_set", { item, "stamina_modifier", stamina_modifier });
+}
+
+void SetItemManaModifier(int item_id, double mana_modifier)
+{
+	RValue __item_data = *global_instance->GetRefMember("__item_data");
+	RValue item = g_ModuleInterface->CallBuiltin("array_get", { __item_data, item_id });
+
+	g_ModuleInterface->CallBuiltin("struct_set", { item, "mana_modifier", mana_modifier });
+}
+
+void ModifyItems()
+{
+	SetItemHealthModifier(item_name_to_id_map[HEALTH_SALVE_NAME], configuration.health_salve_potency);
+	SetItemStaminaModifier(item_name_to_id_map[STAMINA_SALVE_NAME], configuration.stamina_salve_potency);
+	SetItemManaModifier(item_name_to_id_map[MANA_SALVE_NAME], configuration.mana_salve_potency);
 }
 
 void MarkDungeonTutorialUnseen()
@@ -1645,144 +2817,270 @@ void ModifyMistpoolWeaponSprites()
 
 	if (floor_number < 20)
 	{
-		RValue spr_weapon_sword_worn_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo1_e" });
-		RValue spr_weapon_sword_worn_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo1_n" });
-		RValue spr_weapon_sword_worn_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo1_s" });
-		RValue spr_weapon_sword_worn_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo2_e" });
-		RValue spr_weapon_sword_worn_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo2_n" });
-		RValue spr_weapon_sword_worn_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo2_s" });
-		RValue spr_weapon_sword_worn_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo3_e" });
-		RValue spr_weapon_sword_worn_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo3_n" });
-		RValue spr_weapon_sword_worn_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_combo3_s" });
-		RValue spr_weapon_sword_worn_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_worn_tool_down_attack_e" });
-		RValue spr_ui_item_tool_rusty_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_rusty_sword" });
+		RValue spr_weapon_sword_mistpool_t0_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_combo1_e" });
+		RValue spr_weapon_sword_mistpool_t0_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_combo1_n" });
+		RValue spr_weapon_sword_mistpool_t0_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_combo1_s" });
+		RValue spr_weapon_sword_mistpool_t0_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_combo2_e" });
+		RValue spr_weapon_sword_mistpool_t0_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_combo2_n" });
+		RValue spr_weapon_sword_mistpool_t0_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_combo2_s" });
+		RValue spr_weapon_sword_mistpool_t0_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_combo3_e" });
+		RValue spr_weapon_sword_mistpool_t0_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_combo3_n" });
+		RValue spr_weapon_sword_mistpool_t0_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_combo3_s" });
+		RValue spr_weapon_sword_mistpool_t0_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t0_tool_down_attack_e" });
+		RValue spr_ui_item_tool_mistpool_t0_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t0_sword" });
 
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_worn_tool_combo1_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_worn_tool_combo1_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_worn_tool_combo1_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_worn_tool_combo2_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_worn_tool_combo2_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_worn_tool_combo2_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_worn_tool_combo3_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_worn_tool_combo3_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_worn_tool_combo3_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_worn_tool_down_attack_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_rusty_sword });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_mistpool_t0_tool_combo1_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_mistpool_t0_tool_combo1_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_mistpool_t0_tool_combo1_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_mistpool_t0_tool_combo2_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_mistpool_t0_tool_combo2_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_mistpool_t0_tool_combo2_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_mistpool_t0_tool_combo3_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_mistpool_t0_tool_combo3_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_mistpool_t0_tool_combo3_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_mistpool_t0_tool_down_attack_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_mistpool_t0_sword });
 	}
 	else if (floor_number < 40)
 	{
-		RValue spr_weapon_sword_verdigris_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo1_e" });
-		RValue spr_weapon_sword_verdigris_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo1_n" });
-		RValue spr_weapon_sword_verdigris_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo1_s" });
-		RValue spr_weapon_sword_verdigris_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo2_e" });
-		RValue spr_weapon_sword_verdigris_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo2_n" });
-		RValue spr_weapon_sword_verdigris_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo2_s" });
-		RValue spr_weapon_sword_verdigris_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo3_e" });
-		RValue spr_weapon_sword_verdigris_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo3_n" });
-		RValue spr_weapon_sword_verdigris_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_combo3_s" });
-		RValue spr_weapon_sword_verdigris_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_verdigris_tool_down_attack_e" });
-		RValue spr_ui_item_tool_verdigris_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_verdigris_sword" });
+		RValue spr_weapon_sword_mistpool_t1_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_combo1_e" });
+		RValue spr_weapon_sword_mistpool_t1_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_combo1_n" });
+		RValue spr_weapon_sword_mistpool_t1_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_combo1_s" });
+		RValue spr_weapon_sword_mistpool_t1_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_combo2_e" });
+		RValue spr_weapon_sword_mistpool_t1_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_combo2_n" });
+		RValue spr_weapon_sword_mistpool_t1_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_combo2_s" });
+		RValue spr_weapon_sword_mistpool_t1_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_combo3_e" });
+		RValue spr_weapon_sword_mistpool_t1_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_combo3_n" });
+		RValue spr_weapon_sword_mistpool_t1_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_combo3_s" });
+		RValue spr_weapon_sword_mistpool_t1_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t1_tool_down_attack_e" });
+		RValue spr_ui_item_tool_mistpool_t1_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t1_sword" });
 
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_verdigris_tool_combo1_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_verdigris_tool_combo1_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_verdigris_tool_combo1_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_verdigris_tool_combo2_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_verdigris_tool_combo2_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_verdigris_tool_combo2_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_verdigris_tool_combo3_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_verdigris_tool_combo3_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_verdigris_tool_combo3_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_verdigris_tool_down_attack_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_verdigris_sword });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_mistpool_t1_tool_combo1_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_mistpool_t1_tool_combo1_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_mistpool_t1_tool_combo1_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_mistpool_t1_tool_combo2_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_mistpool_t1_tool_combo2_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_mistpool_t1_tool_combo2_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_mistpool_t1_tool_combo3_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_mistpool_t1_tool_combo3_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_mistpool_t1_tool_combo3_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_mistpool_t1_tool_down_attack_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_mistpool_t1_sword });
 	}
 	else if (floor_number < 60)
 	{
-		RValue spr_weapon_sword_crystal_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo1_e" });
-		RValue spr_weapon_sword_crystal_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo1_n" });
-		RValue spr_weapon_sword_crystal_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo1_s" });
-		RValue spr_weapon_sword_crystal_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo2_e" });
-		RValue spr_weapon_sword_crystal_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo2_n" });
-		RValue spr_weapon_sword_crystal_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo2_s" });
-		RValue spr_weapon_sword_crystal_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo3_e" });
-		RValue spr_weapon_sword_crystal_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo3_n" });
-		RValue spr_weapon_sword_crystal_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_combo3_s" });
-		RValue spr_weapon_sword_crystal_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_crystal_tool_down_attack_e" });
-		RValue spr_ui_item_tool_crystal_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_crystal_sword" });
+		RValue spr_weapon_sword_mistpool_t2_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_combo1_e" });
+		RValue spr_weapon_sword_mistpool_t2_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_combo1_n" });
+		RValue spr_weapon_sword_mistpool_t2_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_combo1_s" });
+		RValue spr_weapon_sword_mistpool_t2_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_combo2_e" });
+		RValue spr_weapon_sword_mistpool_t2_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_combo2_n" });
+		RValue spr_weapon_sword_mistpool_t2_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_combo2_s" });
+		RValue spr_weapon_sword_mistpool_t2_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_combo3_e" });
+		RValue spr_weapon_sword_mistpool_t2_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_combo3_n" });
+		RValue spr_weapon_sword_mistpool_t2_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_combo3_s" });
+		RValue spr_weapon_sword_mistpool_t2_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t2_tool_down_attack_e" });
+		RValue spr_ui_item_tool_mistpool_t2_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t2_sword" });
 
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_crystal_tool_combo1_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_crystal_tool_combo1_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_crystal_tool_combo1_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_crystal_tool_combo2_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_crystal_tool_combo2_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_crystal_tool_combo2_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_crystal_tool_combo3_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_crystal_tool_combo3_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_crystal_tool_combo3_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_crystal_tool_down_attack_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_crystal_sword });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_mistpool_t2_tool_combo1_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_mistpool_t2_tool_combo1_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_mistpool_t2_tool_combo1_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_mistpool_t2_tool_combo2_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_mistpool_t2_tool_combo2_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_mistpool_t2_tool_combo2_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_mistpool_t2_tool_combo3_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_mistpool_t2_tool_combo3_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_mistpool_t2_tool_combo3_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_mistpool_t2_tool_down_attack_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_mistpool_t2_sword });
 	}
 	else
 	{
-		RValue spr_weapon_sword_tarnished_gold_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo1_e" });
-		RValue spr_weapon_sword_tarnished_gold_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo1_n" });
-		RValue spr_weapon_sword_tarnished_gold_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo1_s" });
-		RValue spr_weapon_sword_tarnished_gold_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo2_e" });
-		RValue spr_weapon_sword_tarnished_gold_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo2_n" });
-		RValue spr_weapon_sword_tarnished_gold_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo2_s" });
-		RValue spr_weapon_sword_tarnished_gold_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo3_e" });
-		RValue spr_weapon_sword_tarnished_gold_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo3_n" });
-		RValue spr_weapon_sword_tarnished_gold_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_combo3_s" });
-		RValue spr_weapon_sword_tarnished_gold_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_tarnished_gold_tool_down_attack_e" });
-		RValue spr_ui_item_tool_tarnished_gold_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_tarnished_gold_sword" });
+		RValue spr_weapon_sword_mistpool_t3_tool_combo1_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_combo1_e" });
+		RValue spr_weapon_sword_mistpool_t3_tool_combo1_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_combo1_n" });
+		RValue spr_weapon_sword_mistpool_t3_tool_combo1_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_combo1_s" });
+		RValue spr_weapon_sword_mistpool_t3_tool_combo2_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_combo2_e" });
+		RValue spr_weapon_sword_mistpool_t3_tool_combo2_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_combo2_n" });
+		RValue spr_weapon_sword_mistpool_t3_tool_combo2_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_combo2_s" });
+		RValue spr_weapon_sword_mistpool_t3_tool_combo3_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_combo3_e" });
+		RValue spr_weapon_sword_mistpool_t3_tool_combo3_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_combo3_n" });
+		RValue spr_weapon_sword_mistpool_t3_tool_combo3_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_combo3_s" });
+		RValue spr_weapon_sword_mistpool_t3_tool_down_attack_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_weapon_sword_mistpool_t3_tool_down_attack_e" });
+		RValue spr_ui_item_tool_mistpool_t3_sword = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t3_sword" });
 
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_tarnished_gold_tool_combo1_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_tarnished_gold_tool_combo1_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_tarnished_gold_tool_combo1_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_tarnished_gold_tool_combo2_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_tarnished_gold_tool_combo2_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_tarnished_gold_tool_combo2_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_tarnished_gold_tool_combo3_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_tarnished_gold_tool_combo3_n });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_tarnished_gold_tool_combo3_s });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_tarnished_gold_tool_down_attack_e });
-		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_tarnished_gold_sword });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_e, spr_weapon_sword_mistpool_t3_tool_combo1_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_n, spr_weapon_sword_mistpool_t3_tool_combo1_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo1_s, spr_weapon_sword_mistpool_t3_tool_combo1_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_e, spr_weapon_sword_mistpool_t3_tool_combo2_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_n, spr_weapon_sword_mistpool_t3_tool_combo2_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo2_s, spr_weapon_sword_mistpool_t3_tool_combo2_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_e, spr_weapon_sword_mistpool_t3_tool_combo3_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_n, spr_weapon_sword_mistpool_t3_tool_combo3_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_combo3_s, spr_weapon_sword_mistpool_t3_tool_combo3_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_weapon_sword_scrap_metal_tool_down_attack_e, spr_weapon_sword_mistpool_t3_tool_down_attack_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_scrap_metal_sword, spr_ui_item_tool_mistpool_t3_sword });
 	}
 }
+
+void ModifyMistpoolPickaxeSprites()
+{
+	// Sprite indexes for the "Worn Pickaxe" which is used as the Mistpool Pickaxe.
+	RValue spr_tool_pick_axe_worn_tool_axe_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_worn_tool_axe_e" });
+	RValue spr_tool_pick_axe_worn_tool_axe_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_worn_tool_axe_n" });
+	RValue spr_tool_pick_axe_worn_tool_axe_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_worn_tool_axe_s" });
+	RValue spr_ui_item_tool_rusty_pickaxe = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_rusty_pickaxe" });
+
+	if (floor_number < 20)
+	{
+		RValue spr_tool_pick_axe_mistpool_t0_tool_axe_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t0_tool_axe_e" });
+		RValue spr_tool_pick_axe_mistpool_t0_tool_axe_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t0_tool_axe_n" });
+		RValue spr_tool_pick_axe_mistpool_t0_tool_axe_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t0_tool_axe_s" });
+		RValue spr_ui_item_tool_mistpool_t0_pickaxe = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t0_pickaxe" });
+
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_e, spr_tool_pick_axe_mistpool_t0_tool_axe_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_n, spr_tool_pick_axe_mistpool_t0_tool_axe_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_s, spr_tool_pick_axe_mistpool_t0_tool_axe_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_rusty_pickaxe, spr_ui_item_tool_mistpool_t0_pickaxe });
+	}
+	else if (floor_number < 40)
+	{
+		RValue spr_tool_pick_axe_mistpool_t1_tool_axe_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t1_tool_axe_e" });
+		RValue spr_tool_pick_axe_mistpool_t1_tool_axe_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t1_tool_axe_n" });
+		RValue spr_tool_pick_axe_mistpool_t1_tool_axe_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t1_tool_axe_s" });
+		RValue spr_ui_item_tool_mistpool_t1_pickaxe = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t1_pickaxe" });
+
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_e, spr_tool_pick_axe_mistpool_t1_tool_axe_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_n, spr_tool_pick_axe_mistpool_t1_tool_axe_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_s, spr_tool_pick_axe_mistpool_t1_tool_axe_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_rusty_pickaxe, spr_ui_item_tool_mistpool_t1_pickaxe });
+	}
+	else if (floor_number < 60)
+	{
+		RValue spr_tool_pick_axe_mistpool_t2_tool_axe_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t2_tool_axe_e" });
+		RValue spr_tool_pick_axe_mistpool_t2_tool_axe_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t2_tool_axe_n" });
+		RValue spr_tool_pick_axe_mistpool_t2_tool_axe_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t2_tool_axe_s" });
+		RValue spr_ui_item_tool_mistpool_t2_pickaxe = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t2_pickaxe" });
+
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_e, spr_tool_pick_axe_mistpool_t2_tool_axe_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_n, spr_tool_pick_axe_mistpool_t2_tool_axe_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_s, spr_tool_pick_axe_mistpool_t2_tool_axe_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_rusty_pickaxe, spr_ui_item_tool_mistpool_t2_pickaxe });
+	}
+	else
+	{
+		RValue spr_tool_pick_axe_mistpool_t3_tool_axe_e = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t3_tool_axe_e" });
+		RValue spr_tool_pick_axe_mistpool_t3_tool_axe_n = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t3_tool_axe_n" });
+		RValue spr_tool_pick_axe_mistpool_t3_tool_axe_s = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_tool_pick_axe_mistpool_t3_tool_axe_s" });
+		RValue spr_ui_item_tool_mistpool_t3_pickaxe = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t3_pickaxe" });
+
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_e, spr_tool_pick_axe_mistpool_t3_tool_axe_e });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_n, spr_tool_pick_axe_mistpool_t3_tool_axe_n });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_tool_pick_axe_worn_tool_axe_s, spr_tool_pick_axe_mistpool_t3_tool_axe_s });
+		g_ModuleInterface->CallBuiltin("sprite_assign", { spr_ui_item_tool_rusty_pickaxe, spr_ui_item_tool_mistpool_t3_pickaxe });
+	}
+}
+
 
 void ScaleMistpoolWeapon(bool in_dungeon)
 {
 	RValue item_data = *global_instance->GetRefMember("__item_data");
 	
 	RValue* sword_scrap_metal;
-	g_ModuleInterface->GetArrayEntry(item_data, mistpool_gear_to_item_id_map["sword_scrap_metal"], sword_scrap_metal);
+	g_ModuleInterface->GetArrayEntry(item_data, item_name_to_id_map["sword_scrap_metal"], sword_scrap_metal);
 
 	if (in_dungeon)
 	{
-		double damage = std::trunc(floor_number / 4.0) + 3;
+		int damage = (floor_number / 4) + 3; // TODO: Make sure this is scaling correctly with code change
 		*sword_scrap_metal->GetRefMember("damage") = damage;
 	}
 	else
-		*sword_scrap_metal->GetRefMember("damage") = 0;
+		*sword_scrap_metal->GetRefMember("damage") = 1;
 }
 
 void ScaleMistpoolArmor(bool in_dungeon)
 {
-	std::vector<std::string> mistpool_armor_names = { "scrap_metal_helmet", "scrap_metal_chestpiece", "scrap_metal_pants", "scrap_metal_boots", "scrap_metal_ring" };
-
 	RValue item_data = *global_instance->GetRefMember("__item_data");
-	for (std::string mistpool_armor_name : mistpool_armor_names)
+	for (std::string mistpool_armor_name : MISTPOOL_ARMOR_NAMES)
 	{
 		RValue* mistpool_armor_piece;
-		g_ModuleInterface->GetArrayEntry(item_data, mistpool_gear_to_item_id_map[mistpool_armor_name], mistpool_armor_piece);
+		g_ModuleInterface->GetArrayEntry(item_data, item_name_to_id_map[mistpool_armor_name], mistpool_armor_piece);
 
 		if (in_dungeon)
 		{
-			double defense = std::trunc(floor_number / 20.0);
+			int defense = floor_number / 20; // TODO: Make sure this is scaling correctly with code change
 			*mistpool_armor_piece->GetRefMember("defense") = defense;
 		}
 		else
 			*mistpool_armor_piece->GetRefMember("defense") = 0;
 	}
+}
+
+void ScaleMistpoolPickaxe(bool in_dungeon)
+{
+	RValue item_data = *global_instance->GetRefMember("__item_data");
+
+	RValue* pick_axe_worn;
+	g_ModuleInterface->GetArrayEntry(item_data, item_name_to_id_map[MISTPOOL_PICK_AXE_NAME], pick_axe_worn);
+
+	if (in_dungeon)
+	{
+		if (floor_number < 20)
+		{
+			*pick_axe_worn->GetRefMember("damage") = 1;
+			*pick_axe_worn->GetRefMember("quality") = 0;
+		}
+		else if (floor_number < 40)
+		{
+			*pick_axe_worn->GetRefMember("damage") = 2;
+			*pick_axe_worn->GetRefMember("quality") = 1;
+		}
+		else if (floor_number < 60)
+		{
+			*pick_axe_worn->GetRefMember("damage") = 3;
+			*pick_axe_worn->GetRefMember("quality") = 2;
+		}
+			
+		else if (floor_number < 80)
+		{
+			*pick_axe_worn->GetRefMember("damage") = 4;
+			*pick_axe_worn->GetRefMember("quality") = 3;
+		}
+			
+		else if (floor_number < 100) 
+		{
+			*pick_axe_worn->GetRefMember("damage") = 5;
+			*pick_axe_worn->GetRefMember("quality") = 4;
+		}
+	}
+	else
+	{
+		*pick_axe_worn->GetRefMember("damage") = 1;
+		*pick_axe_worn->GetRefMember("quality") = 0;
+	}
+}
+
+void ScaleClassArmor(bool in_dungeon)
+{
+	RValue item_data = *global_instance->GetRefMember("__item_data");
+	for (std::string class_armor_name : CLASS_ARMOR_NAMES)
+	{
+		RValue* class_armor_piece;
+		g_ModuleInterface->GetArrayEntry(item_data, item_name_to_id_map[class_armor_name], class_armor_piece);
+
+		if (in_dungeon)
+		{
+			int defense = floor_number / 20; // TODO: Make sure this is scaling correctly with code change
+			*class_armor_piece->GetRefMember("defense") = defense;
+		}
+		else
+			*class_armor_piece->GetRefMember("defense") = 0;
+	}
+}
+
+int GetRandomSoulStone()
+{
+	static thread_local std::mt19937 random_generator(std::random_device{}());
+	std::uniform_int_distribution<size_t> random_soul_stone_distribution(0, SOUL_STONE_NAMES.size() - 1);
+	return item_name_to_id_map[SOUL_STONE_NAMES[random_soul_stone_distribution(random_generator)]];
 }
 
 std::map<Classes, int> CountEquippedClassArmor()
@@ -1869,10 +3167,24 @@ int GetClericAutoRegenPotency()
 		return 3;
 }
 
+double GetDarkKnightDrainPotency()
+{
+	int cleric_armor_pieces_equipped = CountEquippedClassArmor()[Classes::DARK_KNIGHT];
+	if (cleric_armor_pieces_equipped == 0)
+		return 0;
+	if (cleric_armor_pieces_equipped < 3)
+		return 0.03;
+	if (cleric_armor_pieces_equipped < 5)
+		return 0.05;
+	if (cleric_armor_pieces_equipped == 5)
+		return 0.08;
+}
+
 void LoadSpellIds()
 {
 	size_t array_length = 0;
 	RValue spell_ids = global_instance->GetMember("__spell__");
+	g_ModuleInterface->GetArraySize(spell_ids, array_length);
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_element;
@@ -1984,10 +3296,14 @@ void SpawnMonster(CInstance* Self, CInstance* Other, int room_x, int room_y, int
 
 void ModifyRockClodAttackPatterns(bool is_boss_battle, RValue monster)
 {
-	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
-	if (!wait_to_change_attack_pattern_exists.ToBoolean())
-		StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
-	RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
+	const enum class Patterns {
+		WALL, // Shoots a wall of 10 pellets repeatedly 5 times
+		SPIN, // Rotates 18-degrees at a time while shooting 5 pellets in a line at various angles
+		SPLIT // Shoots a single pellet that then splits into many that repeatedly split
+	};
+
+	static thread_local std::mt19937 random_generator(std::random_device{}());
+	std::uniform_int_distribution<size_t> random_pattern_distribution(0, magic_enum::enum_count<Patterns>() - 1);
 
 	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
 	if (!custom_attack_pattern_exists.ToBoolean())
@@ -1996,46 +3312,27 @@ void ModifyRockClodAttackPatterns(bool is_boss_battle, RValue monster)
 		{
 			RValue config = monster.GetMember("config");
 			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
-
+			
+			Patterns pattern = magic_enum::enum_value<Patterns>(random_pattern_distribution(random_generator));
 			if (is_boss_battle)
 			{
 				if (boss_monsters_configured < 2)
 				{
-					// Rotates 18-degrees at a time while shooting 5 pellets in a small cone
-					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
-					StructVariableSet(config_clone, "attack_sequence", 20.0);
-					StructVariableSet(config_clone, "attack_legion", 5.0);
-					StructVariableSet(config_clone, "attack_sequence_turn", 18.0);
-					StructVariableSet(config_clone, "attack_sequence_image_speed", 2.0);
-					StructVariableSet(config_clone, "projectile_speed", 3.0);
-					StructVariableSet(config_clone, "split_distance", -1.0);
-					StructVariableSet(config_clone, "split_depth", -1.0);
-					StructVariableSet(config_clone, "split_angle", -1.0);
-					StructVariableSet(monster, "config", config_clone);
-					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 1);
+					pattern = Patterns::SPIN;
 					boss_monsters_configured++;
 				}
-				else if (boss_monsters_configured == 2)
+				else
 				{
-					// Shoots a single pellet that then splits into many that repeatedly split
-					StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
-					StructVariableSet(config_clone, "attack_sequence", 5.0);
-					StructVariableSet(config_clone, "attack_legion", 1.0);
-					StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
-					StructVariableSet(config_clone, "attack_sequence_image_speed", -1.0);
-					StructVariableSet(config_clone, "projectile_speed", 3.0);
-					StructVariableSet(config_clone, "split_distance", 20.0);
-					StructVariableSet(config_clone, "split_depth", 5.0);
-					StructVariableSet(config_clone, "split_angle", 20.0);
-					StructVariableSet(monster, "config", config_clone);
-					StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 2);
+					pattern = Patterns::SPLIT;
 					boss_monsters_configured++;
 				}
 			}
-			else
+
+			if (pattern == Patterns::WALL)
 			{
 				// Shoots a wall of 10 pellets repeatedly 5 times
 				StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+				StructVariableSet(config_clone, "launcher", false);
 				StructVariableSet(config_clone, "attack_sequence", 5.0);
 				StructVariableSet(config_clone, "attack_legion", 10.0);
 				StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
@@ -2047,73 +3344,38 @@ void ModifyRockClodAttackPatterns(bool is_boss_battle, RValue monster)
 				StructVariableSet(monster, "config", config_clone);
 				StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 			}
-		}
-	}
-
-	if (custom_attack_pattern_exists.ToBoolean() && StructVariableExists(monster, "fsm"))
-	{
-		RValue state_id = monster.GetMember("fsm").GetMember("state").GetMember("state_id");
-		if (state_id.ToInt64() == monster_category_to_state_id_map["clod"]["attack"])
-			*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = false;
-
-		if (state_id.ToInt64() == monster_category_to_state_id_map["clod"]["tired"] && !wait_to_change_attack_pattern.ToBoolean())
-		{
-			*monster.GetRefMember("__deep_dungeon__wait_to_change_attack_pattern") = true;
-
-			int custom_attack_pattern = monster.GetMember("__deep_dungeon__custom_attack_pattern").ToInt64();
-			if (custom_attack_pattern > 2)
-				custom_attack_pattern = 0;
-
-			if (custom_attack_pattern == 0)
+			else if (pattern == Patterns::SPIN)
 			{
-				if (StructVariableExists(monster, "config"))
-				{
-					// Shoots a wall of 10 pellets repeatedly 5 times
-					RValue config = *monster.GetRefMember("config");
-					*config.GetRefMember("attack_sequence") = 5.0;
-					*config.GetRefMember("attack_legion") = 10.0;
-					*config.GetRefMember("attack_sequence_turn") = -1.0;
-					*config.GetRefMember("attack_sequence_image_speed") = -1.0;
-					*config.GetRefMember("projectile_speed") = 3.0;
-					*config.GetRefMember("split_distance") = -1.0;
-					*config.GetRefMember("split_depth") = -1.0;
-					*config.GetRefMember("split_angle") = -1.0;
-				}
+				// Rotates 18-degrees at a time while shooting 5 pellets in a small cone
+				StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+				StructVariableSet(config_clone, "launcher", false);
+				StructVariableSet(config_clone, "attack_sequence", 20.0);
+				StructVariableSet(config_clone, "attack_legion", 5.0);
+				StructVariableSet(config_clone, "attack_sequence_turn", 18.0);
+				StructVariableSet(config_clone, "attack_sequence_image_speed", 3.0);
+				StructVariableSet(config_clone, "projectile_speed", 3.0);
+				StructVariableSet(config_clone, "split_distance", 5.0);
+				StructVariableSet(config_clone, "split_depth", 2.0);
+				StructVariableSet(config_clone, "split_angle", 40.0);
+				StructVariableSet(monster, "config", config_clone);
+				StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 			}
-			if (custom_attack_pattern == 1)
+			else if (pattern == Patterns::SPLIT)
 			{
-				if (StructVariableExists(monster, "config"))
-				{
-					// Rotates 18-degrees at a time while shooting 5 pellets in a small cone
-					RValue config = *monster.GetRefMember("config");
-					*config.GetRefMember("attack_sequence") = 20.0;
-					*config.GetRefMember("attack_legion") = 5.0;
-					*config.GetRefMember("attack_sequence_turn") = 18.0;
-					*config.GetRefMember("attack_sequence_image_speed") = 2.0;
-					*config.GetRefMember("projectile_speed") = 3.0;
-					*config.GetRefMember("split_distance") = -1.0;
-					*config.GetRefMember("split_depth") = -1.0;
-					*config.GetRefMember("split_angle") = -1.0;
-				}
+				// Shoots a single pellet that then splits into many that repeatedly split
+				StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+				StructVariableSet(config_clone, "launcher", false);
+				StructVariableSet(config_clone, "attack_sequence", 5.0);
+				StructVariableSet(config_clone, "attack_legion", 1.0);
+				StructVariableSet(config_clone, "attack_sequence_turn", -1.0);
+				StructVariableSet(config_clone, "attack_sequence_image_speed", -1.0);
+				StructVariableSet(config_clone, "projectile_speed", 3.0);
+				StructVariableSet(config_clone, "split_distance", 20.0);
+				StructVariableSet(config_clone, "split_depth", 5.0);
+				StructVariableSet(config_clone, "split_angle", 20.0);
+				StructVariableSet(monster, "config", config_clone);
+				StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 			}
-			if (custom_attack_pattern == 2)
-			{
-				if (StructVariableExists(monster, "config"))
-				{
-					// Shoots a single pellet that then splits into many that repeatedly split
-					RValue config = *monster.GetRefMember("config");
-					*config.GetRefMember("attack_sequence") = 5.0;
-					*config.GetRefMember("attack_legion") = 1.0;
-					*config.GetRefMember("attack_sequence_turn") = -1.0;
-					*config.GetRefMember("attack_sequence_image_speed") = -1.0;
-					*config.GetRefMember("projectile_speed") = 3.0;
-					*config.GetRefMember("split_distance") = 20.0;
-					*config.GetRefMember("split_depth") = 5.0;
-					*config.GetRefMember("split_angle") = 20.0;
-				}
-			}
-
-			*monster.GetRefMember("__deep_dungeon__custom_attack_pattern") = custom_attack_pattern + 1;
 		}
 	}
 }
@@ -2142,9 +3404,29 @@ void ModifyStalagmiteAttackPatterns(bool is_boss_battle, RValue monster)
 	{
 		if (is_boss_battle)
 		{
-			// TODO: Set the mode based on the number of bosses spawned (see Rockclod boss logic) instead of randomizing.
-			Modes mode = magic_enum::enum_value<Modes>(random_mode_distribution(random_generator));
+			Modes mode = Modes::CHECKERBOARD;
 			StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+			boss_monsters_configured++;
+
+			// TODO: Use these if a way to spawn multiple stalagmites on a floor is discovered
+			//if (boss_monsters_configured == 0)
+			//{
+			//	Modes mode = Modes::DONUT_PB;
+			//	StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+			//	boss_monsters_configured++;
+			//}
+			//else if (boss_monsters_configured == 1)
+			//{
+			//	Modes mode = Modes::CROSS_X;
+			//	StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+			//	boss_monsters_configured++;
+			//}
+			//else if (boss_monsters_configured == 2)
+			//{
+			//	Modes mode = Modes::CHECKERBOARD;
+			//	StructVariableSet(monster, "__deep_dungeon__attack_pattern_mode", magic_enum::enum_name(mode));
+			//	boss_monsters_configured++;
+			//}
 		}
 		else
 		{
@@ -2162,8 +3444,6 @@ void ModifyStalagmiteAttackPatterns(bool is_boss_battle, RValue monster)
 		{
 			// Randomly choose starting attack. Each pattern has two alternating attacks.
 			int starting_pattern = zero_to_one_distribution(random_generator);
-
-			// TODO: Have separate logic for bosses.
 
 			RValue config = monster.GetMember("config");
 			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
@@ -2427,6 +3707,7 @@ void ModifySaplingAttackPatterns(RValue monster, int monster_id)
 			StructVariableSet(config_clone, "free_fly", true);
 			StructVariableSet(config_clone, "air_speed_modifier", 0.6);
 			StructVariableSet(config_clone, "use_circle", true);
+			StructVariableSet(config_clone, "speed", 0.75);
 			StructVariableSet(config_clone, "attack_radius", 624);
 			StructVariableSet(config_clone, "max_jump_radius", 624);
 			StructVariableSet(config_clone, "aggro_radius", 624);
@@ -2434,6 +3715,105 @@ void ModifySaplingAttackPatterns(RValue monster, int monster_id)
 			StructVariableSet(config_clone, "sap_children_birth_distance", 15);
 			StructVariableSet(config_clone, "sap_children", 3);
 			StructVariableSet(config_clone, "sap_children_species", RValue(monster_id_to_name_map[monster_id]));
+			StructVariableSet(monster, "config", config_clone);
+			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+		}
+	}
+}
+
+void ModifyShroomAttackPatterns(RValue monster)
+{
+	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
+	if (!wait_to_change_attack_pattern_exists.ToBoolean())
+		StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
+	RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
+
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
+
+			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "spew_lava", true);
+			StructVariableSet(config_clone, "lava_damage", 1);
+			StructVariableSet(config_clone, "lava_angle", 90);
+			StructVariableSet(config_clone, "lava_distance", 16);
+			StructVariableSet(config_clone, "lava_timer", 500); // 300
+			StructVariableSet(config_clone, "lava_count", 4);
+			StructVariableSet(config_clone, "attack_radius", 704);
+			StructVariableSet(config_clone, "hide_radius", 360);
+			StructVariableSet(config_clone, "shadow_threshold", 0.18); // 0.2
+			StructVariableSet(config_clone, "fade_in_rate", 0.18); // 0.2
+			StructVariableSet(config_clone, "fade_out_rate", 0.18); // 0.2
+			StructVariableSet(config_clone, "windup_friction", 0.93 ); // 0.93
+			StructVariableSet(config_clone, "push_force", 500);
+			StructVariableSet(config_clone, "ari_bounce_distance", 500);
+
+			RValue acknowledgment = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { acknowledgment, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { acknowledgment, 1, 1 });
+			StructVariableSet(config_clone, "acknowledgment", acknowledgment);
+
+			RValue tired = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { tired, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { tired, 1, 1 });
+			StructVariableSet(config_clone, "tired", tired);
+
+			RValue windup = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { windup, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { windup, 1, 1 });
+			StructVariableSet(config_clone, "windup", windup);
+
+			RValue wiggle = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { wiggle, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { wiggle, 1, 1 });
+			StructVariableSet(config_clone, "wiggle", wiggle);
+
+			StructVariableSet(monster, "config", config_clone);
+			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+		}
+	}
+}
+
+void ModifyEnchanternAttackPatterns(RValue monster)
+{
+	RValue wait_to_change_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__wait_to_change_attack_pattern" });
+	if (!wait_to_change_attack_pattern_exists.ToBoolean())
+		StructVariableSet(monster, "__deep_dungeon__wait_to_change_attack_pattern", false);
+	RValue wait_to_change_attack_pattern = monster.GetMember("__deep_dungeon__wait_to_change_attack_pattern");
+
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
+
+			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "charge_speed", 3);
+			StructVariableSet(config_clone, "flee_speed", 2);
+			StructVariableSet(config_clone, "attack_radius", 384);
+			StructVariableSet(config_clone, "drops_balls", true);
+
+			RValue charge_timer = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { charge_timer, 0, 360 }); // 540
+			g_ModuleInterface->CallBuiltin("array_set", { charge_timer, 1, 400 }); // 600
+			StructVariableSet(config_clone, "charge_timer", charge_timer);
+
+			RValue projectile_timer = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { projectile_timer, 0, 200 }); // 400
+			g_ModuleInterface->CallBuiltin("array_set", { projectile_timer, 1, 400 }); // 800
+			StructVariableSet(config_clone, "projectile_timer", projectile_timer);
+
+			RValue flee_timer = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { flee_timer, 0, 180 }); // 120
+			g_ModuleInterface->CallBuiltin("array_set", { flee_timer, 1, 200 }); // 160
+			StructVariableSet(config_clone, "flee_timer", flee_timer);
+	
 			StructVariableSet(monster, "config", config_clone);
 			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
 		}
@@ -2449,6 +3829,19 @@ void ModifyDreadBeastAttackPatterns(bool is_boss_battle, RValue monster)
 		ModifyStalagmiteAttackPatterns(is_boss_battle, monster);
 	if (monster_id == monster_name_to_id_map["sapling"] || monster_id == monster_name_to_id_map["sapling_blue"] || monster_id == monster_name_to_id_map["sapling_purple"] || monster_id == monster_name_to_id_map["sapling_orange"])
 		ModifySaplingAttackPatterns(monster, monster_id);
+	if (monster_id == monster_name_to_id_map["mushroom"] || monster_id == monster_name_to_id_map["mushroom_green"] || monster_id == monster_name_to_id_map["mushroom_blue"] || monster_id == monster_name_to_id_map["mushroom_purple"])
+		ModifyShroomAttackPatterns(monster);
+	if (monster_id == monster_name_to_id_map["enchantern"] || monster_id == monster_name_to_id_map["enchantern_blue"])
+		ModifyEnchanternAttackPatterns(monster);
+}
+
+void UnlockRecipe(int item_id, CInstance* Self, CInstance* Other)
+{
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	RValue recipe_unlocks = *__ari.GetRefMember("recipe_unlocks");
+
+	if (recipe_unlocks[item_id].m_Real == 0.0)
+		recipe_unlocks[item_id] = 1.0; // This value is ultimately what unlocks the recipe.
 }
 
 void CreateNotification(bool ignore_cooldown, std::string notification_localization_str, CInstance* Self, CInstance* Other)
@@ -2502,6 +3895,24 @@ void PlayConversation(std::string conversation_localization_str, CInstance* Self
 		result,
 		4,
 		arguments
+	);
+}
+
+void SceneAudioPlayerStop(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_create_notification = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SCENE_AUDIO_PLAYER_STOP,
+		(PVOID*)&gml_script_create_notification
+	);
+
+	RValue result;
+	gml_script_create_notification->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		0,
+		nullptr
 	);
 }
 
@@ -2651,7 +4062,7 @@ void SetFloorNumber()
 		floor_number = 10;
 	else if (ari_current_gm_room == "rm_mines_upper_elevator15")
 		floor_number = 15;
-	else if (ari_current_gm_room == "rm_water_seal")
+	else if (ari_current_gm_room == "rm_water_seal" || ari_current_gm_room == "rm_mines_tide_ritual_chamber")
 		floor_number = 20;
 	else if (ari_current_gm_room == "rm_mines_tide_floor21")
 		floor_number = 21;
@@ -2661,7 +4072,7 @@ void SetFloorNumber()
 		floor_number = 30;
 	else if (ari_current_gm_room == "rm_mines_tide_elevator35")
 		floor_number = 35;
-	else if (ari_current_gm_room == "rm_earth_seal")
+	else if (ari_current_gm_room == "rm_earth_seal" || ari_current_gm_room == "rm_mines_deep_ritual_chamber")
 		floor_number = 40;
 	else if (ari_current_gm_room == "rm_mines_deep_41")
 		floor_number = 41;
@@ -2671,7 +4082,7 @@ void SetFloorNumber()
 		floor_number = 50;
 	else if (ari_current_gm_room == "rm_mines_deep_55")
 		floor_number = 55;
-	else if (ari_current_gm_room == "rm_fire_seal")
+	else if (ari_current_gm_room == "rm_fire_seal" || ari_current_gm_room == "rm_mines_lava_ritual_chamber")
 		floor_number = 60;
 	else if (ari_current_gm_room == "rm_mines_lava_61")
 		floor_number = 61;
@@ -2681,7 +4092,7 @@ void SetFloorNumber()
 		floor_number = 70;
 	else if (ari_current_gm_room == "rm_mines_lava_75")
 		floor_number = 75;
-	else if (ari_current_gm_room == "rm_ruins_seal")
+	else if (ari_current_gm_room == "rm_ruins_seal" || ari_current_gm_room == "rm_mines_ruins_ritual_chamber")
 		floor_number = 80;
 	// TODO: Add Ruins floors when released.
 	else
@@ -2690,32 +4101,43 @@ void SetFloorNumber()
 
 RValue GetDynamicItemSprite(int item_id)
 {
-	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_SWORD_NAME])
+	if (item_id == item_name_to_id_map[MISTPOOL_SWORD_NAME])
 	{
 		if (active_traps.contains(Traps::INHIBITING) || !AriCurrentGmRoomIsDungeonFloor())
 		{
 			if (floor_number < 20)
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_rusty_sword_disabled" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t0_sword_disabled" });
 			else if (floor_number < 40)
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_verdigris_sword_disabled" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t1_sword_disabled" });
 			else if (floor_number < 60)
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_crystal_sword_disabled" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t2_sword_disabled" });
 			else
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_tarnished_gold_sword_disabled" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t3_sword_disabled" });
 		}
 		else
 		{
 			if (floor_number < 20)
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_rusty_sword" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t0_sword" });
 			else if (floor_number < 40)
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_verdigris_sword" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t1_sword" });
 			else if (floor_number < 60)
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_crystal_sword" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t2_sword" });
 			else
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_tarnished_gold_sword" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t3_sword" });
 		}
 	}
-	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_HELMET_NAME])
+	if (item_id == item_name_to_id_map[MISTPOOL_PICK_AXE_NAME])
+	{
+		if (floor_number < 20)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t0_pickaxe" });
+		else if (floor_number < 40)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t1_pickaxe" });
+		else if (floor_number < 60)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t2_pickaxe" });
+		else
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_tool_mistpool_t3_pickaxe" });
+	}
+	if (item_id == item_name_to_id_map[MISTPOOL_HELMET_NAME])
 	{
 		if (floor_number < 20)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_helmet_tier_1" });
@@ -2726,7 +4148,7 @@ RValue GetDynamicItemSprite(int item_id)
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_helmet_tier_4" });
 	}
-	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_CHESTPIECE_NAME])
+	if (item_id == item_name_to_id_map[MISTPOOL_CHESTPIECE_NAME])
 	{
 		if (floor_number < 20)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_chestpiece_tier_1" });
@@ -2737,7 +4159,7 @@ RValue GetDynamicItemSprite(int item_id)
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_chestpiece_tier_4" });
 	}
-	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_GLOVES_NAME])
+	if (item_id == item_name_to_id_map[MISTPOOL_GLOVES_NAME])
 	{
 		if (floor_number < 20)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_gloves_tier_1" });
@@ -2748,7 +4170,7 @@ RValue GetDynamicItemSprite(int item_id)
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_gloves_tier_4" });
 	}
-	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_PANTS_NAME])
+	if (item_id == item_name_to_id_map[MISTPOOL_PANTS_NAME])
 	{
 		if (floor_number < 20)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_pants_tier_1" });
@@ -2759,7 +4181,7 @@ RValue GetDynamicItemSprite(int item_id)
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_pants_tier_4" });
 	}
-	if (item_id == mistpool_gear_to_item_id_map[MISTPOOL_BOOTS_NAME])
+	if (item_id == item_name_to_id_map[MISTPOOL_BOOTS_NAME])
 	{
 		if (floor_number < 20)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_equipment_mistpool_boots_tier_1" });
@@ -2863,56 +4285,55 @@ RValue GetDynamicItemSprite(int item_id)
 	}
 	if (item_id == salve_name_to_id_map[HEALTH_SALVE_NAME])
 	{
-		if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+		if ((configuration.limit_salves && salves_used.contains(item_id)) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_health_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_health" });
 	}
 	if (item_id == salve_name_to_id_map[STAMINA_SALVE_NAME])
 	{
-		if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+		if ((configuration.limit_salves && salves_used.contains(item_id)) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_stamina_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_stamina" });
 	}
 	if (item_id == salve_name_to_id_map[MANA_SALVE_NAME])
 	{
-		if (salves_used.contains(item_id) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+		if ((configuration.limit_salves && salves_used.contains(item_id)) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_mana_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_salve_mana" });
 	}
 }
 
-RValue GetDynamicItemSprite(std::string sprite_name)
+RValue GetDynamicUiSprite(std::string sprite_name)
 {
 	if (sprite_name == "spr_ui_journal_magic_restore_spell_icon_main")
 	{
-		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+		{
+			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_spell_icon_disabled" });
+			else
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_spell_icon_main" });
+		}
+		else if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_disabled" });
-		//else
-		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_main" });
 	}
 	if (sprite_name == "spr_ui_journal_magic_rain_spell_icon_main")
 	{
-		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_rain_spell_icon_disabled" });
-		//else
-		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_rain_spell_icon_main" });
 	}
 	if (sprite_name == "spr_ui_journal_magic_growth_spell_icon_main")
 	{
-		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_growth_spell_icon_disabled" });
-		//else
-		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_growth_spell_icon_main" });
 	}
 	if (sprite_name == "spr_ui_journal_magic_fire_spell_icon_main")
 	{
-		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || boss_battle != BossBattle::NONE)
+		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_fire_spell_icon_disabled" });
-		//else
-		//	return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_fire_spell_icon_main" });
 	}
 	if (sprite_name == "spr_ui_dungeon_backplate")
 	{
@@ -2956,6 +4377,21 @@ RValue GetDynamicItemSprite(std::string sprite_name)
 		}
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { RValue("backplate_empty") });
+	}
+	if (sprite_name == "spr_ui_journal_magic_restore_card_icon")
+	{
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_card_icon" });
+	}
+	if (sprite_name == "spr_ui_journal_magic_card_backplate")
+	{
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_sipon_life_card_backplate" });
+	}
+	if (sprite_name == "spr_ui_journal_magic_card_ribbon_restore")
+	{
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_siphon_life" });
 	}
 	return RValue();
 }
@@ -3130,7 +4566,7 @@ void GenerateFloorTraps()
 			return;
 
 		int min_traps = 2;
-		int biome_adjusted_max_traps = min(6, std::trunc(floor_number / 20) + 2); // Scale the number of traps per floor with progression. Capped at 6.
+		int biome_adjusted_max_traps = min(6, (floor_number / 20) + 2); // Scale the number of traps per floor with progression. Capped at 6.
 
 		std::uniform_int_distribution<size_t> traps_for_room_distribution(min_traps, biome_adjusted_max_traps);
 		int random_trap_count = traps_for_room_distribution(random_generator);
@@ -3153,15 +4589,15 @@ void GenerateFloorTraps()
 	}
 }
 
-std::vector<int> GenerateRandomMonstersIdsForCurrentFloor(int min, int max)
+std::vector<int> GenerateRandomMonstersIdsForCurrentFloor(int monsters_to_spawn, const int monster_id_to_exclude = -1)
 {
 	static thread_local std::mt19937 random_generator(std::random_device{}());
-	std::uniform_int_distribution<size_t> random_monster_count_distribution(min, max);
 	std::vector<int> candidate_monsters(dungeon_biome_to_candidate_monsters_map[floor_number_to_biome_name_map[floor_number]].begin(), dungeon_biome_to_candidate_monsters_map[floor_number_to_biome_name_map[floor_number]].end());
 
+	if(monster_id_to_exclude != -1)
+		candidate_monsters.erase(std::remove(candidate_monsters.begin(), candidate_monsters.end(), monster_id_to_exclude), candidate_monsters.end());
+
 	std::vector<int> random_monsters = {};
-	int monsters_to_spawn = random_monster_count_distribution(random_generator);
-	
 	for (int i = 0; i < monsters_to_spawn; i++)
 	{
 		std::uniform_int_distribution<size_t> random_monster_distribution(0, candidate_monsters.size() - 1);
@@ -3186,15 +4622,16 @@ void SpawnDreadBeast(CInstance* Self, CInstance* Other)
 		std::pair<int, int> spawn_point = spawn_points[random_index];
 
 		// TODO: Update this as dread beast logic is implemented
+		// TODO: Essence Bat, Flame Spirit, Lava Cat
 		std::vector<std::string> possible_dread_beast_monsters = {};
 		if (floor_number < 20)
-			possible_dread_beast_monsters = { "rockclod", "sapling" };
+			possible_dread_beast_monsters = { "rockclod", "sapling", "mushroom", "enchantern" };
 		else if (floor_number < 40)
-			possible_dread_beast_monsters = { "rockclod_blue", "sapling_blue", "stalagmite" };
+			possible_dread_beast_monsters = { "rockclod_blue", "sapling_blue", "mushroom_green", "enchantern_blue", "stalagmite" };
 		else if (floor_number < 60)
-			possible_dread_beast_monsters = { "rockclod_green", "sapling_purple", "stalagmite_green" };
+			possible_dread_beast_monsters = { "rockclod_green", "sapling_purple", "mushroom_blue", "stalagmite_green" };
 		else if (floor_number < 80)
-			possible_dread_beast_monsters = { "rockclod_red", "sapling_orange", "stalagmite_purple" };
+			possible_dread_beast_monsters = { "rockclod_red", "sapling_orange", "mushroom_purple", "stalagmite_purple" };
 		else
 			return; // TODO
 
@@ -3202,9 +4639,39 @@ void SpawnDreadBeast(CInstance* Self, CInstance* Other)
 		random_index = random_dread_beast_distribution(random_generator);
 		int monster_id = monster_name_to_id_map[possible_dread_beast_monsters[random_index]];
 
-		SpawnMonster(Self, Other, spawn_point.first, spawn_point.second, monster_id);
 		dread_beast_monster_id = monster_id;
+		SpawnMonster(Self, Other, spawn_point.first, spawn_point.second, monster_id);
 	}
+}
+
+void SelectDreadBeast(CInstance* Self, CInstance* Other)
+{
+	// TODO: Update this as Dread Beasts are implemented by removing the prune statements below.
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["barrel"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["bat"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["bat_blue"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["cat"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["copperclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["goldclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["ironclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["mimic"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["mistrilclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["rock_stack"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["rock_stack_lava"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["sapling_cool"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["sapling_orange_mini"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["silverclod"]), initial_floor_monsters.end());
+	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["spirit"]), initial_floor_monsters.end());
+
+	if (initial_floor_monsters.size() > 0)
+	{
+		static thread_local std::mt19937 random_generator(std::random_device{}());
+		std::uniform_int_distribution<int> initial_floor_monster_distribution(0, initial_floor_monsters.size() - 1);
+
+		dread_beast_monster_id = initial_floor_monsters[initial_floor_monster_distribution(random_generator)];
+	}
+	else
+		SpawnDreadBeast(Self, Other);
 }
 
 void CancelStatusEffect(CInstance* Self, CInstance* Other, RValue status_effect_id)
@@ -3258,26 +4725,6 @@ void RegisterStatusEffect(CInstance* Self, CInstance* Other, RValue status_effec
 		4,
 		argument_array
 	);
-}
-
-RValue GetMaxHealth(CInstance* Self, CInstance* Other)
-{
-	CScript* gml_script_get_max_health = nullptr;
-	g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_GET_MAX_HEALTH,
-		(PVOID*)&gml_script_get_max_health
-	);
-
-	RValue result;
-	gml_script_get_max_health->m_Functions->m_ScriptFunction(
-		Self,
-		Other,
-		result,
-		0,
-		nullptr
-	);
-
-	return result;
 }
 
 RValue GetHealth(CInstance* Self, CInstance* Other)
@@ -3339,6 +4786,92 @@ void ModifyHealth(CInstance* Self, CInstance* Other, int value)
 		result,
 		1,
 		{ &health_modifier_ptr }
+	);
+}
+
+RValue GetMaxHealth(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_get_max_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_MAX_HEALTH,
+		(PVOID*)&gml_script_get_max_health
+	);
+
+	RValue result;
+	gml_script_get_max_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		0,
+		nullptr
+	);
+
+	return result;
+}
+
+void SetMaxHealth(CInstance* Self, CInstance* Other, int value)
+{
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	*__ari.GetRefMember("base_health") = value;
+
+	RValue current_health = GetHealth(Self, Other);
+	if (current_health.ToInt64() > value)
+		SetHealth(Self, Other, value);
+}
+
+int ModifyMaxHealth(CInstance* Self, CInstance* Other, int value)
+{
+	RValue __ari = *global_instance->GetRefMember("__ari");
+	int max_health = __ari.GetMember("base_health").ToInt64() + value;
+	*__ari.GetRefMember("base_health") = max_health;
+
+	return max_health;
+}
+
+void VitalsMenuSetHealth(CInstance* Self, CInstance* Other, int current_health_value, int max_health_value)
+{
+	CScript* gml_script_vitals_menu_set_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_VITALS_MENU_SET_HEALTH,
+		(PVOID*)&gml_script_vitals_menu_set_health
+	);
+
+	RValue result;
+	RValue current_health = current_health_value;
+	RValue max_health = max_health_value;
+	RValue* current_health_ptr = &current_health;
+	RValue* max_health_ptr = &max_health;
+	RValue arg2 = false;
+	RValue* arg2_ptr = &arg2;
+	RValue* argument_array[3] = { current_health_ptr, max_health_ptr, arg2_ptr };
+
+	gml_script_vitals_menu_set_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		3,
+		argument_array
+	);
+}
+
+void VitalsMenuSetMaxHealth(CInstance* Self, CInstance* Other, int value)
+{
+	CScript* gml_script_vitals_menu_set_max_health = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH,
+		(PVOID*)&gml_script_vitals_menu_set_max_health
+	);
+
+	RValue result;
+	RValue max_health = value;
+	RValue* max_health_ptr = &max_health;
+
+	gml_script_vitals_menu_set_max_health->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &max_health_ptr }
 	);
 }
 
@@ -3541,13 +5074,26 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 			}
 			if (trap == Traps::LURING)
 			{
+				std::uniform_int_distribution<int> random_position_offset_distribution(-12, 12);
+
 				PlaySoundEffect("snd_ScrollRaise", 100);
 				CreateNotification(true, LURING_TRAP_NOTIFICATION_KEY, Self, Other);
-				std::vector<int> random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2, 2); // TODO: Scale the number of monsters spawned?
-				std::uniform_int_distribution<int> random_position_offset_distribution(-12, 12);
+
+				// TODO: Restrict stalagmite spawns in the ruins if necessary (stalagmite_pink? TBD)
+				std::vector<int> random_monsters;
+				if (std::find(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["stalagmite"]) != initial_floor_monsters.end())
+					random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2, monster_name_to_id_map["stalagmite"]);
+				else if (std::find(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["stalagmite_green"]) != initial_floor_monsters.end())
+					random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2, monster_name_to_id_map["stalagmite_green"]);
+				else if (std::find(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["stalagmite_purple"]) != initial_floor_monsters.end())
+					random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2, monster_name_to_id_map["stalagmite_purple"]);
+				else 
+					random_monsters = GenerateRandomMonstersIdsForCurrentFloor(2);
 
 				for (int i = 0; i < random_monsters.size(); i++)
 					SpawnMonster(Self, Other, floor_trap->first + random_position_offset_distribution(random_generator), floor_trap->second + random_position_offset_distribution(random_generator), random_monsters[i]);
+
+				active_traps.erase(Traps::LURING);
 			}
 
 			floor_trap = floor_trap_positions.erase(floor_trap);
@@ -3560,11 +5106,11 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 void ApplyOfferingPenalties(CInstance* Self, CInstance* Other)
 {
 	if (ari_resource_to_penalty_map[AriResources::HEALTH])
-		ModifyHealth(Self, Other, -25);
+		ModifyHealth(Self, Other, configuration.offering_health_requirement * -1);
 	if (ari_resource_to_penalty_map[AriResources::STAMINA])
-		ModifyStamina(Self, Other, -20);
+		ModifyStamina(Self, Other, configuration.offering_stamina_requirement * -1);
 	if (ari_resource_to_penalty_map[AriResources::MANA])
-		ModifyMana(Self, Other, -1);
+		ModifyMana(Self, Other, configuration.offering_mana_requirement * -1);
 
 	ari_resource_to_penalty_map.clear();
 }
@@ -3572,6 +5118,7 @@ void ApplyOfferingPenalties(CInstance* Self, CInstance* Other)
 void TrackAriResources(CInstance* Self, CInstance* Other)
 {
 	ari_resource_to_value_map[AriResources::HEALTH] = GetHealth(Self, Other).ToInt64();
+	ari_resource_to_value_map[AriResources::MAX_HEALTH] = GetMaxHealth(Self, Other).ToInt64();
 	ari_resource_to_value_map[AriResources::STAMINA] = GetStamina(Self, Other).ToInt64();
 	ari_resource_to_value_map[AriResources::MANA] = GetMana(Self, Other).ToInt64();
 }
@@ -3579,7 +5126,7 @@ void TrackAriResources(CInstance* Self, CInstance* Other)
 void GenerateTreasureChestLoot(std::string object_name, CInstance* Self, CInstance* Other)
 {
 	static thread_local std::mt19937 random_generator(std::random_device{}());
-	std::uniform_int_distribution<size_t> zero_to_nintey_nine_distribution(0, 99);
+	std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
 	std::uniform_int_distribution<size_t> random_sigil_distribution(0, magic_enum::enum_count<Sigils>() - 1);
 
 	// Sigils
@@ -3596,7 +5143,7 @@ void GenerateTreasureChestLoot(std::string object_name, CInstance* Self, CInstan
 	std::unordered_set<Sigils> sigils_spawned = {};
 	for (size_t i = 0; i < sigil_roll_success_thresholds.size(); i++)
 	{
-		int roll_for_drop = zero_to_nintey_nine_distribution(random_generator);
+		int roll_for_drop = zero_to_ninety_nine_distribution(random_generator);
 		if (roll_for_drop < sigil_roll_success_thresholds[i])
 		{
 			Sigils random_sigil = magic_enum::enum_value<Sigils>(random_sigil_distribution(random_generator));
@@ -3611,167 +5158,41 @@ void GenerateTreasureChestLoot(std::string object_name, CInstance* Self, CInstan
 	// Cursed Armor
 	int cursed_armor_roll_success_threshold = 0;
 	if (object_name == TREASURE_CHEST_WOOD_NAME)
-		cursed_armor_roll_success_threshold = 1;
+		cursed_armor_roll_success_threshold = 1 * configuration.cursed_armor_drop_chance_modifier;
 	else if (object_name == TREASURE_CHEST_COPPER_NAME)
-		cursed_armor_roll_success_threshold = 2;
+		cursed_armor_roll_success_threshold = 2 * configuration.cursed_armor_drop_chance_modifier;
 	else if (object_name == TREASURE_CHEST_SILVER_NAME)
-		cursed_armor_roll_success_threshold = 3;
+		cursed_armor_roll_success_threshold = 3 * configuration.cursed_armor_drop_chance_modifier;
 	else if (object_name == TREASURE_CHEST_GOLD_NAME)
-		cursed_armor_roll_success_threshold = 4;
+		cursed_armor_roll_success_threshold = 4 * configuration.cursed_armor_drop_chance_modifier;
 
-	int roll_for_drop = zero_to_nintey_nine_distribution(random_generator);
+	int roll_for_drop = zero_to_ninety_nine_distribution(random_generator);
 	if (roll_for_drop < cursed_armor_roll_success_threshold)
 	{
 		if (floor_number < 20) // Upper Mines
-			DropItem(cursed_gear_to_item_id_map[CURSED_CHESTPIECE_NAME], ari_x, ari_y, Self, Other);
+			DropItem(item_name_to_id_map[CURSED_CHESTPIECE_NAME], ari_x, ari_y, Self, Other);
 		else if (floor_number < 40) // Tide Caverns
-			DropItem(cursed_gear_to_item_id_map[CURSED_HELMET_NAME], ari_x, ari_y, Self, Other);
+			DropItem(item_name_to_id_map[CURSED_HELMET_NAME], ari_x, ari_y, Self, Other);
 		else if (floor_number < 60) // Deep Earth
-			DropItem(cursed_gear_to_item_id_map[CURSED_GLOVES_NAME], ari_x, ari_y, Self, Other);
+			DropItem(item_name_to_id_map[CURSED_GLOVES_NAME], ari_x, ari_y, Self, Other);
 		else if (floor_number < 80) // Lava Caves
-			DropItem(cursed_gear_to_item_id_map[CURSED_PANTS_NAME], ari_x, ari_y, Self, Other);
+			DropItem(item_name_to_id_map[CURSED_PANTS_NAME], ari_x, ari_y, Self, Other);
 		else if (floor_number < 100) // Ruins
-			DropItem(cursed_gear_to_item_id_map[CURSED_BOOTS_NAME], ari_x, ari_y, Self, Other);
-	}
-}
-
-void PrintError(std::exception_ptr eptr)
-{
-	try {
-		if (eptr) {
-			std::rethrow_exception(eptr);
-		}
-	}
-	catch (const std::exception& e) {
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Error: %s", MOD_NAME, VERSION, e.what());
+			DropItem(item_name_to_id_map[CURSED_BOOTS_NAME], ari_x, ari_y, Self, Other);
 	}
 }
 
 void LoadStalagmiteAttackData()
 {
-	// Load config file.
-	std::exception_ptr eptr;
-	try
-	{
-		// Try to find the mod_data directory.
-		std::string current_dir = std::filesystem::current_path().string();
-		std::string stalagmite_json = current_dir + "\\mods\\Deep Dungeon\\data\\stalagmite_attacks.json";
-		std::ifstream in_stream(stalagmite_json);
-		if (in_stream.good())
-		{
-			try
-			{
-				json json_object = json::parse(in_stream);
+	const std::vector<int> smallNs = { 9, 17, 25, 33, 41, 49 };
+	const std::vector<int> bigNs = { 57, 65, 73, 81, 89, 97 };
 
-				if (json_object.empty())
-				{
-					g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - No values found in JSON file: %s!", MOD_NAME, VERSION, stalagmite_json.c_str());
-				}
-				else
-				{
-					if (json_object.contains("donut_aoe_points"))
-					{
-						donut_aoe_points = json_object["donut_aoe_points"];
-						if (donut_aoe_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "donut_aoe_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "donut_aoe_points", stalagmite_json.c_str());
-					}
-
-					if (json_object.contains("pb_aoe_points"))
-					{
-						pb_aoe_points = json_object["pb_aoe_points"];
-						if (donut_aoe_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "pb_aoe_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "pb_aoe_points", stalagmite_json.c_str());
-					}
-
-					if (json_object.contains("cross_aoe_points"))
-					{
-						cross_aoe_points = json_object["cross_aoe_points"];
-						if (cross_aoe_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "cross_aoe_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "cross_aoe_points", stalagmite_json.c_str());
-					}
-
-					if (json_object.contains("x_aoe_points"))
-					{
-						x_aoe_points = json_object["x_aoe_points"];
-						if (x_aoe_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "x_aoe_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "x_aoe_points", stalagmite_json.c_str());
-
-					}
-
-					if (json_object.contains("checkerboard_room_wide_a_points"))
-					{
-						checkerboard_room_wide_a_points = json_object["checkerboard_room_wide_a_points"];
-						if (checkerboard_room_wide_a_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_a_points", stalagmite_json.c_str());
-					}
-
-					if (json_object.contains("checkerboard_room_wide_b_points"))
-					{
-						checkerboard_room_wide_b_points = json_object["checkerboard_room_wide_b_points"];
-						if (checkerboard_room_wide_b_points.empty())
-						{
-							g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Empty \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_b_points", stalagmite_json.c_str());
-						}
-					}
-					else
-					{
-						g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Missing \"%s\" data in JSON file:", MOD_NAME, VERSION, "checkerboard_room_wide_b_points", stalagmite_json.c_str());
-					}
-				}
-			}
-			catch (...)
-			{
-				eptr = std::current_exception();
-				PrintError(eptr);
-
-				g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to parse JSON from file: %s", MOD_NAME, VERSION, stalagmite_json.c_str());
-			}
-
-			in_stream.close();
-		}
-		else
-		{
-			in_stream.close();
-			g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - The JSON file was not found: %s", MOD_NAME, VERSION, stalagmite_json.c_str());
-		}
-	}
-	catch (...)
-	{
-		eptr = std::current_exception();
-		PrintError(eptr);
-
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - An error occurred loading the \"stalagmite_attacks.json\" JSON file!", MOD_NAME, VERSION);
-	}
+	pb_aoe_points = generate_circle(smallNs);
+	donut_aoe_points = generate_circle(bigNs);
+	cross_aoe_points = generate_cross(18, -96, 96, 8, false);
+	x_aoe_points = generate_cross(18, -96, 96, 8, true);
+	checkerboard_room_wide_a_points = generate_checkerboard();
+	checkerboard_room_wide_b_points = generate_inverted_checkerboard();
 }
 
 void ObjectCallback(
@@ -3788,6 +5209,9 @@ void ObjectCallback(
 
 	if (strstr(self->m_Object->m_Name, "obj_ari"))
 	{
+		if (!script_name_to_reference_map.contains("obj_ari"))
+			script_name_to_reference_map["obj_ari"] = { global_instance->GetRefMember("__ari")->ToInstance(), self };
+
 		RValue x;
 		g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
 		ari_x = x.ToDouble();
@@ -3797,34 +5221,34 @@ void ObjectCallback(
 		ari_y = y.ToDouble();
 
 		// Progression Mode Biome Cleared Rewards
-		if (progression_mode && drop_biome_reward && ari_x != 0 && ari_y != 0 && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
+		if (configuration.disable_dungeon_lift && drop_biome_reward && ari_x != 0 && ari_y != 0 && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
 		{
 			// Upper Mines
 			if (ari_current_gm_room == "rm_water_seal") 
 			{
 				drop_biome_reward = false;
-				DropItem(cursed_gear_to_item_id_map[CURSED_CHESTPIECE_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map[CURSED_CHESTPIECE_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				DropItem(item_name_to_id_map[TIDE_CAVERNS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 			}
 			// Tide Caverns
 			else if (ari_current_gm_room == "rm_earth_seal")
 			{
 				drop_biome_reward = false;
-				DropItem(cursed_gear_to_item_id_map[CURSED_HELMET_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map[CURSED_HELMET_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				DropItem(item_name_to_id_map[DEEP_EARTH_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 			}
 			// Deep Earth
 			else if (ari_current_gm_room == "rm_fire_seal")
 			{
 				drop_biome_reward = false;
-				DropItem(cursed_gear_to_item_id_map[CURSED_GLOVES_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map[CURSED_GLOVES_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				DropItem(item_name_to_id_map[LAVA_CAVES_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 			}
 			// Lava Caves
 			else if (ari_current_gm_room == "rm_ruins_seal") 
 			{
 				drop_biome_reward = false;
-				DropItem(cursed_gear_to_item_id_map[CURSED_PANTS_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map[CURSED_PANTS_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				DropItem(item_name_to_id_map[RUINS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 
 			}
@@ -3832,7 +5256,7 @@ void ObjectCallback(
 			else if (ari_current_gm_room == "not_yet_implemented") // TODO: Use room name when its implemented
 			{
 				drop_biome_reward = false;
-				DropItem(cursed_gear_to_item_id_map[CURSED_BOOTS_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+				DropItem(item_name_to_id_map[CURSED_BOOTS_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 				// TODO: Drop some special kind of key?
 			}
 		}
@@ -3841,9 +5265,9 @@ void ObjectCallback(
 		if (active_traps.contains(Traps::EXPLODING))
 		{
 			// Apply damage to Ari
-			RValue health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
-			int penalty = std::trunc(health.ToDouble() * 0.8);
-			SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, health.ToDouble() - penalty);
+			int current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self).ToInt64();
+			int penalty = current_health * 4 / 5;
+			SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, current_health - penalty);
 
 			// Apply damage to monsters
 			for (CInstance* monster : current_floor_monsters)
@@ -3986,11 +5410,16 @@ void ObjectCallback(
 									orb_item_used = false;
 									biome_reward_disabled = true;
 
-									// TODO
+									// TODO: Other orbs
 									if (held_item_id == item_name_to_id_map[TIDE_CAVERNS_ORB])
 									{
 										boss_battle = BossBattle::TIDE_CAVERNS_ORB;
 										EnterDungeon(19, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
+									}
+									else if (held_item_id == item_name_to_id_map[DEEP_EARTH_ORB])
+									{
+										boss_battle = BossBattle::DEEP_EARTH_ORB;
+										EnterDungeon(39, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
 									}
 								}
 							}
@@ -4011,23 +5440,29 @@ void ObjectCallback(
 			is_restoration_tracked_interval = false;
 		}
 
+		// Drain (Dark Knight Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN] > 0)
+		{
+			//int drain_multiplier = class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN];
+			int max_health = GetMaxHealth(global_instance->GetRefMember("__ari")->ToInstance(), self).ToInt64(); // TODO: Make this is accounting for HP_PENALTY
+			int recovery = max_health * GetDarkKnightDrainPotency();
+			
+			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery);
+			class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN] = 0;
+		}
+
+		// Soul Eater (Dark Knight Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER] > 0)
+		{
+			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, -1 * class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER]);
+			class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER] = 0;
+		}
+
 		// Second Wind
 		if (is_second_wind_tracked_interval)
 		{
 			ModifyStamina(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
 			is_second_wind_tracked_interval = false;
-		}
-
-		// HP Penalty
-		if (active_floor_enchantments.contains(FloorEnchantments::HP_PENALTY))
-		{
-			RValue max_health = GetMaxHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
-			RValue current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self);
-
-			int penalty = std::trunc(max_health.ToDouble() * 0.25);
-			int adjusted_max_health = max_health.ToInt64() - penalty;
-			if (current_health.ToInt64() > adjusted_max_health)
-				SetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, adjusted_max_health);
 		}
 
 		// Fey
@@ -4086,7 +5521,7 @@ void ObjectCallback(
 						if (StructVariableExists(state, "state_id"))
 						{
 							RValue state_id = state.GetMember("state_id");
-							if (state_id.ToInt64() == monster_category_to_state_id_map["mimic"]["gobble"])
+							if (state_id.ToInt64() == monster_category_to_state_id_map["mimic"]["gobble"] && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
 							{
 								static thread_local std::mt19937 random_generator(std::random_device{}());
 								std::uniform_int_distribution<size_t> random_sigil_distribution(0, magic_enum::enum_count<Sigils>() - 1);
@@ -4107,8 +5542,21 @@ void ObjectCallback(
 						double hit_points = monster.GetMember("hit_points").ToDouble();
 						if (std::isfinite(hit_points))
 						{
-							*monster.GetRefMember("hit_points") = hit_points * 20; // TODO: Tune this.
-
+							*monster.GetRefMember("hit_points") = hit_points * 20;
+							StructVariableSet(monster, "__deep_dungeon__boss_monster", true);
+						}
+					}
+					else if (StructVariableExists(monster, "__deep_dungeon__boss_monster"))
+						ModifyDreadBeastAttackPatterns(true, monster);
+				}
+				else if (boss_battle == BossBattle::DEEP_EARTH_ORB)
+				{
+					if (!StructVariableExists(monster, "__deep_dungeon__boss_monster") && StructVariableExists(monster, "hit_points"))
+					{
+						double hit_points = monster.GetMember("hit_points").ToDouble();
+						if (std::isfinite(hit_points))
+						{
+							*monster.GetRefMember("hit_points") = hit_points * 3;
 							StructVariableSet(monster, "__deep_dungeon__boss_monster", true);
 						}
 					}
@@ -4122,11 +5570,11 @@ void ObjectCallback(
 					double hit_points = monster.GetMember("hit_points").ToDouble();
 					if (std::isfinite(hit_points))
 					{
-						*monster.GetRefMember("hit_points") = hit_points * 3; // TODO: Tune this.
+						*monster.GetRefMember("hit_points") = hit_points * 3;
 
 						dread_beast_configured = true;
 						StructVariableSet(monster, "__deep_dungeon__dread_beast", true);
-						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Spawned Dread Beast: %s", MOD_NAME, VERSION, monster_id_to_name_map[monster_id.ToInt64()].c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Configured Dread Beast: %s", MOD_NAME, VERSION, monster_id_to_name_map[monster_id.ToInt64()].c_str());
 					}
 				}
 				else if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
@@ -4137,6 +5585,7 @@ void ObjectCallback(
 				{
 					current_floor_monsters.push_back(self);
 					StructVariableSet(monster, "__deep_dungeon__current_floor_monsters", true);
+					StructVariableSet(monster, "__deep_dungeon__default_hit_points", monster.GetMember("hit_points").ToDouble());
 				}
 
 				// Regular loot drops
@@ -4146,65 +5595,65 @@ void ObjectCallback(
 					if (std::isfinite(hit_points) && hit_points <= 0 && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
 					{
 						static thread_local std::mt19937 random_generator(std::random_device{}());
-						std::uniform_int_distribution<size_t> zero_to_nintey_nine_distribution(0, 99);
-						bool drop_lift_key = zero_to_nintey_nine_distribution(random_generator) < 2 ? true : false; // TODO: What should the drop rate be for lift keys?
+						std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
+						bool drop_lift_key = zero_to_ninety_nine_distribution(random_generator) < configuration.lift_key_drop_chance ? true : false;
 
 						if (floor_number < 20) // Upper Mines
 						{
 							DropItem(item_name_to_id_map["beast_coin_tiny"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
 							{
-								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								bool drop_soul_stone = zero_to_ninety_nine_distribution(random_generator) < configuration.soul_stone_drop_chance ? true : false;
 								if (drop_soul_stone)
-									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+									DropItem(GetRandomSoulStone(), ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							}
 						}
 						else if (floor_number < 40) // Tide Caverns
 						{
 							DropItem(item_name_to_id_map["beast_coin_small"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-							if (progression_mode && drop_lift_key)
+							if (configuration.disable_dungeon_lift && drop_lift_key)
 								DropItem(item_name_to_id_map[TIDE_CAVERNS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
 							{
-								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								bool drop_soul_stone = zero_to_ninety_nine_distribution(random_generator) < configuration.soul_stone_drop_chance ? true : false;
 								if (drop_soul_stone)
-									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+									DropItem(GetRandomSoulStone(), ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							}
 						}
 						else if (floor_number < 60) // Deep Earth
 						{
 							DropItem(item_name_to_id_map["beast_coin_medium"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-							if (progression_mode && drop_lift_key)
+							if (configuration.disable_dungeon_lift && drop_lift_key)
 								DropItem(item_name_to_id_map[DEEP_EARTH_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
 							{
-								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								bool drop_soul_stone = zero_to_ninety_nine_distribution(random_generator) < configuration.soul_stone_drop_chance ? true : false;
 								if (drop_soul_stone)
-									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+									DropItem(GetRandomSoulStone(), ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							}
 						}
 						else if (floor_number < 80) // Lava Caves
 						{
 							DropItem(item_name_to_id_map["beast_coin_large"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-							if (progression_mode && drop_lift_key)
+							if (configuration.disable_dungeon_lift && drop_lift_key)
 								DropItem(item_name_to_id_map[LAVA_CAVES_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
 							{
-								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								bool drop_soul_stone = zero_to_ninety_nine_distribution(random_generator) < configuration.soul_stone_drop_chance ? true : false;
 								if (drop_soul_stone)
-									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+									DropItem(GetRandomSoulStone(), ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							}
 						}
 						else if (floor_number < 100) // Ruins
 						{
 							DropItem(item_name_to_id_map["beast_coin_giant"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
-							if (progression_mode && drop_lift_key)
+							if (configuration.disable_dungeon_lift && drop_lift_key)
 								DropItem(item_name_to_id_map[RUINS_KEY_NAME], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							if (StructVariableExists(monster, "__deep_dungeon__dread_beast"))
 							{
-								bool drop_soul_stone = zero_to_nintey_nine_distribution(random_generator) < 25 ? true : false; // TODO: What should the drop rate be for soul stones?
+								bool drop_soul_stone = zero_to_ninety_nine_distribution(random_generator) < configuration.soul_stone_drop_chance ? true : false;
 								if (drop_soul_stone)
-									DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+									DropItem(GetRandomSoulStone(), ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 							}
 						}
 
@@ -4229,7 +5678,7 @@ void ObjectCallback(
 					if (boss_monsters_defeated == boss_monsters_configured)
 					{
 						if (script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
-							DropItem(item_name_to_id_map["soul_stone_cleric"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]); // TODO: Make the item random once more soul stones exist
+							DropItem(GetRandomSoulStone(), ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 						boss_battle = BossBattle::NONE;
 						ResetCustomDrawFields();
 					}
@@ -4352,16 +5801,39 @@ RValue& GmlScriptRegisterStatusEffectCallback(
 	IN RValue** Arguments
 )
 {
-	if (AriCurrentGmRoomIsDungeonFloor())
+	if (AriCurrentGmRoomIsDungeonFloor() && held_item_id == item_name_to_id_map[SUSTAINING_POTION_NAME])
 	{
 		if (Arguments[0]->ToInt64() == status_effect_name_to_id_map["restorative"])
 		{
 			int finish = Arguments[3]->ToInt64();
-			*Arguments[3] = finish - 3600; // Reduce the duration of Restoration
+			*Arguments[3] = finish - static_cast<int>(7200 * (1 - configuration.sustaining_potion_duration_modifier)); // Reduce the duration of Restoration
 		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_REGISTER_STATUS_EFFECT));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptVitalsMenuSetMaxHealthCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH))
+		script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH] = { Self, Other };
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH));
 	original(
 		Self,
 		Other,
@@ -4435,60 +5907,61 @@ RValue& GmlScriptSpawnMonsterCallback(
 	IN RValue** Arguments
 )
 {
-	static thread_local std::mt19937 random_generator(std::random_device{}());
-	std::uniform_int_distribution<size_t> zero_to_nintey_nine_distribution(0, 99);
-
-	// Sigil of Silence
-	// TODO: Don't override a Dread Beast
-	if (active_sigils.contains(Sigils::SILENCE))
+	if (!active_traps.contains(Traps::LURING))
 	{
-		int chance_to_activate = zero_to_nintey_nine_distribution(random_generator);
-		int activation_threshold = 100;
-		for (int i = 0; i < sigil_of_silence_count; i++)
+		static thread_local std::mt19937 random_generator(std::random_device{}());
+		std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
+
+		// Sigil of Silence
+		if (active_sigils.contains(Sigils::SILENCE))
 		{
-			activation_threshold /= 3;
+			int chance_to_activate = zero_to_ninety_nine_distribution(random_generator);
+			int activation_threshold = 100;
+			for (int i = 0; i < sigil_of_silence_count; i++)
+			{
+				activation_threshold /= 3;
+			}
+
+			bool activate = false;
+			if (activation_threshold == 100)
+				activate = true;
+			else if (chance_to_activate < activation_threshold)
+				activate = true;
+
+			sigil_of_silence_count++;
+			if (activate)
+				return Result;
 		}
 
-		bool activate = false;
-		if (activation_threshold == 100)
-			activate = true;
-		else if (chance_to_activate < activation_threshold)
-			activate = true;
-
-		sigil_of_silence_count++;
-		if(activate)
-			return Result;
-	}
-		
-	// Sigil of Alteration
-	// TODO: Don't override a Dread Beast
-	if (active_sigils.contains(Sigils::ALTERATION))
-	{
-		int chance_to_activate = zero_to_nintey_nine_distribution(random_generator);
-
-		int activation_threshold = 100;
-		for (int i = 0; i < sigil_of_alteration_count; i++)
+		// Sigil of Alteration
+		if (active_sigils.contains(Sigils::ALTERATION))
 		{
-			activation_threshold /= 2;
+			int chance_to_activate = zero_to_ninety_nine_distribution(random_generator);
+
+			int activation_threshold = 100;
+			for (int i = 0; i < sigil_of_alteration_count; i++)
+			{
+				activation_threshold /= 2;
+			}
+
+			bool activate = false;
+			if (activation_threshold == 100)
+				activate = true;
+			else if (chance_to_activate < activation_threshold)
+				activate = true;
+
+			if (activate)
+			{
+				int random = zero_to_ninety_nine_distribution(random_generator);
+
+				if (random < 40) // 40% chance for flame spirit
+					*Arguments[2] = monster_name_to_id_map["spirit"];
+				else // 60% chance for mimic
+					*Arguments[2] = monster_name_to_id_map["mimic"];
+			}
+
+			sigil_of_alteration_count++;
 		}
-
-		bool activate = false;
-		if (activation_threshold == 100)
-			activate = true;
-		else if(chance_to_activate < activation_threshold)
-			activate = true;
-
-		if (activate)
-		{
-			int random = zero_to_nintey_nine_distribution(random_generator);
-
-			if (random < 40) // 40% chance for flame spirit
-				*Arguments[2] = monster_name_to_id_map["spirit"];
-			else // 60% chance for mimic
-				*Arguments[2] = monster_name_to_id_map["mimic"];
-		}
-
-		sigil_of_alteration_count++;
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SPAWN_MONSTER));
@@ -4499,6 +5972,9 @@ RValue& GmlScriptSpawnMonsterCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	if (std::find(initial_floor_monsters.begin(), initial_floor_monsters.end(), Arguments[2]->ToInt64()) == initial_floor_monsters.end())
+		initial_floor_monsters.push_back(Arguments[2]->ToInt64());
 
 	return Result;
 }
@@ -4522,15 +5998,15 @@ RValue& GmlScriptCanCastSpellCallback(
 
 	// Amnesia
 	if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA))
-	{
 		Result = 0.0;
-	}
 
 	// Boss Fights
-	if (boss_battle != BossBattle::NONE)
-	{
+	if (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE)
 		Result = 0.0;
-	}
+	
+	// Dark Seal (Dark Knight Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0)
+		Result = 0.0;
 
 	return Result;
 }
@@ -4543,6 +6019,36 @@ RValue& GmlScriptCastSpellCallback(
 	IN RValue** Arguments
 )
 {
+	// Dark Seal (Dark Knight Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && floor_number != 0)
+	{
+		for (CInstance* monster : current_floor_monsters)
+		{
+			if (StructVariableExists(monster, "monster_id") && StructVariableExists(monster, "hit_points") && StructVariableExists(monster, "__deep_dungeon__default_hit_points"))
+			{
+				RValue monster_id = monster->GetMember("monster_id");
+				double hit_points = monster->GetMember("hit_points").ToDouble();
+				if (IsNumeric(monster_id) && monster_id.ToInt64() != monster_name_to_id_map["mimic"] && IsNumeric(hit_points) && std::isfinite(hit_points) && hit_points > 0)
+				{
+					double default_hit_points = monster->GetMember("__deep_dungeon__default_hit_points").ToDouble();
+					double siphon_life_amount = std::trunc(default_hit_points * 0.15);
+					hit_points -= siphon_life_amount;
+
+					*monster->GetRefMember("hit_points") = hit_points;
+					int max_health = ModifyMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], siphon_life_amount);					
+					ModifyHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], siphon_life_amount);
+					
+					int current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
+					VitalsMenuSetMaxHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], max_health);
+					VitalsMenuSetHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], current_health, max_health);
+				}
+			}
+		}
+
+		class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 1;
+		return Result;
+	}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CAST_SPELL));
 	original(
 		Self,
@@ -4714,6 +6220,57 @@ RValue& GmlScriptDamageCallback(
 		}
 	}
 
+	// Soul Eater (Dark Knight Set Bonus)
+	bool soul_eater_proc = false;
+	int soul_eater_amount = 0;
+	if (floor_number != 0 && CountEquippedClassArmor()[Classes::DARK_KNIGHT] == 5 && !active_sigils.contains(Sigils::RAGE) && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
+	{
+		RValue target = Arguments[0]->GetMember("target");
+		if (target.ToInt64() != 1) // Everything not Ari
+		{
+			double max_health = ari_resource_to_value_map[AriResources::MAX_HEALTH];
+			double current_health = ari_resource_to_value_map[AriResources::HEALTH];
+			bool hp_half_or_higher = (current_health / max_health) >= 0.5 ? true : false;
+
+			if (hp_half_or_higher && !StructVariableExists(*Arguments[0], "__deep_dungeon__soul_eater_applied"))
+			{
+				std::uniform_int_distribution<size_t> zero_to_nine_distribution(0, 9);
+				int random = zero_to_nine_distribution(random_generator);
+				if (random == 7) // 10% chance to proc
+				{
+					soul_eater_amount = std::trunc(current_health * 0.25);
+					double damage = Arguments[0]->GetMember("damage").ToDouble() + soul_eater_amount;
+					*Arguments[0]->GetRefMember("damage") = damage;
+					*Arguments[0]->GetRefMember("critical") = true;
+
+					soul_eater_proc = true;
+					StructVariableSet(*Arguments[0], "__deep_dungeon__soul_eater_applied", true);
+					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - The Dark Knight Set Bonus effect \"Soul Eater\" triggered, increasing your damage by: %d!", MOD_NAME, VERSION, soul_eater_amount);
+				}
+			}
+		}
+	}
+
+	// Drain (Dark Knight Set Bonus)
+	bool drain_proc = false;
+	if (floor_number != 0 && !soul_eater_proc && CountEquippedClassArmor()[Classes::DARK_KNIGHT] > 0 && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
+	{
+		RValue target = Arguments[0]->GetMember("target");
+		if (target.ToInt64() != 1) // Everything not Ari
+		{
+			if (!StructVariableExists(*Arguments[0], "__deep_dungeon__drain_applied"))
+			{
+				std::uniform_int_distribution<size_t> zero_to_one_distribution(0, 1);
+				int random = zero_to_one_distribution(random_generator);
+				if (random == 1) // 50% chance to proc
+				{
+					drain_proc = true;
+					StructVariableSet(*Arguments[0], "__deep_dungeon__drain_applied", true);
+				}
+			}
+		}
+	}
+
 	// Sigil of Rage
 	if (active_sigils.contains(Sigils::RAGE))
 	{
@@ -4740,6 +6297,10 @@ RValue& GmlScriptDamageCallback(
 
 	if (afflatus_misery_proc && Result.ToBoolean())
 		class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AFFLATUS_MISERY] = 0;
+	if (drain_proc && Result.ToBoolean())
+		class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN]++;
+	if (soul_eater_proc && Result.ToBoolean())
+		class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER] += soul_eater_amount;
 
 	return Result;
 }
@@ -4785,21 +6346,25 @@ RValue& GmlScriptTakePressCallback(
 	);
 
 	// Chance for an Offering event when using a ladder on a dungeon floor.
-	if (game_is_active && !GameIsPaused() && obj_dungeon_ladder_down_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean() && !offering_chance_occurred)
+	if (game_is_active && !GameIsPaused() && obj_dungeon_ladder_down_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean() && !offering_chance_occurred && (floor_number < 19 || floor_number % 10 != 9))
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
-		std::uniform_int_distribution<size_t> zero_to_fourteen_distribution(0, 14); // TODO: Tune this. 15% chance for an Offering event
+		std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
 		
-		int roll = zero_to_fourteen_distribution(random_generator);
-		if (active_sigils.contains(Sigils::TEMPTATION) || roll == 0)
-		{ 
-			std::uniform_int_distribution<size_t> random_ari_resource_distribution(0, magic_enum::enum_count<AriResources>() - 1);
-			AriResources resource = magic_enum::enum_value<AriResources>(random_ari_resource_distribution(random_generator));
-			if (resource == AriResources::HEALTH && ari_resource_to_value_map[AriResources::HEALTH] > 25) // TODO: Tune this. Health requirement.
+		int roll = zero_to_ninety_nine_distribution(random_generator);
+		if (active_sigils.contains(Sigils::TEMPTATION) || roll < configuration.offering_event_chance)
+		{
+			const std::vector<AriResources> POSSIBLE_OFFERING_RESOURCES = {
+				AriResources::HEALTH, AriResources::STAMINA, AriResources::MANA
+			};
+			std::uniform_int_distribution<size_t> random_offering_resource_distribution(0, POSSIBLE_OFFERING_RESOURCES.size() - 1);
+
+			AriResources resource = POSSIBLE_OFFERING_RESOURCES[random_offering_resource_distribution(random_generator)];
+			if (resource == AriResources::HEALTH && ari_resource_to_value_map[AriResources::HEALTH] > configuration.offering_health_requirement)
 				PlayConversation("Conversations/Mods/Deep Dungeon/offering/health", Self, Other);
-			if (resource == AriResources::STAMINA && ari_resource_to_value_map[AriResources::STAMINA] > 20) // TODO: Tune this. Stamina requirement.
+			if (resource == AriResources::STAMINA && ari_resource_to_value_map[AriResources::STAMINA] > configuration.offering_stamina_requirement)
 				PlayConversation("Conversations/Mods/Deep Dungeon/offering/stamina", Self, Other);
-			if (resource == AriResources::MANA && ari_resource_to_value_map[AriResources::MANA] > 1) // TODO: Tune this. Mana requirement.
+			if (resource == AriResources::MANA && ari_resource_to_value_map[AriResources::MANA] > configuration.offering_mana_requirement)
 				PlayConversation("Conversations/Mods/Deep Dungeon/offering/mana", Self, Other);
 
 			Result = false;
@@ -4807,10 +6372,10 @@ RValue& GmlScriptTakePressCallback(
 
 		offering_chance_occurred = true;
 	}
-	// Disable the elevator in progression mode.
-	else if (game_is_active && !GameIsPaused() && progression_mode && (ari_current_gm_room.contains("rm_mines") || ari_current_gm_room.contains("seal")) && obj_dungeon_elevator_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean())
+	// Disable the elevator if config option set.
+	else if (game_is_active && !GameIsPaused() && configuration.disable_dungeon_lift && (ari_current_gm_room.contains("rm_mines") || ari_current_gm_room.contains("seal")) && obj_dungeon_elevator_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean())
 	{
-		PlayConversation(PROGRESSION_MODE_ELEVATOR_LOCKED_CONVERSATION_KEY, Self, Other);
+		PlayConversation(ELEVATOR_LOCKED_CONVERSATION_KEY, Self, Other);
 		Result = false;
 	}
 
@@ -4875,7 +6440,7 @@ RValue& GmlScriptAttemptInteractCallback(
 		}
 		else if (self_name == "obj_dungeon_elevator")
 		{
-			if (progression_mode)
+			if (configuration.disable_dungeon_lift)
 				obj_dungeon_elevator_focused = true;
 			else
 				obj_dungeon_elevator_focused = false;
@@ -5016,7 +6581,7 @@ RValue& GmlScriptUseItemCallback(
 	{
 		if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari"))
 		{
-			if (held_item_id == mistpool_gear_to_item_id_map[MISTPOOL_SWORD_NAME])
+			if (held_item_id == item_name_to_id_map[MISTPOOL_SWORD_NAME])
 			{
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use the Mistpool Sword due to the Inhibiting Trap's effect!", MOD_NAME, VERSION);
 				CreateNotification(false, INHIBITED_PENALTY_NOTIFICATION_KEY, Self, Other);
@@ -5030,7 +6595,7 @@ RValue& GmlScriptUseItemCallback(
 	{
 		if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari"))
 		{
-			if (held_item_id != sigil_to_item_id_map[Sigils::SERENITY] && restricted_items.contains(held_item_id))
+			if (deep_dungeon_items.contains(held_item_id) && held_item_id != sigil_to_item_id_map[Sigils::SERENITY] && held_item_id != item_name_to_id_map[MISTPOOL_SWORD_NAME])
 			{
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use that item due to the Item Penalty floor enchantment!!", MOD_NAME, VERSION);
 				CreateNotification(false, ITEM_PENALTY_NOTIFICATION_KEY, Self, Other);
@@ -5043,7 +6608,7 @@ RValue& GmlScriptUseItemCallback(
 	{
 		if (Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari"))
 		{
-			if (boss_battle != BossBattle::NONE)
+			if (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE)
 			{
 				// Sigil Items Restricted
 				if (item_id_to_sigil_map.contains(held_item_id))
@@ -5065,7 +6630,7 @@ RValue& GmlScriptUseItemCallback(
 			}
 
 			// Salve Limit
-			if (salves_used.contains(held_item_id))
+			if (configuration.limit_salves && salves_used.contains(held_item_id))
 			{
 				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You have already used that type of salve on the current floor!", MOD_NAME, VERSION);
 				CreateNotification(false, SALVE_LIMIT_NOTIFICATION_KEY, Self, Other);
@@ -5292,7 +6857,18 @@ RValue& GmlScriptGetLocalizerCallback(
 		offerings_to_localized_string_map[Offerings::PERIL] = LocalizeString(Self, Other, PERIL_OFFERING_LOCALIZED_TEXT_KEY).ToString();
 		offerings_to_localized_string_map[Offerings::RECKONING] = LocalizeString(Self, Other, RECKONING_OFFERING_LOCALIZED_TEXT_KEY).ToString();
 
+		// TODO: Other classes
 		classes_to_localized_armor_description_string_map[Classes::CLERIC] = LocalizeString(Self, Other, CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY).ToString();
+		classes_to_localized_armor_description_string_map[Classes::DARK_KNIGHT] = LocalizeString(Self, Other, DARK_KNIGHT_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY).ToString();
+	}
+	else if (game_is_active)
+	{
+		if (Arguments[0]->ToString() == "spells/full_restore/name" && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/name");
+		if (Arguments[0]->ToString() == "spells/full_restore/description" && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/description");
+		if (Arguments[0]->ToString() == "spells/full_restore/type" && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+			*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/type");
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_LOCALIZER));
@@ -5306,7 +6882,53 @@ RValue& GmlScriptGetLocalizerCallback(
 
 	if (game_is_active)
 	{
-		if (Arguments[0]->ToString() == FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY)
+		// TODO: Other orbs when added
+		if (crafting_menu_open && (Arguments[0]->ToString() == TIDE_CAVERNS_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY || Arguments[0]->ToString() == DEEP_EARTH_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY))
+		{
+			std::string result_str = Result.ToString();
+
+			size_t index = result_str.find("\n\n");
+			if (index == std::string::npos)
+				return Result;
+
+			result_str = result_str.substr(0, index);
+			Result = RValue(result_str);
+			return Result;
+		}
+		else if (Arguments[0]->ToString() == HEALTH_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY)
+		{
+			std::string result_str = Result.ToString();
+			std::string value_str = std::to_string(configuration.health_salve_potency);
+
+			size_t value_placeholder_index = result_str.find(VALUE_PLACEHOLDER_TEXT);
+			if (value_placeholder_index != std::string::npos)
+				result_str.replace(value_placeholder_index, VALUE_PLACEHOLDER_TEXT.length(), value_str);
+			Result = RValue(result_str);
+			return Result;
+		}
+		else if (Arguments[0]->ToString() == STAMINA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY)
+		{
+			std::string result_str = Result.ToString();
+			std::string value_str = std::to_string(configuration.stamina_salve_potency);
+
+			size_t value_placeholder_index = result_str.find(VALUE_PLACEHOLDER_TEXT);
+			if (value_placeholder_index != std::string::npos)
+				result_str.replace(value_placeholder_index, VALUE_PLACEHOLDER_TEXT.length(), value_str);
+			Result = RValue(result_str);
+			return Result;
+		}
+		else if (Arguments[0]->ToString() == MANA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY)
+		{
+			std::string result_str = Result.ToString();
+			std::string value_str = std::to_string(configuration.mana_salve_potency);
+
+			size_t value_placeholder_index = result_str.find(VALUE_PLACEHOLDER_TEXT);
+			if (value_placeholder_index != std::string::npos)
+				result_str.replace(value_placeholder_index, VALUE_PLACEHOLDER_TEXT.length(), value_str);
+			Result = RValue(result_str);
+			return Result;
+		}
+		else if (Arguments[0]->ToString() == FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY)
 		{
 			std::string custom_text = "";
 			for (auto it = active_floor_enchantments.begin(); it != active_floor_enchantments.end();)
@@ -5320,7 +6942,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
-		if (Arguments[0]->ToString() == OFFERINGS_PLACEHOLDER_TEXT_KEY)
+		else if (Arguments[0]->ToString() == OFFERINGS_PLACEHOLDER_TEXT_KEY)
 		{
 			std::string custom_text = "";
 			for (auto it = queued_offerings.begin(); it != queued_offerings.end();)
@@ -5334,7 +6956,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
-		if (Arguments[0]->ToString() == CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY && !crafting_menu_open)
+		else if (Arguments[0]->ToString() == CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY && !crafting_menu_open)
 		{
 			int cleric_armor_pieces_equipped = CountEquippedClassArmor()[Classes::CLERIC];
 
@@ -5357,6 +6979,29 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
+		else if (Arguments[0]->ToString() == DARK_KNIGHT_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY && !crafting_menu_open)
+		{
+			int dark_knight_armor_pieces_equipped = CountEquippedClassArmor()[Classes::DARK_KNIGHT];
+
+			std::string custom_text = classes_to_localized_armor_description_string_map[Classes::DARK_KNIGHT];
+			custom_text += "\n\n" + LocalizeString(Self, Other, SET_PIECES_EQUIPPED_LOCALIZED_TEXT_KEY).ToString() + " [" + std::to_string(dark_knight_armor_pieces_equipped) + "/5]";
+			if (dark_knight_armor_pieces_equipped == 1)
+				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_DRAIN_ONE_LOCALIZED_TEXT_KEY).ToString();
+			else if (dark_knight_armor_pieces_equipped == 3)
+			{
+				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_DRAIN_TWO_LOCALIZED_TEXT_KEY).ToString() + "";
+				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_DARK_SEAL_LOCALIZED_TEXT_KEY).ToString() + "";
+			}
+			else if (dark_knight_armor_pieces_equipped == 5)
+			{
+				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_DRAIN_THREE_LOCALIZED_TEXT_KEY).ToString();
+				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_DARK_SEAL_LOCALIZED_TEXT_KEY).ToString();
+				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_SOUL_EATER_LOCALIZED_TEXT_KEY).ToString();
+			}
+
+			Result = RValue(custom_text);
+			return Result;
+		}
 	}
 
 	return Result;
@@ -5374,6 +7019,16 @@ RValue& GmlScriptGetWeatherCallback(
 	{
 		game_is_active = true;
 		//MarkDungeonTutorialUnseen(); // TODO: Only do this once per save file.
+	}
+
+	if (unlock_recipes)
+	{
+		// TODO: Unlock more recipes as added
+		unlock_recipes = false;
+		for (std::string armor_name : CLASS_ARMOR_NAMES)
+			UnlockRecipe(item_name_to_id_map[armor_name], Self, Other);
+		for (std::string orb_name : ORB_NAMES)
+			UnlockRecipe(item_name_to_id_map[orb_name], Self, Other);
 	}
 	
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_WEATHER));
@@ -5438,41 +7093,50 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	dread_beast_configured = false;
 	dread_beast_monster_id = -1;
 	boss_monsters_configured = 0;
-	if (!active_offerings.contains(Offerings::DREAD))
+	if (active_offerings.empty())
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
-		std::uniform_int_distribution<size_t> zero_to_fifty(0, 50); // TODO: Tune this.
+		std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
 
-		int random = zero_to_fifty(random_generator);
-		if (random == 13 && floor_number > 1 && !ari_current_gm_room.contains("seal"))
+		int random = zero_to_ninety_nine_distribution(random_generator);
+		if (random < configuration.random_dread_beast_spawn_chance && floor_number > 1 && !ari_current_gm_room.contains("seal"))
 			active_offerings.insert(Offerings::DREAD);
 	}
 	show_dashes = active_offerings.contains(Offerings::DREAD) || boss_battle != BossBattle::NONE;
 	show_danger_banner = active_offerings.contains(Offerings::DREAD) || boss_battle != BossBattle::NONE;
-	if(active_offerings.contains(Offerings::DREAD))
-		SpawnDreadBeast(Self, Other);
+	if (active_offerings.contains(Offerings::DREAD))
+		SelectDreadBeast(Self, Other);
+	initial_floor_monsters.clear();
 
 	DisableAllPerks();
 	ModifySpellCosts(true);
 	ScaleMistpoolArmor(true);
 	ScaleMistpoolWeapon(true);
+	ScaleMistpoolPickaxe(true);
+	ScaleClassArmor(true);
 	CancelAllStatusEffects();
 	SetInvulnerabilityHits(0);
 	SetFireBreathTime(0);
 	drop_biome_reward = false;
+	fire_breath_cast = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
 	offering_chance_occurred = false;
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
 
-	// Toggle reward on seal rooms in progression mode
-	if (progression_mode && ari_current_gm_room.contains("seal") && !biome_reward_disabled)
+	// Reset any floor specific set bonus effects.
+	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
+
+	// Track Unmodified Max HP
+	unmodified_base_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
+
+	// Toggle reward on seal rooms when dungeon lift is disabled
+	if (configuration.disable_dungeon_lift && ari_current_gm_room.contains("seal") && !biome_reward_disabled)
 		drop_biome_reward = true;
 	biome_reward_disabled = false;
 
-	// TODO: Confirm what "milestone" rooms are and determine if they should be removed from this conditional.
-	if (ari_current_gm_room != "rm_mines_entry" && ari_current_gm_room.find("seal") == std::string::npos && ari_current_gm_room.find("ritual") == std::string::npos && ari_current_gm_room.find("treasure") == std::string::npos && ari_current_gm_room.find("milestone") == std::string::npos)
+	if (ari_current_gm_room != "rm_mines_entry" && !ari_current_gm_room.contains("seal") && !ari_current_gm_room.contains("ritual") && !ari_current_gm_room.contains("treasure"))
 	{
 		GenerateFloorTraps();
 
@@ -5509,6 +7173,20 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+		// HP Penalty
+		if (active_floor_enchantments.contains(FloorEnchantments::HP_PENALTY))
+		{
+			int max_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
+			int penalty = max_health / 4;
+			int adjusted_max_health = max_health - penalty;
+
+			SetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], adjusted_max_health);
+			int current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
+
+			VitalsMenuSetMaxHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], adjusted_max_health);
+			VitalsMenuSetHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], current_health, adjusted_max_health);
+		}
 	}
 	else if (boss_battle != BossBattle::NONE)
 	{
@@ -5520,10 +7198,21 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 
 		if (boss_battle == BossBattle::TIDE_CAVERNS_ORB)
 		{
-			SpawnMonster(Self, Other, 160, 240, monster_name_to_id_map["rockclod_blue"]); // Left
-			SpawnMonster(Self, Other, 240, 240, monster_name_to_id_map["rockclod_blue"]); // Right
-			SpawnMonster(Self, Other, 200, 256, monster_name_to_id_map["rockclod_blue"]); // Middle
+			SpawnMonster(Self, Other, 144 + 8, 208 + 8, monster_name_to_id_map["rockclod_blue"]); // Left
+			SpawnMonster(Self, Other, 240 + 8, 208 + 8, monster_name_to_id_map["rockclod_blue"]); // Right
+			SpawnMonster(Self, Other, 192 + 8, 240 + 8, monster_name_to_id_map["rockclod_blue"]); // Middle
 			PlayConversation(BOSS_BATTLE_TIDE_CAVERNS_ORB_CONVERSATION_KEY, Self, Other);
+		}
+		else if (boss_battle == BossBattle::DEEP_EARTH_ORB)
+		{
+			// TODO: Use these if a way to spawn multiple stalagmites on a floor is discovered
+			//SpawnMonster(Self, Other, 96, 240, monster_name_to_id_map["stalagmite"]); // Left
+			//SpawnMonster(Self, Other, 288, 240, monster_name_to_id_map["stalagmite"]); // Right
+
+			SpawnMonster(Self, Other, 144 + 8, 208 + 8, monster_name_to_id_map["enchantern_blue"]); // Left
+			SpawnMonster(Self, Other, 240 + 8, 208 + 8, monster_name_to_id_map["enchantern_blue"]); // Right
+			SpawnMonster(Self, Other, 192 + 8, 240 + 8, monster_name_to_id_map["stalagmite"]); // Middle
+			PlayConversation(BOSS_BATTLE_DEEP_EARTH_ORB_CONVERSATION_KEY, Self, Other);
 		}
 	}
 
@@ -5549,7 +7238,14 @@ RValue& GmlScriptGoToRoomCallback(
 )
 {
 	ResetCustomDrawFields();
-	if (boss_battle != BossBattle::NONE && ari_current_gm_room.contains("seal"))
+
+	// Teleport Ari to the ritual chamber for boss battles.
+	if(boss_battle == BossBattle::TIDE_CAVERNS_ORB && !ari_current_gm_room.contains("ritual_chamber"))
+		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_tide_ritual_chamber" });
+	else if (boss_battle == BossBattle::DEEP_EARTH_ORB && !ari_current_gm_room.contains("ritual"))
+		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_deep_ritual_chamber" });
+	// End Boss Battles when leaving the ritual floor.
+	else if (boss_battle != BossBattle::NONE && ari_current_gm_room.contains("ritual"))
 		boss_battle = BossBattle::NONE;
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GO_TO_ROOM));
@@ -5565,23 +7261,34 @@ RValue& GmlScriptGoToRoomCallback(
 	RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
 	ari_current_gm_room = room_name.ToString();
 
-	if (ari_current_gm_room.contains("rm_mines") && ari_current_gm_room != "rm_mines_entry")
+	if ((ari_current_gm_room.contains("rm_mines") || ari_current_gm_room.contains("seal")) && ari_current_gm_room != "rm_mines_entry")
 		SetFloorNumber();
-	else if (ari_current_gm_room == "rm_water_seal")
-		floor_number = 20;
-	else if (ari_current_gm_room == "rm_earth_seal")
-		floor_number = 40;
-	else if (ari_current_gm_room == "rm_fire_seal")
-		floor_number = 60;
-	else if (ari_current_gm_room == "rm_ruins_seal")
-		floor_number = 80;
 	else
 		floor_number = 0;
 
 	ModifyMistpoolWeaponSprites();
+	ModifyMistpoolPickaxeSprites();
 
 	if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 		UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
+
+	// Stop music for dungeon floors to force a new song to play.
+	if (configuration.randomize_dungeon_music && floor_number > 0 && script_name_to_reference_map.contains(GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY))
+		SceneAudioPlayerStop(script_name_to_reference_map[GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY][0], script_name_to_reference_map[GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY][1]);
+
+	// Reset any floor specific set bonus effects.
+	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
+
+	// Reset Max HP Adjustments
+	if (unmodified_base_health != -1)
+	{
+		SetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], unmodified_base_health);
+		int current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
+
+		VitalsMenuSetMaxHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], unmodified_base_health);
+		VitalsMenuSetHealth(script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][0], script_name_to_reference_map[GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH][1], current_health, unmodified_base_health);
+		unmodified_base_health = -1;
+	}
 
 	if (ari_current_location == "dungeon" && (!ari_current_gm_room.contains("rm_mines") || ari_current_gm_room == "rm_mines_entry")) // TODO: Don't use ari_current_location
 	{
@@ -5598,15 +7305,17 @@ RValue& GmlScriptGoToRoomCallback(
 		floor_trap_positions.clear();
 		current_floor_monsters.clear();
 		ModifySpellCosts(true);
-		ScaleMistpoolArmor(true);
-		ScaleMistpoolWeapon(true);
+		ScaleMistpoolArmor(false);
+		ScaleMistpoolWeapon(false);
+		ScaleMistpoolPickaxe(false);
+		ScaleClassArmor(false);
 		CancelAllStatusEffects();
 		SetInvulnerabilityHits(0);
 		SetFireBreathTime(0);
 		drop_biome_reward = false;
 		biome_reward_disabled = false;
 		dread_beast_configured = false;
-		fire_breath_cast = false; // Different than OnDungeonRoomStart
+		fire_breath_cast = false;
 		reckoning_applied = false;
 		fairy_buff_applied = false;
 		offering_chance_occurred = false;
@@ -5615,6 +7324,7 @@ RValue& GmlScriptGoToRoomCallback(
 		sigil_of_alteration_count = 0;
 		dread_beast_monster_id = -1;
 		boss_monsters_configured = 0;
+		class_name_to_set_bonus_effect_value_map.clear();
 	}
 	else
 		active_offerings.clear();
@@ -5638,6 +7348,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		window_width = GetWindowWidth();
 		window_height = GetWindowHeight();
 
+		CreateOrLoadConfigFile();
 		LoadPerks();
 		LoadSpells();
 		LoadSpellIds();
@@ -5651,6 +7362,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 		LoadMonsterStates();
 		LoadTutorials();
 		LoadStalagmiteAttackData();
+		ModifyItems();
 		// TODO: Load other stuff
 	}
 	else
@@ -5697,7 +7409,9 @@ RValue& GmlScriptGetEquipmentBonusFromCallback(
 			Result = 1;
 
 		// Dungeon's Curse: Prevent infusions on armor and tools from applying.
-		if (infusion_id == infusion_name_to_id_map["fortified"] || infusion_id == infusion_name_to_id_map["hasty"] || infusion_id == infusion_name_to_id_map["lightweight"] || infusion_id == infusion_name_to_id_map["tireless"])
+		if (configuration.restrict_armor && (infusion_id == infusion_name_to_id_map["fortified"] || infusion_id == infusion_name_to_id_map["hasty"] || infusion_id == infusion_name_to_id_map["tireless"]))
+			Result = 0;
+		if (configuration.restrict_tools && infusion_id == infusion_name_to_id_map["lightweight"])
 			Result = 0;
 
 		// Class armor bonuses
@@ -5842,7 +7556,7 @@ RValue& GmlScriptGetUiIconCallback(
 		Arguments
 	);
 
-	if (Self != nullptr)
+	if (Self != nullptr && !crafting_menu_open)
 	{
 		RValue self = Self->ToRValue();
 		if (StructVariableExists(self, "item_id"))
@@ -5852,7 +7566,9 @@ RValue& GmlScriptGetUiIconCallback(
 			bool modify_icon = false;
 			if (deep_dungeon_items.contains(item_id))
 				modify_icon = true;
-			if(item_id == item_name_to_id_map[MISTPOOL_HELMET_NAME] || item_id == item_name_to_id_map[MISTPOOL_CHESTPIECE_NAME] || item_id == item_name_to_id_map[MISTPOOL_GLOVES_NAME] || item_id == item_name_to_id_map[MISTPOOL_PANTS_NAME] || item_id == item_name_to_id_map[MISTPOOL_BOOTS_NAME])
+			else if(item_id == item_name_to_id_map[MISTPOOL_HELMET_NAME] || item_id == item_name_to_id_map[MISTPOOL_CHESTPIECE_NAME] || item_id == item_name_to_id_map[MISTPOOL_GLOVES_NAME] || item_id == item_name_to_id_map[MISTPOOL_PANTS_NAME] || item_id == item_name_to_id_map[MISTPOOL_BOOTS_NAME])
+				modify_icon = true;
+			else if(item_id == item_name_to_id_map[MISTPOOL_PICK_AXE_NAME])
 				modify_icon = true;
 
 			if(modify_icon)
@@ -5926,7 +7642,7 @@ RValue& GmlScriptSpawnLadderCallback(
 	IN RValue** Arguments
 )
 {
-	if (ari_current_gm_room.contains("seal"))
+	if (ari_current_gm_room.contains("seal") || ari_current_gm_room.contains("ritual_chamber"))
 		return Result;
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SPAWN_LADDER));
@@ -6055,7 +7771,7 @@ RValue& GmlScriptVertigoDrawWithColorCallback(
 	IN RValue** Arguments
 )
 {
-	if (game_is_active)
+	if (game_is_active && !crafting_menu_open)
 	{
 		RValue type = g_ModuleInterface->CallBuiltin("asset_get_type", { *Arguments[0] });
 		if (type.ToInt64() == 1) // asset_sprite
@@ -6063,13 +7779,43 @@ RValue& GmlScriptVertigoDrawWithColorCallback(
 			RValue name = g_ModuleInterface->CallBuiltin("sprite_get_name", { *Arguments[0] });
 			std::string name_str = name.ToString();
 
-			RValue dynamic_sprite = GetDynamicItemSprite(name_str);
+			RValue dynamic_sprite = GetDynamicUiSprite(name_str);
 			if (dynamic_sprite.m_Kind == VALUE_REF)
 				*Arguments[0] = dynamic_sprite;
 		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptSceneAudioPlayerPlayCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY))
+		script_name_to_reference_map[GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY] = { Self, Other };
+
+	if (game_is_active && configuration.randomize_dungeon_music && AriCurrentGmRoomIsDungeonFloor())
+	{
+		static thread_local std::mt19937 random_generator(std::random_device{}());
+		std::uniform_int_distribution<size_t> game_music_distribution(0, MUSIC_INTERNAL_NAMES.size() - 1);
+		*Arguments[0] = RValue(MUSIC_INTERNAL_NAMES.at(game_music_distribution(random_generator)));
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY));
 	original(
 		Self,
 		Other,
@@ -6147,6 +7893,33 @@ void CreateHookGmlScriptRegisterStatusEffect(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_REGISTER_STATUS_EFFECT);
+	}
+}
+
+void CreateHookGmlScriptVitalsMenuSetMaxHealth(AurieStatus& status)
+{
+	CScript* gml_script_vitals_menu_set_max_health = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH,
+		(PVOID*)&gml_script_vitals_menu_set_max_health
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH,
+		gml_script_vitals_menu_set_max_health->m_Functions->m_ScriptFunction,
+		GmlScriptVitalsMenuSetMaxHealthCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_VITALS_MENU_SET_MAX_HEALTH);
 	}
 }
 
@@ -7126,6 +8899,33 @@ void CreateHookGmlScriptVertigoDrawWithColor(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptSceneAudioPlayerPlay(AurieStatus& status)
+{
+	CScript* gml_script_scene_audio_player_play = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY,
+		(PVOID*)&gml_script_scene_audio_player_play
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY,
+		gml_script_scene_audio_player_play->m_Functions->m_ScriptFunction,
+		GmlScriptSceneAudioPlayerPlayCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -7162,6 +8962,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptRegisterStatusEffect(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptVitalsMenuSetMaxHealth(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
@@ -7414,6 +9221,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptVertigoDrawWithColor(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptSceneAudioPlayerPlay(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
