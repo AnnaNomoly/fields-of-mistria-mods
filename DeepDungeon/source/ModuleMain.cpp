@@ -5714,7 +5714,7 @@ void ObjectCallback(
 				// Sigil of Concealment
 				if (active_sigils.contains(Sigils::CONCEALMENT))
 				{
-					if (StructVariableExists(monster, "config"))
+					if (StructVariableExists(monster, "config") && StructVariableExists(monster, "hit_points"))
 					{
 						RValue config = *monster.GetRefMember("config");
 						RValue hit_points = monster.GetMember("hit_points");
@@ -6346,7 +6346,7 @@ RValue& GmlScriptTakePressCallback(
 	);
 
 	// Chance for an Offering event when using a ladder on a dungeon floor.
-	if (game_is_active && obj_dungeon_ladder_down_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean() && !offering_chance_occurred && (floor_number < 19 || floor_number % 10 != 9))
+	if (game_is_active && !GameIsPaused() && obj_dungeon_ladder_down_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean() && !offering_chance_occurred && (floor_number < 19 || floor_number % 10 != 9))
 	{
 		static thread_local std::mt19937 random_generator(std::random_device{}());
 		std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
@@ -6373,7 +6373,7 @@ RValue& GmlScriptTakePressCallback(
 		offering_chance_occurred = true;
 	}
 	// Disable the elevator if config option set.
-	else if (game_is_active && configuration.disable_dungeon_lift && (ari_current_gm_room.contains("rm_mines") || ari_current_gm_room.contains("seal")) && obj_dungeon_elevator_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean())
+	else if (game_is_active && !GameIsPaused() && configuration.disable_dungeon_lift && (ari_current_gm_room.contains("rm_mines") || ari_current_gm_room.contains("seal")) && obj_dungeon_elevator_focused && Arguments[0]->ToInt64() == 6 && Result.ToBoolean())
 	{
 		PlayConversation(ELEVATOR_LOCKED_CONVERSATION_KEY, Self, Other);
 		Result = false;

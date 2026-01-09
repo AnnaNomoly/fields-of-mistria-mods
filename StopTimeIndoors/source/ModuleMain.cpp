@@ -9,8 +9,9 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "StopTimeIndoors";
-static const char* const VERSION = "1.0.2";
+static const char* const VERSION = "1.0.3";
 static const char* const STOP_TIME_IN_DUNGEON_KEY = "stop_time_in_dungeon";
+static const char* const STOP_TIME_ON_FARM_KEY = "stop_time_on_farm";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_IS_DUNGEON_ROOM = "gml_Script_is_dungeon_room";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
@@ -18,10 +19,12 @@ static const char* const GML_SCRIPT_UPDATE_CLOCK = "gml_Script_update@Clock@Cloc
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 
 static const bool DEFAULT_STOP_TIME_IN_DUNGEON = false;
+static const bool DEFAULT_STOP_TIME_ON_FARM = false;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static bool load_on_start = true;
 static bool stop_time_in_dungeon = DEFAULT_STOP_TIME_IN_DUNGEON;
+static bool stop_time_on_farm = DEFAULT_STOP_TIME_ON_FARM;
 static bool game_is_active = false;
 static bool ari_is_in_dungeon = false;
 static int ari_current_location_id = -1;
@@ -43,7 +46,8 @@ void PrintError(std::exception_ptr eptr)
 json CreateConfigJson(bool use_defaults)
 {
 	json config_json = {
-		{ STOP_TIME_IN_DUNGEON_KEY, use_defaults ? DEFAULT_STOP_TIME_IN_DUNGEON : stop_time_in_dungeon }
+		{ STOP_TIME_IN_DUNGEON_KEY, use_defaults ? DEFAULT_STOP_TIME_IN_DUNGEON : stop_time_in_dungeon },
+		{ STOP_TIME_ON_FARM_KEY, use_defaults ? DEFAULT_STOP_TIME_ON_FARM : stop_time_on_farm }
 	};
 	return config_json;
 }
@@ -97,7 +101,7 @@ void CreateOrLoadConfigFile()
 				}
 				else
 				{
-					// Try loading the unlock_everything value.
+					// Try loading the stop_time_in_dungeon value.
 					if (json_object.contains(STOP_TIME_IN_DUNGEON_KEY))
 					{
 						stop_time_in_dungeon = json_object[STOP_TIME_IN_DUNGEON_KEY];
@@ -107,6 +111,18 @@ void CreateOrLoadConfigFile()
 					{
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, STOP_TIME_IN_DUNGEON_KEY, config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, STOP_TIME_IN_DUNGEON_KEY, DEFAULT_STOP_TIME_IN_DUNGEON ? "true" : "false");
+					}
+
+					// Try loading the stop_time_on_farm value.
+					if (json_object.contains(STOP_TIME_ON_FARM_KEY))
+					{
+						stop_time_on_farm = json_object[STOP_TIME_ON_FARM_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, STOP_TIME_ON_FARM_KEY, stop_time_on_farm ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, STOP_TIME_ON_FARM_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, STOP_TIME_ON_FARM_KEY, DEFAULT_STOP_TIME_ON_FARM ? "true" : "false");
 					}
 				}
 
@@ -161,6 +177,7 @@ bool AriIsIndoors()
 	if (!game_is_active || ari_current_location_id == -1)
 		return false;
 
+	// NOTE: The value for location_id_to_outdoor_map["farm"] is modified in the LoadLocations() function based on the config value: stop_time_on_farm
 	if (location_id_to_outdoor_map[ari_current_location_id])
 		return false;
 
@@ -209,11 +226,8 @@ void LoadLocationData()
 		location_id_to_outdoor_map[i] = RValueToBool(outdoor);
 	}
 
-	// Override some location data
-	//for (std::string location_name : FARM_BUILGING_LOCATION_NAME_LIST)
-	//{
-	//	location_id_to_outdoor_map[location_name_to_id_map[location_name]] = false;
-	//}
+	if (stop_time_on_farm)
+		location_id_to_outdoor_map[location_name_to_id_map["farm"]] = false;
 }
 
 RValue& GmlScriptGetWeatherCallback(
@@ -350,8 +364,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 
 	if (load_on_start)
 	{
-		LoadLocationData();
 		CreateOrLoadConfigFile();
+		LoadLocationData();
 		load_on_start = false;
 	}
 
