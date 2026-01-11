@@ -611,8 +611,18 @@ RValue GetDynamicNpcPortrait(std::string sprite_name)
 		if (dynamic_portrait.HasWeatherCondition() && current_weather != dynamic_portrait.weather)
 			continue;
 
-		if (dynamic_portrait.HasLocationCondition() && current_location != dynamic_portrait.location)
-			continue;
+		if (dynamic_portrait.HasLocationCondition())
+		{
+			if (dynamic_portrait.location == location_name_to_id_map[OUTDOORS] || dynamic_portrait.location == location_name_to_id_map[INDOORS])
+			{
+				if (dynamic_portrait.location == location_name_to_id_map[OUTDOORS] && AriIsIndoors())
+					continue;
+				if (dynamic_portrait.location == location_name_to_id_map[INDOORS] && !AriIsIndoors())
+					continue;
+			}
+			else if (dynamic_portrait.HasLocationCondition() && current_location != dynamic_portrait.location)
+				continue;
+		}
 
 		std::string sprite_name = dynamic_portrait.sprite_name + "_" + expression;
 		RValue sprite = g_ModuleInterface->CallBuiltin("asset_get_index", { sprite_name.c_str() });
