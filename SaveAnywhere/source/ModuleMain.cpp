@@ -9,7 +9,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "SaveAnywhere";
-static const char* const VERSION = "1.2.2";
+static const char* const VERSION = "1.2.3";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const SAVE_LOCATION_KEY = "save_location";
 static const char* const SAVE_X_POSITION_KEY = "save_x_position";
@@ -24,6 +24,7 @@ static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_
 static const char* const GML_SCRIPT_END_DAY = "gml_Script_end_day";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
+static const std::string SAVING_DISABLED_NOTIFICATION_KEY = "Notifications/Mods/SaveAnywhere/saving_disabled";
 static const std::string NEW_GAME_NOTIFICATION_KEY = "Notifications/Mods/SaveAnywhere/new_game_warning";
 static const std::string DUNGEON_SAVE_NOTIFICATION_KEY = "Notifications/Mods/SaveAnywhere/location/dungeon";
 static const std::string FARM_BUILDING_SAVE_NOTIFICATION_KEY = "Notifications/Mods/SaveAnywhere/location/farm_building";
@@ -54,6 +55,7 @@ static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
+static RValue __YYTK;
 static bool load_on_start = true;
 static bool game_is_active = false; // Used to indicate if the game is NOT on the title screen AND a file is being played. 
 static bool mod_healthy = false;
@@ -107,6 +109,58 @@ bool RValueAsBool(RValue value)
 	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
 		return true;
 	return false;
+}
+
+bool IsNumeric(RValue value)
+{
+	return value.m_Kind == VALUE_INT32 || value.m_Kind == VALUE_INT64 || value.m_Kind == VALUE_REAL;
+}
+
+bool StructVariableExists(RValue the_struct, const char* variable_name)
+{
+	RValue struct_exists = g_ModuleInterface->CallBuiltin(
+		"struct_exists",
+		{ the_struct, variable_name }
+	);
+
+	return struct_exists.ToBoolean();
+}
+
+bool GlobalVariableExists(const char* variable_name)
+{
+	RValue global_variable_exists = g_ModuleInterface->CallBuiltin(
+		"variable_global_exists",
+		{ variable_name }
+	);
+
+	return global_variable_exists.ToBoolean();
+}
+
+RValue GlobalVariableGet(const char* variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_get",
+		{ variable_name }
+	);
+}
+
+RValue GlobalVariableSet(const char* variable_name, RValue value)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_set",
+		{ variable_name, value }
+	);
+}
+
+void CreateOrGetGlobalYYTKVariable()
+{
+	if (!GlobalVariableExists("__YYTK"))
+	{
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&__YYTK);
+		GlobalVariableSet("__YYTK", __YYTK);
+	}
+	else
+		__YYTK = GlobalVariableGet("__YYTK");
 }
 
 bool GameWindowHasFocus()
@@ -947,6 +1001,7 @@ RValue& GmlScriptSetupMainScreenCallback(
 	{
 		CreateOrLoadConfigFile();
 		ConfigureActivationButton();
+		CreateOrGetGlobalYYTKVariable();
 
 		mod_healthy = mod_healthy && LoadLocationIds();
 		if (!mod_healthy)
@@ -998,9 +1053,32 @@ RValue& GmlScriptOnDrawGuiCallback(
 			{
 				if (save_prefix.size() != 0)
 				{
-					WriteModSaveFile(Self, Other);
-					SaveGame(Self, Other);
-					DisplaySaveNotification(Self, Other);
+					// Check if the Deep Dungeon mod is being used.
+					boolean save_disabled = false;
+					if (StructVariableExists(__YYTK, "DeepDungeon"))
+					{
+						RValue deep_dungeon = __YYTK.GetMember("DeepDungeon");
+						if (StructVariableExists(deep_dungeon, "floor"))
+						{
+							RValue floor = deep_dungeon.GetMember("floor");
+							if (IsNumeric(floor))
+							{
+								int floor_number = floor.ToInt64();
+								if (floor_number != 0)
+								{
+									CreateNotification(Self, Other, SAVING_DISABLED_NOTIFICATION_KEY);
+									save_disabled = true;
+								}
+							}
+						}
+					}
+
+					if (!save_disabled)
+					{
+						WriteModSaveFile(Self, Other);
+						SaveGame(Self, Other);
+						DisplaySaveNotification(Self, Other);
+					}
 				}
 				else
 				{
