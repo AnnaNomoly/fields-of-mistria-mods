@@ -27,7 +27,7 @@ struct pair_hash {
 };
 
 static const char* const MOD_NAME = "DeepDungeon";
-static const char* const VERSION = "0.6.0";
+static const char* const VERSION = "0.6.1";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
@@ -79,6 +79,7 @@ static const char* const GML_SCRIPT_CRAFTING_MENU_INITIALIZE = "gml_Script_initi
 static const char* const GML_SCRIPT_CRAFTING_MENU_CLOSE = "gml_Script_on_close@CraftingMenu@CraftingMenu";
 static const char* const GML_SCRIPT_VERTIGO_DRAW_WITH_COLOR = "gml_Script_vertigo_draw_with_color";
 static const char* const GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY = "gml_Script_play@SceneAudioPlayer@SceneAudioPlayer";
+static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
 static const char* const DISABLE_DUNGEON_LIFT_JSON_KEY = "disable_dungeon_lift"; // Controls the dungeon lift
 static const char* const RESTRICT_ITEMS_JSON_KEY = "restrict_items"; // Determines if items are restricted in the dungeon
 static const char* const RESTRICT_ARMOR_JSON_KEY = "restrict_armor"; // Determines if armor is restricted in the dungeon
@@ -152,6 +153,7 @@ static const std::string DEEP_EARTH_ORB = "deep_earth_orb";
 static const std::string SOUL_STONE_CLERIC = "soul_stone_cleric";
 static const std::string SOUL_STONE_DARK_KNIGHT = "soul_stone_dark_knight";
 // TODO: More soul stones
+static const std::string SAVING_DISABLED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/saving_disabled";
 static const std::string LIFT_KEY_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/lift_key_restricted";
 static const std::string ORB_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/orb_restricted";
 static const std::string SIGIL_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/sigil_restricted";
@@ -1418,6 +1420,7 @@ static const std::vector<std::string> MUSIC_INTERNAL_NAMES = {
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static CInstance* global_instance = nullptr;
+static RValue __YYTK;
 static bool load_on_start = true;
 static bool localize_mod_text = false;
 static bool game_is_active = false;
@@ -1947,6 +1950,57 @@ RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue va
 		"struct_set",
 		{ the_struct, variable_name, value }
 	);
+}
+
+bool GlobalVariableExists(const char* variable_name)
+{
+	RValue global_variable_exists = g_ModuleInterface->CallBuiltin(
+		"variable_global_exists",
+		{ variable_name }
+	);
+
+	return global_variable_exists.ToBoolean();
+}
+
+RValue GlobalVariableGet(const char* variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_get",
+		{ variable_name }
+	);
+}
+
+RValue GlobalVariableSet(const char* variable_name, RValue value)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_set",
+		{ variable_name, value }
+	);
+}
+
+void CreateOrGetGlobalYYTKVariable()
+{
+	if (!GlobalVariableExists("__YYTK"))
+	{
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&__YYTK);
+		GlobalVariableSet("__YYTK", __YYTK);
+	}
+	else
+		__YYTK = GlobalVariableGet("__YYTK");
+}
+
+void CreateModInfoInGlobalYYTKVariable()
+{
+	if (!StructVariableExists(__YYTK, MOD_NAME))
+	{
+		RValue deep_dungeon;
+		RValue version = VERSION;
+		RValue floor = floor_number;
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&deep_dungeon);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&deep_dungeon, "version", &version);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&deep_dungeon, "floor", &floor);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&__YYTK, MOD_NAME, &deep_dungeon);
+	}
 }
 
 double GetWindowWidth()
@@ -4054,6 +4108,7 @@ bool AriCurrentGmRoomIsDungeonFloor()
 
 void SetFloorNumber()
 {
+	// Update the floor number.
 	if (ari_current_gm_room == "rm_mines_upper_floor1")
 		floor_number = 1;
 	else if (ari_current_gm_room == "rm_mines_upper_elevator5")
@@ -7266,6 +7321,9 @@ RValue& GmlScriptGoToRoomCallback(
 	else
 		floor_number = 0;
 
+	// Store the floor number in the global instance for other mods.
+	*__YYTK.GetRefMember(MOD_NAME)->GetRefMember("floor") = floor_number;
+
 	ModifyMistpoolWeaponSprites();
 	ModifyMistpoolPickaxeSprites();
 
@@ -7349,6 +7407,9 @@ RValue& GmlScriptSetupMainScreenCallback(
 		window_height = GetWindowHeight();
 
 		CreateOrLoadConfigFile();
+		CreateOrGetGlobalYYTKVariable();
+		CreateModInfoInGlobalYYTKVariable();
+
 		LoadPerks();
 		LoadSpells();
 		LoadSpellIds();
@@ -7816,6 +7877,32 @@ RValue& GmlScriptSceneAudioPlayerPlayCallback(
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptSaveGameCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (floor_number != 0)
+	{
+		CreateNotification(true, SAVING_DISABLED_NOTIFICATION_KEY, Self, Other);
+		return Result;
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_SAVE_GAME));
 	original(
 		Self,
 		Other,
@@ -8926,6 +9013,33 @@ void CreateHookGmlScriptSceneAudioPlayerPlay(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptSaveGame(AurieStatus& status)
+{
+	CScript* gml_script_save_game = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_SAVE_GAME,
+		(PVOID*)&gml_script_save_game
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SAVE_GAME);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_SAVE_GAME,
+		gml_script_save_game->m_Functions->m_ScriptFunction,
+		GmlScriptSaveGameCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_SAVE_GAME);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(
 	IN AurieModule* Module,
 	IN const fs::path& ModulePath
@@ -9228,6 +9342,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptSceneAudioPlayerPlay(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptSaveGame(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
