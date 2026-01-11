@@ -7755,7 +7755,7 @@ RValue& GmlScriptGetTreasureFromDistributionCallback(
 		if (object_id_to_name_map.contains(object_id))
 		{
 			std::string object_name = object_id_to_name_map[object_id];
-			if (DUNGEON_TREASURE_CHEST_NAMES.contains(object_name))
+			if (DUNGEON_TREASURE_CHEST_NAMES.contains(object_name) && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
 				GenerateTreasureChestLoot(object_name, Self, Other);
 		}
 	}
@@ -7765,7 +7765,7 @@ RValue& GmlScriptGetTreasureFromDistributionCallback(
 		if (object_id_to_name_map.contains(object_id))
 		{
 			std::string object_name = object_id_to_name_map[object_id];
-			if (DUNGEON_TREASURE_CHEST_NAMES.contains(object_name))
+			if (DUNGEON_TREASURE_CHEST_NAMES.contains(object_name) && script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
 				GenerateTreasureChestLoot(object_name, Self, Other);
 		}
 	}
