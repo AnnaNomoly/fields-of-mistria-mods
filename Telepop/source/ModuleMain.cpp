@@ -7,17 +7,17 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Telepop";
-static const char* const VERSION = "2.1.1";
+static const char* const VERSION = "2.2.0";
+static const char* const GML_SCRIPT_LOCATION_ID_TO_GM_ROOM = "gml_Script_location_id_to_gm_room";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_TELEPORT_ARI_TO_ROOM = "gml_Script_ari_teleport_to_room";
 static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
 static const char* const GML_SCRIPT_LOAD_GAME = "gml_Script_load_game";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
-static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
+static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_USE_ITEM = "gml_Script_use_item";
 static const char* const GML_SCRIPT_HELD_ITEM = "gml_Script_held_item@Ari@Ari";
-static const char* const GML_SCRIPT_MODIFY_HEALTH = "gml_Script_modify_health@Ari@Ari";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const TELEPOP_MYSTERY_LOCATION_KEY = "telepop_mystery_location";
 static const char* const TELEPOP_MYSTERY_X_COORDINATE_KEY = "telepop_mystery_x_coordinate";
@@ -75,25 +75,25 @@ static const int DEFAULT_TELEPOP_SHIPPING_BIN_PRICE = 115;
 static const int DEFAULT_TELEPOP_STORE_PRICE = 115;
 
 static YYTKInterface* g_ModuleInterface = nullptr;
+static CInstance* global_instance = nullptr;
 static bool load_on_start = true;
 static bool mod_healthy = true;
 static bool game_is_active = false;
 static bool notify_on_file_load = true;
-static bool teleport_ari = false;
-static bool telepop_mystery = false;
-static bool room_loaded = false;
 static bool telepop_item_used = false;
+static std::map<std::string, int> item_name_to_id_map = {};
+static std::map<std::string, int> player_state_to_id_map = {};
 static std::map<int, std::string> location_id_to_name_map = {};
 static std::map<std::string, int> location_name_to_id_map = {};
-static std::map<std::string, int> item_name_to_id_map = {};
-static std::string ari_current_location = "";
+static std::map<std::string, std::string> gm_room_name_to_location_name = {};
+
+static std::string ari_current_gm_room = "";
 static std::string save_prefix = "";
 static std::string mod_folder = "";
 static std::string telepop_mystery_location = "";
 static int ari_x = UNSET_INT;
 static int ari_y = UNSET_INT;
 static int held_item_id = UNSET_INT;
-static int telepop_destination_id = UNSET_INT;
 static int telepop_mystery_x_coordinate = UNSET_INT;
 static int telepop_mystery_y_coordinate = UNSET_INT;
 static int telepop_recipe_sugar_ingredient_amount = DEFAULT_TELEPOP_RECIPE_SUGAR_INGREDIENT_AMOUNT;
@@ -107,16 +107,13 @@ void ResetStaticFields(bool returned_to_title_screen)
 	{
 		game_is_active = false;
 		notify_on_file_load = true;
-		teleport_ari = false;
-		telepop_mystery = false;
-		room_loaded = false;
-		ari_current_location = "";
+		telepop_item_used = false;
+		ari_current_gm_room = "";
 		save_prefix = "";
 		telepop_mystery_location = "";
 		ari_x = UNSET_INT;
 		ari_y = UNSET_INT;
 		held_item_id = UNSET_INT;
-		telepop_destination_id = UNSET_INT;
 		telepop_mystery_x_coordinate = UNSET_INT;
 		telepop_mystery_y_coordinate = UNSET_INT;
 	}
@@ -179,11 +176,25 @@ void PrintError(std::exception_ptr eptr)
 	}
 }
 
+bool LoadPlayerStates()
+{
+	size_t array_length;
+	RValue player_states = global_instance->GetMember("__player_state__");
+	g_ModuleInterface->GetArraySize(player_states, array_length);
+
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* player_state;
+		g_ModuleInterface->GetArrayEntry(player_states, i, player_state);
+
+		player_state_to_id_map[player_state->ToString()] = i;
+	}
+
+	return player_state_to_id_map.size() > 0;
+}
+
 void ModifyItem(int item_id)
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
 	RValue __item_data = *global_instance->GetRefMember("__item_data");
 	RValue item = g_ModuleInterface->CallBuiltin("array_get", { __item_data, item_id });
 
@@ -213,7 +224,7 @@ void ModifyCustomItems()
 	}
 }
 
-bool LoadItemIds(CInstance* global_instance)
+bool LoadItemIds()
 {
 	RValue item_data = *global_instance->GetRefMember("__item_data");
 	size_t array_length;
@@ -253,7 +264,30 @@ bool LoadItemIds(CInstance* global_instance)
 	return success;
 }
 
-bool LoadLocationIds(CInstance* global_instance)
+std::string LocationIdToGmRoomName(CInstance* Self, CInstance* Other, int location_id)
+{
+	CScript* gml_script_location_id_to_gm_room = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_LOCATION_ID_TO_GM_ROOM,
+		(PVOID*)&gml_script_location_id_to_gm_room
+	);
+
+	RValue result;
+	RValue location = RValue(location_id);
+	RValue* location_ptr = &location;
+	gml_script_location_id_to_gm_room->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &location_ptr }
+	);
+
+	RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { result });
+	return room_name.ToString();
+}
+
+bool LoadLocations(CInstance* Self, CInstance* Other)
 {
 	static const std::vector<std::string> LOCATION_NAMES = {
 		// Prohibited Echo Mint locations
@@ -284,6 +318,7 @@ bool LoadLocationIds(CInstance* global_instance)
 	RValue location_ids = *global_instance->GetRefMember("__location_id__");
 	g_ModuleInterface->GetArraySize(location_ids, array_length);
 
+	// Map location IDs and names.
 	for (size_t i = 0; i < array_length; i++)
 	{
 		RValue* array_element;
@@ -293,6 +328,11 @@ bool LoadLocationIds(CInstance* global_instance)
 		location_name_to_id_map[array_element->ToString()] = i;
 	}
 
+	// Map GM room names to location names.
+	for (auto& entry : location_id_to_name_map)
+		if (location_id_to_name_map[entry.first] != DUNGEON)
+			gm_room_name_to_location_name[LocationIdToGmRoomName(Self, Other, entry.first)] = entry.second;
+		
 	bool success = true;
 
 	// Verify all expected location names exist in the game.
@@ -618,19 +658,19 @@ bool TelepopMysteryUsable()
 
 bool EchoMintUsable()
 {
-	return ari_current_location != DUNGEON && 
-		ari_current_location != WATER_SEAL && 
-		ari_current_location != EARTH_SEAL &&
-		ari_current_location != FIRE_SEAL &&
-		ari_current_location != RUINS_SEAL &&
-		ari_current_location != SMALL_COOP &&
-		ari_current_location != MEDIUM_COOP &&
-		ari_current_location != LARGE_COOP &&
-		ari_current_location != SMALL_BARN &&
-		ari_current_location != MEDIUM_BARN &&
-		ari_current_location != LARGE_BARN &&
-		ari_current_location != SMALL_GREENHOUSE &&
-		ari_current_location != LARGE_GREENHOUSE;
+	return gm_room_name_to_location_name[ari_current_gm_room] != DUNGEON &&
+		gm_room_name_to_location_name[ari_current_gm_room] != WATER_SEAL &&
+		gm_room_name_to_location_name[ari_current_gm_room] != EARTH_SEAL &&
+		gm_room_name_to_location_name[ari_current_gm_room] != FIRE_SEAL &&
+		gm_room_name_to_location_name[ari_current_gm_room] != RUINS_SEAL &&
+		gm_room_name_to_location_name[ari_current_gm_room] != SMALL_COOP &&
+		gm_room_name_to_location_name[ari_current_gm_room] != MEDIUM_COOP &&
+		gm_room_name_to_location_name[ari_current_gm_room] != LARGE_COOP &&
+		gm_room_name_to_location_name[ari_current_gm_room] != SMALL_BARN &&
+		gm_room_name_to_location_name[ari_current_gm_room] != MEDIUM_BARN &&
+		gm_room_name_to_location_name[ari_current_gm_room] != LARGE_BARN &&
+		gm_room_name_to_location_name[ari_current_gm_room] != SMALL_GREENHOUSE &&
+		gm_room_name_to_location_name[ari_current_gm_room] != LARGE_GREENHOUSE;
 }
 
 bool GameIsPaused(CInstance* Self, CInstance* Other)
@@ -679,7 +719,7 @@ void CreateNotification(CInstance* Self, CInstance* Other, std::string notificat
 	);
 }
 
-void TeleportAriToRoom(CInstance* Self, CInstance* Other, int location_id, int x_coordinate, int y_coordinate)
+void TeleportAriToRoom(CInstance* Self, CInstance* Other, int location_id, int x_coordinate, int y_coordinate, bool is_telepop_mystery)
 {
 	CScript* gml_script_ari_teleport_to_room = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
@@ -703,19 +743,19 @@ void TeleportAriToRoom(CInstance* Self, CInstance* Other, int location_id, int x
 		argument_array
 	);
 
-	if (telepop_mystery)
+	if (is_telepop_mystery)
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to her Echo (%s)!", MOD_NAME, VERSION, telepop_mystery_location.c_str());
-	else if (telepop_destination_id == location_name_to_id_map[MINES_ENTRY_LOCATION_NAME])
+	else if (location_id == location_name_to_id_map[MINES_ENTRY_LOCATION_NAME])
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Mines!", MOD_NAME, VERSION);
-	else if (telepop_destination_id == location_name_to_id_map[BEACH_LOCATION_NAME])
+	else if (location_id == location_name_to_id_map[BEACH_LOCATION_NAME])
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Beach!", MOD_NAME, VERSION);
-	else if (telepop_destination_id == location_name_to_id_map[TOWN_LOCATION_NAME])
+	else if (location_id == location_name_to_id_map[TOWN_LOCATION_NAME])
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Town!", MOD_NAME, VERSION);
-	else if (telepop_destination_id == location_name_to_id_map[FARM_LOCATION_NAME])
+	else if (location_id == location_name_to_id_map[FARM_LOCATION_NAME])
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Farm!", MOD_NAME, VERSION);
-	else if (telepop_destination_id == location_name_to_id_map[EASTERN_ROAD_LOCATION_NAME])
+	else if (location_id == location_name_to_id_map[EASTERN_ROAD_LOCATION_NAME])
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Eastern Road!", MOD_NAME, VERSION);
-	else if (telepop_destination_id == location_name_to_id_map[WESTERN_RUINS_LOCATION_NAME])
+	else if (location_id == location_name_to_id_map[WESTERN_RUINS_LOCATION_NAME])
 		g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Ari teleported to the Western Ruins!", MOD_NAME, VERSION);
 }
 
@@ -760,18 +800,137 @@ void ObjectCallback(
 		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
 		ari_y = y.m_Real;
 
-		if (teleport_ari)
+		// Process used items.
+		RValue ari = self->ToRValue();
+		if (StructVariableExists(ari, "fsm"))
 		{
-			TeleportAriToRoom(
-				self,
-				other,
-				telepop_mystery ? location_name_to_id_map[telepop_mystery_location] : telepop_destination_id,
-				telepop_mystery ? telepop_mystery_x_coordinate : LOCATION_TO_TELEPORT_POINT_MAP.at(location_id_to_name_map[telepop_destination_id]).first,
-				telepop_mystery ? telepop_mystery_y_coordinate : LOCATION_TO_TELEPORT_POINT_MAP.at(location_id_to_name_map[telepop_destination_id]).second
-			);
+			RValue fsm = ari.GetMember("fsm");
 
-			teleport_ari = false;
-			telepop_mystery = false;
+			if (StructVariableExists(fsm, "state"))
+			{
+				RValue state = fsm.GetMember("state");
+				if (StructVariableExists(state, "state_id"))
+				{
+					RValue state_id = state.GetMember("state_id");
+					if (state_id.ToInt64() == player_state_to_id_map["hold_to_use"])
+					{
+						if (StructVariableExists(state, "did_action"))
+						{
+							RValue did_action = state.GetMember("did_action");
+							if (did_action.ToBoolean())
+							{
+								if (telepop_item_used) // Necessary since did_action==true will get called a few times when the item is used.
+								{
+									telepop_item_used = false;
+
+									// Telepop (Purple) - Mines Entry
+									if (held_item_id == item_name_to_id_map[TELEPOP_PURPLE_ITEM_NAME])
+									{
+										TeleportAriToRoom(
+											self,
+											other,
+											location_name_to_id_map[MINES_ENTRY_LOCATION_NAME],
+											LOCATION_TO_TELEPORT_POINT_MAP.at(MINES_ENTRY_LOCATION_NAME).first,
+											LOCATION_TO_TELEPORT_POINT_MAP.at(MINES_ENTRY_LOCATION_NAME).second,
+											false
+										);
+									}
+
+									// Telepop (Blue) - Beach
+									if (held_item_id == item_name_to_id_map[TELEPOP_BLUE_ITEM_NAME])
+									{
+										TeleportAriToRoom(
+											self,
+											other,
+											location_name_to_id_map[BEACH_LOCATION_NAME],
+											LOCATION_TO_TELEPORT_POINT_MAP.at(BEACH_LOCATION_NAME).first,
+											LOCATION_TO_TELEPORT_POINT_MAP.at(BEACH_LOCATION_NAME).second,
+											false
+										);
+									}
+
+									// Telepop (Orange) - Town
+									if (held_item_id == item_name_to_id_map[TELEPOP_ORANGE_ITEM_NAME])
+									{
+										TeleportAriToRoom(
+											self,
+											other,
+											location_name_to_id_map[TOWN_LOCATION_NAME],
+											LOCATION_TO_TELEPORT_POINT_MAP.at(TOWN_LOCATION_NAME).first,
+											LOCATION_TO_TELEPORT_POINT_MAP.at(TOWN_LOCATION_NAME).second,
+											false
+										);
+									}
+
+									// Telepop (Pink) - Farm
+									if (held_item_id == item_name_to_id_map[TELEPOP_PINK_ITEM_NAME])
+									{
+										TeleportAriToRoom(
+											self,
+											other,
+											location_name_to_id_map[FARM_LOCATION_NAME],
+											LOCATION_TO_TELEPORT_POINT_MAP.at(FARM_LOCATION_NAME).first,
+											LOCATION_TO_TELEPORT_POINT_MAP.at(FARM_LOCATION_NAME).second,
+											false
+										);
+									}
+
+									// Telepop (Green) - Eastern Road
+									if (held_item_id == item_name_to_id_map[TELEPOP_GREEN_ITEM_NAME])
+									{
+										TeleportAriToRoom(
+											self,
+											other,
+											location_name_to_id_map[EASTERN_ROAD_LOCATION_NAME],
+											LOCATION_TO_TELEPORT_POINT_MAP.at(EASTERN_ROAD_LOCATION_NAME).first,
+											LOCATION_TO_TELEPORT_POINT_MAP.at(EASTERN_ROAD_LOCATION_NAME).second,
+											false
+										);
+									}
+
+									// Telepop (Yellow) - Western Ruins
+									if (held_item_id == item_name_to_id_map[TELEPOP_YELLOW_ITEM_NAME])
+									{
+										TeleportAriToRoom(
+											self,
+											other,
+											location_name_to_id_map[WESTERN_RUINS_LOCATION_NAME],
+											LOCATION_TO_TELEPORT_POINT_MAP.at(WESTERN_RUINS_LOCATION_NAME).first,
+											LOCATION_TO_TELEPORT_POINT_MAP.at(WESTERN_RUINS_LOCATION_NAME).second,
+											false
+										);
+									}
+
+									// Telepop (Mystery)
+									if (held_item_id == item_name_to_id_map[TELEPOP_MYSTERY_ITEM_NAME])
+									{
+										TeleportAriToRoom(
+											self,
+											other,
+											location_name_to_id_map[telepop_mystery_location],
+											telepop_mystery_x_coordinate,
+											telepop_mystery_y_coordinate,
+											true
+										);
+									}
+
+									// Echo Mint
+									if (held_item_id == item_name_to_id_map[ECHO_MINT_ITEM_NAME])
+									{
+										telepop_mystery_location = gm_room_name_to_location_name[ari_current_gm_room];
+										telepop_mystery_x_coordinate = ari_x;
+										telepop_mystery_y_coordinate = ari_y;
+
+										CreateNotification(self, other, ECHO_MINT_LOCATION_SAVED_NOTIFICATION_KEY);
+									}
+
+									//held_item_id = UNSET_INT;
+								}
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 }
@@ -876,7 +1035,7 @@ RValue& GmlScriptGetWeatherCallback(
 	return Result;
 }
 
-RValue& GmlScriptTryLocationIdToStringCallback(
+RValue& GmlScriptGoToRoomCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
 	OUT RValue& Result,
@@ -884,7 +1043,7 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 	IN RValue** Arguments
 )
 {
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_TRY_LOCATION_ID_TO_STRING));
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GO_TO_ROOM));
 	original(
 		Self,
 		Other,
@@ -893,8 +1052,16 @@ RValue& GmlScriptTryLocationIdToStringCallback(
 		Arguments
 	);
 
-	if (mod_healthy && game_is_active && Result.m_Kind == VALUE_STRING)
-		ari_current_location = Result.ToString();
+	if (mod_healthy)
+	{
+		RValue gm_room = Result.GetMember("gm_room");
+		RValue room_name = g_ModuleInterface->CallBuiltin("room_get_name", { gm_room });
+		ari_current_gm_room = room_name.ToString();
+
+		// Map dungeon GM room names to the dungeon location name.
+		if (!gm_room_name_to_location_name.contains(ari_current_gm_room) && ari_current_gm_room.contains("rm_mines"))
+			gm_room_name_to_location_name[ari_current_gm_room] = DUNGEON;
+	}
 
 	return Result;
 }
@@ -944,6 +1111,7 @@ RValue& GmlScriptUseItemCallback(
 	IN RValue** Arguments
 )
 {
+	telepop_item_used = false;
 	if (mod_healthy && Self->m_Object == NULL && strstr(Other->m_Object->m_Name, "obj_ari"))
 	{
 		if (held_item_id == item_name_to_id_map[TELEPOP_PURPLE_ITEM_NAME] ||
@@ -958,7 +1126,7 @@ RValue& GmlScriptUseItemCallback(
 		{
 			if (!EchoMintUsable())
 			{
-				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use an Echo Mint at your location: %s!", MOD_NAME, VERSION, ari_current_location.c_str());
+				g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - You are unable to use an Echo Mint at your location: %s!", MOD_NAME, VERSION, gm_room_name_to_location_name[ari_current_gm_room].c_str());
 				CreateNotification(Self, Other, ECHO_MINT_LOCATION_INVALID_NOTIFICATION_KEY);
 				return Result;
 			}
@@ -1005,102 +1173,12 @@ RValue& GmlScriptHeldItemCallback(
 		Arguments
 	);
 
-	if (mod_healthy)
+	if (mod_healthy && Result.m_Kind != VALUE_UNDEFINED)
 	{
-		if (Result.m_Kind != VALUE_UNDEFINED)
-		{
-			if (held_item_id != RValueAsInt(Result.GetMember("item_id")) && !teleport_ari)
-			{
-				held_item_id = RValueAsInt(Result.GetMember("item_id"));
-			}
-		}
+		int item_id = Result.GetMember("item_id").ToInt64();
+		if (held_item_id != item_id)
+			held_item_id = item_id;
 	}
-
-	return Result;
-}
-
-RValue& GmlScriptModifyHealthCallback(
-	IN CInstance* Self, // The __ari global
-	IN CInstance* Other, // obj_ari
-	OUT RValue& Result,
-	IN int ArgumentCount,
-	IN RValue** Arguments
-)
-{
-	if (mod_healthy && !GameIsPaused(Self, Other) && !teleport_ari && telepop_item_used && RValueAsInt(*Arguments[0]) >= 0)
-	{
-		// Telepop (Purple)
-		if (held_item_id == item_name_to_id_map[TELEPOP_PURPLE_ITEM_NAME])
-		{
-			teleport_ari = true;
-			telepop_destination_id = location_name_to_id_map[MINES_ENTRY_LOCATION_NAME];
-		}
-
-		// Telepop (Blue)
-		if (held_item_id == item_name_to_id_map[TELEPOP_BLUE_ITEM_NAME])
-		{
-			teleport_ari = true;
-			telepop_destination_id = location_name_to_id_map[BEACH_LOCATION_NAME];
-		}
-
-		// Telepop (Orange)
-		if (held_item_id == item_name_to_id_map[TELEPOP_ORANGE_ITEM_NAME])
-		{
-			teleport_ari = true;
-			telepop_destination_id = location_name_to_id_map[TOWN_LOCATION_NAME];
-		}
-
-		// Telepop (Pink)
-		if (held_item_id == item_name_to_id_map[TELEPOP_PINK_ITEM_NAME])
-		{
-			teleport_ari = true;
-			telepop_destination_id = location_name_to_id_map[FARM_LOCATION_NAME];
-		}
-
-		// Telepop (Green)
-		if (held_item_id == item_name_to_id_map[TELEPOP_GREEN_ITEM_NAME])
-		{
-			teleport_ari = true;
-			telepop_destination_id = location_name_to_id_map[EASTERN_ROAD_LOCATION_NAME];
-		}
-
-		// Telepop (Yellow)
-		if (held_item_id == item_name_to_id_map[TELEPOP_YELLOW_ITEM_NAME])
-		{
-			teleport_ari = true;
-			telepop_destination_id = location_name_to_id_map[WESTERN_RUINS_LOCATION_NAME];
-		}
-
-		// Telepop (Mystery)
-		if (held_item_id == item_name_to_id_map[TELEPOP_MYSTERY_ITEM_NAME])
-		{
-			teleport_ari = true;
-			telepop_mystery = true;
-		}
-
-		// Echo Mint
-		if (held_item_id == item_name_to_id_map[ECHO_MINT_ITEM_NAME])
-		{
-			telepop_mystery_location = ari_current_location;
-			telepop_mystery_x_coordinate = ari_x;
-			telepop_mystery_y_coordinate = ari_y;
-
-			CreateNotification(Self, Other, ECHO_MINT_LOCATION_SAVED_NOTIFICATION_KEY);
-		}
-
-		held_item_id = UNSET_INT;
-	}
-
-	telepop_item_used = false;
-
-	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_MODIFY_HEALTH));
-	original(
-		Self,
-		Other,
-		Result,
-		ArgumentCount,
-		Arguments
-	);
 
 	return Result;
 }
@@ -1118,12 +1196,11 @@ RValue& GmlScriptSetupMainScreenCallback(
 	if (load_on_start)
 	{
 		load_on_start = false;
-
-		CInstance* global_instance = nullptr;
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 
-		mod_healthy &= LoadItemIds(global_instance);
-		mod_healthy &= LoadLocationIds(global_instance);
+		mod_healthy &= LoadPlayerStates();
+		mod_healthy &= LoadItemIds();
+		mod_healthy &= LoadLocations(Self, Other);
 		mod_healthy &= CreateOrLoadModConfigFile();
 		ModifyCustomItems();
 
@@ -1228,26 +1305,26 @@ void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
 {
 	CScript* gml_script_try_location_id_to_string = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_TRY_LOCATION_ID_TO_STRING,
+		GML_SCRIPT_GO_TO_ROOM,
 		(PVOID*)&gml_script_try_location_id_to_string
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TRY_LOCATION_ID_TO_STRING);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GO_TO_ROOM);
 	}
 
 	status = MmCreateHook(
 		g_ArSelfModule,
-		GML_SCRIPT_TRY_LOCATION_ID_TO_STRING,
+		GML_SCRIPT_GO_TO_ROOM,
 		gml_script_try_location_id_to_string->m_Functions->m_ScriptFunction,
-		GmlScriptTryLocationIdToStringCallback,
+		GmlScriptGoToRoomCallback,
 		nullptr
 	);
 
 	if (!AurieSuccess(status))
 	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_TRY_LOCATION_ID_TO_STRING);
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GO_TO_ROOM);
 	}
 }
 
@@ -1331,33 +1408,6 @@ void CreateHookGmlScriptHeldItem(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_HELD_ITEM);
-	}
-}
-
-void CreateHookGmlScriptModifyHealth(AurieStatus& status)
-{
-	CScript* gml_script_modify_stamina = nullptr;
-	status = g_ModuleInterface->GetNamedRoutinePointer(
-		GML_SCRIPT_MODIFY_HEALTH,
-		(PVOID*)&gml_script_modify_stamina
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_HEALTH);
-	}
-
-	status = MmCreateHook(
-		g_ArSelfModule,
-		GML_SCRIPT_MODIFY_HEALTH,
-		gml_script_modify_stamina->m_Functions->m_ScriptFunction,
-		GmlScriptModifyHealthCallback,
-		nullptr
-	);
-
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_MODIFY_HEALTH);
 	}
 }
 
@@ -1458,13 +1508,6 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptHeldItem(status);
-	if (!AurieSuccess(status))
-	{
-		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
-		return status;
-	}
-
-	CreateHookGmlScriptModifyHealth(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
