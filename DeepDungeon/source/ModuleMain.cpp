@@ -263,7 +263,16 @@ static enum class ManagedSetBonuses { // Set bonuses that have actively managed 
 	AFFLATUS_MISERY, // Cleric
 	DARK_SEAL, // Dark Knight
 	DRAIN, // Dark Knight
-	SOUL_EATER // Dark Knight
+	SOUL_EATER, // Dark Knight
+	ASPIR, // Mage
+	FLOOD, // Mage
+	ELEMENTAL_SEAL // Mage
+};
+
+static enum class ElementalSealEffects {
+	FIRE = 1,
+	ICE = 2,
+	VENOM = 3
 };
 
 static enum class AriResources {
@@ -3172,6 +3181,8 @@ std::map<Classes, int> CountEquippedClassArmor()
 		}
 	}
 
+	// TEST - DEBUG - MAGE SET BONUSES
+	class_armor_equipped[Classes::MAGE] = 5;
 	return class_armor_equipped;
 }
 
@@ -3223,15 +3234,28 @@ int GetClericAutoRegenPotency()
 
 double GetDarkKnightDrainPotency()
 {
-	int cleric_armor_pieces_equipped = CountEquippedClassArmor()[Classes::DARK_KNIGHT];
-	if (cleric_armor_pieces_equipped == 0)
+	int dark_knight_pieces_equipped = CountEquippedClassArmor()[Classes::DARK_KNIGHT];
+	if (dark_knight_pieces_equipped == 0)
 		return 0;
-	if (cleric_armor_pieces_equipped < 3)
+	if (dark_knight_pieces_equipped < 3)
 		return 0.03;
-	if (cleric_armor_pieces_equipped < 5)
+	if (dark_knight_pieces_equipped < 5)
 		return 0.05;
-	if (cleric_armor_pieces_equipped == 5)
+	if (dark_knight_pieces_equipped == 5)
 		return 0.08;
+}
+
+int GetWizardAspirProcChance()
+{
+	int wizard_pieces_equipped = CountEquippedClassArmor()[Classes::MAGE];
+	if (wizard_pieces_equipped == 0)
+		return 0;
+	if (wizard_pieces_equipped < 3)
+		return 5;
+	if (wizard_pieces_equipped < 5)
+		return 10;
+	if (wizard_pieces_equipped == 5)
+		return 15;
 }
 
 void LoadSpellIds()
@@ -3274,6 +3298,16 @@ void ModifySpellCosts(bool reset_cost) {
 		int cost = reset_cost ? spell_id_to_default_cost_map[i] : spell_id_to_default_cost_map[i] - static_cast<int>(spell_id_to_default_cost_map[i] * 0.5);
 		*array_element->GetRefMember("cost") = cost;
 	}
+}
+
+void ModifySpellCost(std::string spell_name, int cost)
+{
+	RValue spells = global_instance->GetMember("__spells");
+
+	RValue* spell;
+	g_ModuleInterface->GetArrayEntry(spells, spell_name_to_id_map[spell_name], spell);
+
+	*spell->GetRefMember("cost") = cost;
 }
 
 RValue LocalizeString(CInstance* Self, CInstance* Other, std::string localization_key)
@@ -5513,6 +5547,30 @@ void ObjectCallback(
 			class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER] = 0;
 		}
 
+		// Aspir (Mage Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR] > 0)
+		{
+			ModifyMana(global_instance->GetRefMember("__ari")->ToInstance(), self, 1); // TODO: Should this be 1 * class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR] ? Test killing multiple enemies with RAGE simultaneously.
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR] = 0;
+		}
+
+		// Flood (Mage Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] > 0 && current_time_in_seconds > class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] + 90)
+		{
+			for (CInstance* monster : current_floor_monsters)
+			{
+				if (StructVariableExists(monster, "hit_points"))
+				{
+					double hit_points = monster->GetMember("hit_points").ToDouble();
+					if (std::isfinite(hit_points) && hit_points > 0)
+						*monster->GetRefMember("hit_points") = hit_points - 1;
+				}
+			}
+
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = 0;
+			CastSpell(global_instance->GetRefMember("__ari")->ToInstance(), self, spell_name_to_id_map["summon_rain"]);
+		}
+
 		// Second Wind
 		if (is_second_wind_tracked_interval)
 		{
@@ -5536,7 +5594,7 @@ void ObjectCallback(
 		if (active_offerings.contains(Offerings::INNER_FIRE) && !fire_breath_cast)
 		{
 			fire_breath_cast = true;
-			CastSpell(global_instance->GetRefMember("__ari")->ToInstance(), self, 0);
+			CastSpell(global_instance->GetRefMember("__ari")->ToInstance(), self, spell_name_to_id_map["fire_breath"]); // TODO: Make sure this works using name_to_id_map
 		}
 
 		// Reckoning
@@ -5736,6 +5794,24 @@ void ObjectCallback(
 							DropItem(GetRandomSoulStone(), ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 						boss_battle = BossBattle::NONE;
 						ResetCustomDrawFields();
+					}
+				}
+
+				// Aspir (Mage Set Bonus)
+				if (!StructVariableExists(monster, "__deep_dungeon__aspir_proc") && StructVariableExists(monster, "hit_points"))
+				{
+					// TODO
+					double hit_points = monster.GetMember("hit_points").ToDouble();
+					if (std::isfinite(hit_points) && hit_points <= 0)
+					{
+						static thread_local std::mt19937 random_generator(std::random_device{}());
+						std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
+
+						bool aspir_proc = zero_to_ninety_nine_distribution(random_generator) < GetWizardAspirProcChance() ? true : false;
+						if (aspir_proc)
+							class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR]++;
+
+						StructVariableSet(monster, "__deep_dungeon__aspir_proc", true);
 					}
 				}
 
@@ -6042,6 +6118,12 @@ RValue& GmlScriptCanCastSpellCallback(
 	IN RValue** Arguments
 )
 {
+	// Elemental Seal (Mage Set Bonus)
+	//if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3)
+	//{
+	//	//  TODO: Modify spell cost 
+	//}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CAN_CAST_SPELL));
 	original(
 		Self,
@@ -6061,6 +6143,14 @@ RValue& GmlScriptCanCastSpellCallback(
 	
 	// Dark Seal (Dark Knight Set Bonus)
 	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0)
+		Result = 0.0;
+
+	// Flood (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] > 0)
+		Result = 0.0;
+
+	// Elemental Seal (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
 		Result = 0.0;
 
 	return Result;
@@ -6104,6 +6194,24 @@ RValue& GmlScriptCastSpellCallback(
 		return Result;
 	}
 
+	// Elemental Seal (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && floor_number != 0)
+	{
+		static thread_local std::mt19937 random_generator(std::random_device{}());
+		std::uniform_int_distribution<size_t> random_elemental_seal_effect_distribution(0, magic_enum::enum_count<ElementalSealEffects>() - 1);
+		ElementalSealEffects elemental_seal_effect = magic_enum::enum_value<ElementalSealEffects>(random_elemental_seal_effect_distribution(random_generator));
+
+		if(elemental_seal_effect == ElementalSealEffects::FIRE)
+			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["fire_sword"], 1.25, 1, 2147483647.0); // Is 1.25 the damage increase amount?
+		else if (elemental_seal_effect == ElementalSealEffects::ICE)
+			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["ice_sword"], 1.0, 1, 2147483647.0);
+		else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["venom_sword"], 1.0, 1, 2147483647.0);
+
+		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = magic_enum::enum_integer(elemental_seal_effect);
+		return Result;
+	}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CAST_SPELL));
 	original(
 		Self,
@@ -6121,6 +6229,10 @@ RValue& GmlScriptCastSpellCallback(
 		active_floor_enchantments.clear();
 		active_sigils.insert(Sigils::SERENITY); // Prevent Serenity on the floor so it isn't wasted.
 	}
+
+	// Flood (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && floor_number != 0 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] == 0)
+		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = current_time_in_seconds;
 
 	return Result;
 }
@@ -6322,6 +6434,21 @@ RValue& GmlScriptDamageCallback(
 					drain_proc = true;
 					StructVariableSet(*Arguments[0], "__deep_dungeon__drain_applied", true);
 				}
+			}
+		}
+	}
+
+	// Elemental Seal (Mage Set Bonus)
+	if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0) // TODO: Should this NOT apply during Fire Breath?
+	{
+		RValue target = Arguments[0]->GetMember("target");
+		if (target.ToInt64() != 1) // Everything not Ari
+		{
+			if (!StructVariableExists(*Arguments[0], "__deep_dungeon__elemental_seal_applied"))
+			{
+				double damage = std::trunc(Arguments[0]->GetMember("damage").ToDouble() * 1.3); // 30% increased damage
+				*Arguments[0]->GetRefMember("damage") = damage;
+				StructVariableSet(*Arguments[0], "__deep_dungeon__elemental_seal_applied", true);
 			}
 		}
 	}
@@ -7182,6 +7309,8 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 
 	// Reset any floor specific set bonus effects.
 	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = 0;
 
 	// Track Unmodified Max HP
 	unmodified_base_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
@@ -7336,6 +7465,8 @@ RValue& GmlScriptGoToRoomCallback(
 
 	// Reset any floor specific set bonus effects.
 	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = 0;
 
 	// Reset Max HP Adjustments
 	if (unmodified_base_health != -1)
