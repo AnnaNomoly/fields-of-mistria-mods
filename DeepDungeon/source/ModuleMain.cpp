@@ -266,7 +266,8 @@ static enum class ManagedSetBonuses { // Set bonuses that have actively managed 
 	SOUL_EATER, // Dark Knight
 	ASPIR, // Mage
 	FLOOD, // Mage
-	ELEMENTAL_SEAL // Mage
+	ELEMENTAL_SEAL, // Mage
+	MANA_FONT // Mage
 };
 
 static enum class ElementalSealEffects {
@@ -3245,19 +3246,6 @@ double GetDarkKnightDrainPotency()
 		return 0.08;
 }
 
-int GetWizardAspirProcChance()
-{
-	int wizard_pieces_equipped = CountEquippedClassArmor()[Classes::MAGE];
-	if (wizard_pieces_equipped == 0)
-		return 0;
-	if (wizard_pieces_equipped < 3)
-		return 5;
-	if (wizard_pieces_equipped < 5)
-		return 10;
-	if (wizard_pieces_equipped == 5)
-		return 15;
-}
-
 void LoadSpellIds()
 {
 	size_t array_length = 0;
@@ -5550,8 +5538,15 @@ void ObjectCallback(
 		// Aspir (Mage Set Bonus)
 		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR] > 0)
 		{
-			ModifyMana(global_instance->GetRefMember("__ari")->ToInstance(), self, 1); // TODO: Should this be 1 * class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR] ? Test killing multiple enemies with RAGE simultaneously.
+			ModifyMana(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
 			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR] = 0;
+		}
+
+		// Mana Font (Mage Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::MANA_FONT] >= 3)
+		{
+			ModifyMana(global_instance->GetRefMember("__ari")->ToInstance(), self, 4);
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::MANA_FONT] = 0;
 		}
 
 		// Flood (Mage Set Bonus)
@@ -5800,14 +5795,13 @@ void ObjectCallback(
 				// Aspir (Mage Set Bonus)
 				if (!StructVariableExists(monster, "__deep_dungeon__aspir_proc") && StructVariableExists(monster, "hit_points"))
 				{
-					// TODO
 					double hit_points = monster.GetMember("hit_points").ToDouble();
 					if (std::isfinite(hit_points) && hit_points <= 0)
 					{
 						static thread_local std::mt19937 random_generator(std::random_device{}());
 						std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
 
-						bool aspir_proc = zero_to_ninety_nine_distribution(random_generator) < GetWizardAspirProcChance() ? true : false;
+						bool aspir_proc = zero_to_ninety_nine_distribution(random_generator) < 15 ? true : false; // TODO: Tune this. Should Aspir have a 15% chance to proc?
 						if (aspir_proc)
 							class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR]++;
 
@@ -6118,12 +6112,6 @@ RValue& GmlScriptCanCastSpellCallback(
 	IN RValue** Arguments
 )
 {
-	// Elemental Seal (Mage Set Bonus)
-	//if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3)
-	//{
-	//	//  TODO: Modify spell cost 
-	//}
-
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CAN_CAST_SPELL));
 	original(
 		Self,
@@ -6164,6 +6152,10 @@ RValue& GmlScriptCastSpellCallback(
 	IN RValue** Arguments
 )
 {
+	// Mana Font (Mage Set Bonus)
+	if (CountEquippedClassArmor()[Classes::MAGE] == 5 && floor_number != 0)
+		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::MANA_FONT]++;
+
 	// Dark Seal (Dark Knight Set Bonus)
 	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && floor_number != 0)
 	{
@@ -6434,21 +6426,6 @@ RValue& GmlScriptDamageCallback(
 					drain_proc = true;
 					StructVariableSet(*Arguments[0], "__deep_dungeon__drain_applied", true);
 				}
-			}
-		}
-	}
-
-	// Elemental Seal (Mage Set Bonus)
-	if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0) // TODO: Should this NOT apply during Fire Breath?
-	{
-		RValue target = Arguments[0]->GetMember("target");
-		if (target.ToInt64() != 1) // Everything not Ari
-		{
-			if (!StructVariableExists(*Arguments[0], "__deep_dungeon__elemental_seal_applied"))
-			{
-				double damage = std::trunc(Arguments[0]->GetMember("damage").ToDouble() * 1.3); // 30% increased damage
-				*Arguments[0]->GetRefMember("damage") = damage;
-				StructVariableSet(*Arguments[0], "__deep_dungeon__elemental_seal_applied", true);
 			}
 		}
 	}
