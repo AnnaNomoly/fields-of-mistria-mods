@@ -220,6 +220,7 @@ static const std::string DARK_KNIGHT_SET_BONUS_DARK_SEAL_LOCALIZED_TEXT_KEY = "I
 static const std::string DARK_KNIGHT_SET_BONUS_SOUL_EATER_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Dark Knight/set_bonuses/soul_eater";
 
 static const int TWO_MINUTES_IN_SECONDS = 120;
+static const int THREE_MINUTES_IN_SECONDS = 180;
 static const int TRAP_ACTIVATION_DISTANCE = 16;
 
 // Configuration defaults
@@ -260,6 +261,7 @@ static enum class Classes {
 };
 
 static enum class ManagedSetBonuses { // Set bonuses that have actively managed values.
+	AUTO_REGEN, // Cleric
 	AFFLATUS_MISERY, // Cleric
 	DARK_SEAL, // Dark Knight
 	DRAIN, // Dark Knight
@@ -5671,22 +5673,14 @@ void ObjectCallback(
 			}
 		}
 
-		// Restoration & Auto Regen (Cleric Set Bonus)
+		// Restoration
 		if (is_restoration_tracked_interval)
 		{
 			int current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self).ToInt64();
 			if (current_health > 0)
-			{
-				int recovery = 1;
-				if (!GameIsPaused())
-					recovery = max(recovery, GetClericAutoRegenPotency());
-
-				ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery);
-				is_restoration_tracked_interval = false;
-			}
+				ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
+			is_restoration_tracked_interval = false;
 		}
-
-		// TODO: Make Auto Regen it's own tracked interval (3min)
 
 		// Drain (Dark Knight Set Bonus)
 		if (class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN] > 0)
@@ -7178,7 +7172,7 @@ RValue& GmlScriptGetMinutesCallback(
 		ApplyFloorTraps(Self, Other);
 
 		// Restoration
-		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION) || (!GameIsPaused() && AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[Classes::CLERIC] > 0))
+		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION))
 		{
 			if (!is_restoration_tracked_interval && (current_time_in_seconds - time_of_last_restoration_tick) >= TWO_MINUTES_IN_SECONDS)
 			{
@@ -7194,6 +7188,23 @@ RValue& GmlScriptGetMinutesCallback(
 			{
 				is_second_wind_tracked_interval = true;
 				time_of_last_second_wind_tick = current_time_in_seconds;
+			}
+		}
+
+		// Auto Regen (Cleric Set Bonus)
+		if (!GameIsPaused() && AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[Classes::CLERIC] > 0)
+		{
+			if (class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] == 0)
+				class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] = current_time_in_seconds;
+			else if (current_time_in_seconds - class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] >= THREE_MINUTES_IN_SECONDS)
+			{
+				int current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
+				if (current_health > 0)
+				{
+					int recovery = GetClericAutoRegenPotency();
+					ModifyHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], recovery);
+				}
+				class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] = current_time_in_seconds;
 			}
 		}
 	}
@@ -7532,16 +7543,12 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		else if(active_offerings.contains(Offerings::DREAD))
 			PlayConversation(DREAD_BEAST_WARNING_CONVERSATION_KEY, Self, Other);
 
-		for (FloorEnchantments floor_enchantment : active_floor_enchantments)
-		{
-			if (floor_enchantment == FloorEnchantments::RESTORATION)
-				time_of_last_restoration_tick = current_time_in_seconds;
-			if (floor_enchantment == FloorEnchantments::SECOND_WIND)
-				time_of_last_second_wind_tick = current_time_in_seconds;
-		}
-
-		if (CountEquippedClassArmor()[Classes::CLERIC] > 0)
+		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION))
 			time_of_last_restoration_tick = current_time_in_seconds;
+		if (active_floor_enchantments.contains(FloorEnchantments::SECOND_WIND))
+			time_of_last_second_wind_tick = current_time_in_seconds;
+		if (CountEquippedClassArmor()[Classes::CLERIC] > 0)
+			class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] = current_time_in_seconds;
 
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
@@ -7562,9 +7569,6 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	}
 	else if (boss_battle != BossBattle::NONE)
 	{
-		if (CountEquippedClassArmor()[Classes::CLERIC] > 0)
-			time_of_last_restoration_tick = current_time_in_seconds;
-
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 
@@ -7652,6 +7656,7 @@ RValue& GmlScriptGoToRoomCallback(
 		SceneAudioPlayerStop(script_name_to_reference_map[GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY][0], script_name_to_reference_map[GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY][1]);
 
 	// Reset any floor specific set bonus effects.
+	class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] = 0;
 	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
 	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = 0;
 	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = magic_enum::enum_integer(GetRandomElementalSealEffect());
