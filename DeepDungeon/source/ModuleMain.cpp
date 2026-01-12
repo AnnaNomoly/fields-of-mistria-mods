@@ -267,6 +267,10 @@ static enum class ManagedSetBonuses { // Set bonuses that have actively managed 
 	ASPIR, // Mage
 	FLOOD, // Mage
 	ELEMENTAL_SEAL, // Mage
+	ENFIRE, // Mage
+	ENBLIZZARD, // Mage
+	ENPOISON, // Mage
+	QUAKE, // Mage
 	MANA_FONT // Mage
 };
 
@@ -3246,6 +3250,13 @@ double GetDarkKnightDrainPotency()
 		return 0.08;
 }
 
+ElementalSealEffects GetRandomElementalSealEffect()
+{
+	static thread_local std::mt19937 random_generator(std::random_device{}());
+	std::uniform_int_distribution<size_t> random_elemental_seal_effect_distribution(0, magic_enum::enum_count<ElementalSealEffects>() - 1);
+	return magic_enum::enum_value<ElementalSealEffects>(random_elemental_seal_effect_distribution(random_generator));
+}
+
 void LoadSpellIds()
 {
 	size_t array_length = 0;
@@ -4385,35 +4396,88 @@ RValue GetDynamicItemSprite(int item_id)
 
 RValue GetDynamicUiSprite(std::string sprite_name)
 {
+	// Full Restore (Spell Icon)
 	if (sprite_name == "spr_ui_journal_magic_restore_spell_icon_main")
 	{
-		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+		// Dark Seal (Dark Knight Set Bonus)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3)
 		{
 			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_spell_icon_disabled" });
 			else
 				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_spell_icon_main" });
 		}
+		// Elemental Seal (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+		{
+			ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+			if (elemental_seal_effect == ElementalSealEffects::FIRE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enfire_spell_icon_disabled" });
+				else
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enfire_spell_icon_main" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::ICE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enblizzard_spell_icon_disabled" });
+				else
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enblizzard_spell_icon_main" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enpoison_spell_icon_disabled" });
+				else
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enpoison_spell_icon_main" });
+			}
+		}
+		// Full Restore Disabled
 		else if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_disabled" });
 	}
-	if (sprite_name == "spr_ui_journal_magic_rain_spell_icon_main")
+	// Summon Rain (Spell Icon)
+	else if (sprite_name == "spr_ui_journal_magic_rain_spell_icon_main")
 	{
-		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+		// Flood (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
+		{
+			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_flood_spell_icon_disabled" });
+			else
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_flood_life_spell_icon_main" });
+		}
+		// Summon Rain Disabled
+		else if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_rain_spell_icon_disabled" });
 	}
-	if (sprite_name == "spr_ui_journal_magic_growth_spell_icon_main")
+	// Growth (Spell Icon)
+	else if (sprite_name == "spr_ui_journal_magic_growth_spell_icon_main")
 	{
-		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+		// Quake (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 4)
+		{
+			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::QUAKE] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_quake_spell_icon_disabled" });
+			else
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_quake_life_spell_icon_main" });
+		}
+		// Growth Disabled
+		else if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_growth_spell_icon_disabled" });
 	}
-	if (sprite_name == "spr_ui_journal_magic_fire_spell_icon_main")
+	// Fire Breath (Spell Icon)
+	else if (sprite_name == "spr_ui_journal_magic_fire_spell_icon_main")
 	{
+		// Fire Breath Disabled
 		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_fire_spell_icon_disabled" });
 	}
-	if (sprite_name == "spr_ui_dungeon_backplate")
+	// Dungeon Backplate
+	else if (sprite_name == "spr_ui_dungeon_backplate")
 	{
+		// Floor Enchantments & Offerings
 		if (!active_floor_enchantments.empty() || !active_offerings.empty())
 		{
 			std::string sprite_name = "backplate";
@@ -4452,23 +4516,124 @@ RValue GetDynamicUiSprite(std::string sprite_name)
 			std::transform(sprite_name.begin(), sprite_name.end(), sprite_name.begin(), [](unsigned char c) { return std::tolower(c); });
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { RValue(sprite_name) });
 		}
+		// Empty
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { RValue("backplate_empty") });
 	}
-	if (sprite_name == "spr_ui_journal_magic_restore_card_icon")
+	// Full Restore (Card Icon)
+	else if (sprite_name == "spr_ui_journal_magic_restore_card_icon")
 	{
-		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+		// Dark Seal (Dark Knight Set Bonus)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) 
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_card_icon" });
+		// Elemental Seal (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+		{
+			ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+			if (elemental_seal_effect == ElementalSealEffects::FIRE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enfire_card_icon" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::ICE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enblizzard_card_icon" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enpoison_card_icon" });
+			}
+		}
 	}
-	if (sprite_name == "spr_ui_journal_magic_card_backplate")
+	// Summon Rain (Card Icon)
+	else if (sprite_name == "spr_ui_journal_magic_rain_card_icon")
 	{
-		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_sipon_life_card_backplate" });
+		// Flood (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_flood_card_icon" });
 	}
-	if (sprite_name == "spr_ui_journal_magic_card_ribbon_restore")
+	// Growth (Card Icon)
+	else if (sprite_name == "spr_ui_journal_magic_growth_card_icon")
 	{
-		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+		// Quake (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 4)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_quake_card_icon" });
+	}
+	// Full Restore (Card Ribbon)
+	else if (sprite_name == "spr_ui_journal_magic_card_ribbon_restore")
+	{
+		// Dark Seal (Dark Knight Set Bonus)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_siphon_life" });
+		// Elemental Seal (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+		{
+			ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+			if (elemental_seal_effect == ElementalSealEffects::FIRE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_enfire" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::ICE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_enblizzard" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_enpoison" });
+			}
+		}
+	}
+	// Summon Rain (Card Ribbon)
+	else if (sprite_name == "spr_ui_journal_magic_card_ribbon_rain")
+	{
+		// Flood (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_flood" });
+	}
+	// Growth (Card Ribbon)
+	else if (sprite_name == "spr_ui_journal_magic_card_ribbon_growth")
+	{
+		// Quake (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 4)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_quake" });
+	}
+	// Spell Card Backplate
+	else if (sprite_name == "spr_ui_journal_magic_card_backplate")
+	{
+		// Dark Seal (Dark Knight Set Bonus)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_sipon_life_card_backplate" });
+		// Flood (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_flood_card_backplate" });
+		// Elemental Seal (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+		{
+			ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+			if (elemental_seal_effect == ElementalSealEffects::FIRE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_enfire_card_backplate" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::ICE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_enblizzard_card_backplate" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_enpoison_card_backplate" });
+			}
+		}
+		// Quake (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 4)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_quake_card_backplate" });
 	}
 	return RValue();
 }
@@ -5509,13 +5674,19 @@ void ObjectCallback(
 		// Restoration & Auto Regen (Cleric Set Bonus)
 		if (is_restoration_tracked_interval)
 		{
-			int recovery = 1;
-			if (!GameIsPaused())
-				recovery = max(recovery, GetClericAutoRegenPotency());
+			int current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self).ToInt64();
+			if (current_health > 0)
+			{
+				int recovery = 1;
+				if (!GameIsPaused())
+					recovery = max(recovery, GetClericAutoRegenPotency());
 
-			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery);
-			is_restoration_tracked_interval = false;
+				ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery);
+				is_restoration_tracked_interval = false;
+			}
 		}
+
+		// TODO: Make Auto Regen it's own tracked interval (3min)
 
 		// Drain (Dark Knight Set Bonus)
 		if (class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DRAIN] > 0)
@@ -6130,6 +6301,7 @@ RValue& GmlScriptCanCastSpellCallback(
 		Result = 0.0;
 	
 	// Dark Seal (Dark Knight Set Bonus)
+	// TODO: Add custom logic to control when the spell can be cast.
 	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0)
 		Result = 0.0;
 
@@ -6138,8 +6310,22 @@ RValue& GmlScriptCanCastSpellCallback(
 		Result = 0.0;
 
 	// Elemental Seal (Mage Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+	// TODO: Add custom logic to control when the spell can be cast.
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] > 0 || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] > 0 || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] > 0))
 		Result = 0.0;
+
+	// Quake (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["growth"] && CountEquippedClassArmor()[Classes::MAGE] >= 4 && floor_number != 0)
+	{
+		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::QUAKE] > 0)
+			Result = 0;
+		else if (active_floor_enchantments.contains(FloorEnchantments::FEY) && ari_resource_to_value_map[AriResources::MANA] < (spell_id_to_default_cost_map[spell_name_to_id_map["growth"]] / 2))
+			Result = 0;
+		else if (!active_floor_enchantments.contains(FloorEnchantments::FEY) && ari_resource_to_value_map[AriResources::MANA] < (spell_id_to_default_cost_map[spell_name_to_id_map["growth"]]))
+			Result = 0;
+		else
+			Result = 1;
+	}
 
 	return Result;
 }
@@ -6157,7 +6343,7 @@ RValue& GmlScriptCastSpellCallback(
 		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::MANA_FONT]++;
 
 	// Dark Seal (Dark Knight Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && floor_number != 0)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && floor_number != 0) // TODO: Make sure this condition works in boss battles
 	{
 		for (CInstance* monster : current_floor_monsters)
 		{
@@ -6187,20 +6373,50 @@ RValue& GmlScriptCastSpellCallback(
 	}
 
 	// Elemental Seal (Mage Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && floor_number != 0)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && floor_number != 0) // TODO: Make sure this condition works in boss battles
 	{
-		static thread_local std::mt19937 random_generator(std::random_device{}());
-		std::uniform_int_distribution<size_t> random_elemental_seal_effect_distribution(0, magic_enum::enum_count<ElementalSealEffects>() - 1);
-		ElementalSealEffects elemental_seal_effect = magic_enum::enum_value<ElementalSealEffects>(random_elemental_seal_effect_distribution(random_generator));
+		ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
 
-		if(elemental_seal_effect == ElementalSealEffects::FIRE)
-			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["fire_sword"], 1.25, 1, 2147483647.0); // Is 1.25 the damage increase amount?
+		if (elemental_seal_effect == ElementalSealEffects::FIRE)
+		{
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] = 1;
+			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["fire_sword"], 1.25, 1, 2147483647.0);
+		}
 		else if (elemental_seal_effect == ElementalSealEffects::ICE)
+		{
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] = 1;
 			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["ice_sword"], 1.0, 1, 2147483647.0);
+		}
 		else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+		{
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] = 1;
 			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["venom_sword"], 1.0, 1, 2147483647.0);
+		}
 
-		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = magic_enum::enum_integer(elemental_seal_effect);
+		return Result;
+	}
+
+	// Quake (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["growth"] && CountEquippedClassArmor()[Classes::MAGE] >= 4 && floor_number != 0)
+	{
+		int ari_max_health = ari_resource_to_value_map[AriResources::MAX_HEALTH];
+		int ari_quake_damage = std::trunc(ari_max_health * 0.9);
+		ModifyHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], ari_quake_damage * -1);
+
+		for (CInstance* monster : current_floor_monsters)
+		{
+			if (StructVariableExists(monster, "hit_points") && StructVariableExists(monster, "__deep_dungeon__default_hit_points"))
+			{
+				double hit_points = monster->GetMember("hit_points").ToDouble();
+				if (std::isfinite(hit_points) && hit_points > 0)
+				{
+					double default_hit_points = monster->GetMember("__deep_dungeon__default_hit_points").ToDouble();
+					int monster_quake_damage = std::trunc(hit_points * 0.9);
+					*monster->GetRefMember("hit_points") = max(0, hit_points - monster_quake_damage);
+				}
+			}
+		}
+
 		return Result;
 	}
 
@@ -6223,7 +6439,7 @@ RValue& GmlScriptCastSpellCallback(
 	}
 
 	// Flood (Mage Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && floor_number != 0 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] == 0)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && floor_number != 0 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] == 0) // TODO: Make sure this condition works in boss battles
 		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = current_time_in_seconds;
 
 	return Result;
@@ -7284,11 +7500,6 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
 
-	// Reset any floor specific set bonus effects.
-	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
-	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = 0;
-	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = 0;
-
 	// Track Unmodified Max HP
 	unmodified_base_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
 
@@ -7443,7 +7654,10 @@ RValue& GmlScriptGoToRoomCallback(
 	// Reset any floor specific set bonus effects.
 	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
 	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = 0;
-	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = magic_enum::enum_integer(GetRandomElementalSealEffect());
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] = 0;
 
 	// Reset Max HP Adjustments
 	if (unmodified_base_health != -1)
@@ -7940,7 +8154,7 @@ RValue& GmlScriptVertigoDrawWithColorCallback(
 	IN RValue** Arguments
 )
 {
-	if (game_is_active && !crafting_menu_open)
+	if (game_is_active && !crafting_menu_open && floor_number != 0) // TODO: Make sure the new condition floor_number != 0 is working correctly.
 	{
 		RValue type = g_ModuleInterface->CallBuiltin("asset_get_type", { *Arguments[0] });
 		if (type.ToInt64() == 1) // asset_sprite
