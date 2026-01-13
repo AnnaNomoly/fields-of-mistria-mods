@@ -4985,7 +4985,7 @@ void SpawnDreadBeast(CInstance* Self, CInstance* Other)
 		// TODO: Update this as dread beast logic is implemented
 		std::vector<std::string> possible_dread_beast_monsters = {};
 		if (floor_number < 20)
-			possible_dread_beast_monsters = { "rockclod", "sapling", "mushroom", "enchantern" };
+			possible_dread_beast_monsters = { "rockclod", "sapling", "sapling_cool", "mushroom", "enchantern" };
 		else if (floor_number < 40)
 			possible_dread_beast_monsters = { "rockclod_blue", "sapling_blue", "mushroom_green", "enchantern_blue", "stalagmite", "bat" };
 		else if (floor_number < 60)
@@ -5015,7 +5015,6 @@ void SelectDreadBeast(CInstance* Self, CInstance* Other)
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["mistrilclod"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["rock_stack"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["rock_stack_lava"]), initial_floor_monsters.end());
-	//initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["sapling_cool"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["sapling_orange_mini"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["silverclod"]), initial_floor_monsters.end());
 
