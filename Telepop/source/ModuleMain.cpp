@@ -1301,7 +1301,7 @@ void CreateHookGmlScriptGetWeather(AurieStatus& status)
 	}
 }
 
-void CreateHookGmlScriptTryLocationIdToString(AurieStatus& status)
+void CreateHookGmlScriptGoToRoom(AurieStatus& status)
 {
 	CScript* gml_script_try_location_id_to_string = nullptr;
 	status = g_ModuleInterface->GetNamedRoutinePointer(
@@ -1486,7 +1486,7 @@ EXPORTED AurieStatus ModuleInitialize(
 		return status;
 	}
 
-	CreateHookGmlScriptTryLocationIdToString(status);
+	CreateHookGmlScriptGoToRoom(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
