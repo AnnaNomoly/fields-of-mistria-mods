@@ -36,6 +36,8 @@ static const char* const GML_SCRIPT_SCENE_AUDIO_PLAYER_STOP = "gml_Script_stop@S
 static const char* const GML_SCRIPT_SPAWN_TUTORIAL = "gml_Script_spawn_tutorial";
 static const char* const GML_SCRIPT_UPDATE_TOOLBAR_MENU = "gml_Script_update@ToolbarMenu@ToolbarMenu";
 static const char* const GML_SCRIPT_ENTER_DUNGEON = "gml_Script_enter_dungeon";
+static const char* const GML_SCRIPT_INVENTORY_COUNT_ITEM = "gml_Script_item_id_quantity@anon@4086@__Inventory@Inventory";
+static const char* const GML_SCRIPT_INVENTORY_REMOVE_ITEM = "gml_Script_remove@anon@2001@__Inventory@Inventory";
 static const char* const GML_SCRIPT_CANCEL_STATUS_EFFECT = "gml_Script_cancel@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_REGISTER_STATUS_EFFECT = "gml_Script_register@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_VITALS_MENU_SET_HEALTH = "gml_Script_set_health@VitalsMenu@VitalsMenu";
@@ -74,6 +76,7 @@ static const char* const GML_SCRIPT_DISPLAY_RESIZE = "gml_Script_resize_amount@D
 static const char* const GML_SCRIPT_GET_ITEM_UI_ICON = "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem";
 static const char* const GML_SCRIPT_CREATE_ITEM_PROTOTYPES = "gml_Script_create_item_prototypes";
 static const char* const GML_SCRIPT_DESERIALIZE_LIVE_ITEM = "gml_Script_deserialize_live_item";
+static const char* const GML_SCRIPT_DESERIALIZE_INVENTORY = "gml_Script_deserialize@anon@6076@__Inventory@Inventory";
 static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script_get_treasure_from_distribution";
 static const char* const GML_SCRIPT_CRAFTING_MENU_INITIALIZE = "gml_Script_initialize@CraftingMenu@CraftingMenu";
 static const char* const GML_SCRIPT_CRAFTING_MENU_CLOSE = "gml_Script_on_close@CraftingMenu@CraftingMenu";
@@ -1897,57 +1900,6 @@ void ResetCustomDrawFields()
 	show_dashes = false;
 	show_danger_banner = false;
 	ResetFade();
-}
-
-void ResetStaticFields(bool returned_to_title_screen)
-{
-	if (returned_to_title_screen)
-	{
-		game_is_active = false;
-		unlock_recipes = true;
-		is_restoration_tracked_interval = false;
-		is_second_wind_tracked_interval = false;
-		ari_x = -1;
-		ari_y = -1;
-		floor_number = 0;
-		floor_start_time = 0;
-		current_time_in_seconds = -1;
-		time_of_last_restoration_tick = -1;
-		time_of_last_second_wind_tick = -1;
-		held_item_id = -1;
-		ari_current_location = "";
-		ari_current_gm_room = "";
-		script_name_to_reference_map.clear();
-	}
-
-	crafting_menu_open = false;
-	drop_biome_reward = false;
-	biome_reward_disabled = false;
-	dread_beast_configured = false;
-	sigil_item_used = false;
-	lift_key_used = false;
-	orb_item_used = false;
-	inner_fire_cast = false;
-	reckoning_applied = false;
-	fairy_buff_applied = false;
-	offering_chance_occurred = false;
-	obj_dungeon_elevator_focused = false;
-	obj_dungeon_ladder_down_focused = false;
-	sigil_of_silence_count = 0;
-	sigil_of_alteration_count = 0;
-	dread_beast_monster_id = -1;
-	boss_monsters_configured = 0;
-	salves_used.clear();
-	active_sigils.clear();
-	queued_offerings.clear();
-	active_offerings.clear();
-	active_floor_enchantments.clear();
-	active_traps.clear();
-	active_traps_to_value_map.clear();
-	floor_trap_positions.clear();
-	current_floor_monsters.clear();
-	ResetCustomDrawFields();
-	ModifySpellCosts(true, false); // TODO: Make sure this works. Go into the dungeon, Growth should be reduced to 4, exit to title, load back in, growth should be 8 (since you won't load into the dungeon).
 }
 
 bool GameIsPaused()
@@ -4272,6 +4224,53 @@ void EnterDungeon(double dungeon_level, CInstance* Self, CInstance* Other)
 	);
 }
 
+RValue InventoryCountItem(int item_id, CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_inventory_count_item = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_INVENTORY_COUNT_ITEM,
+		(PVOID*)&gml_script_inventory_count_item
+	);
+
+	RValue result;
+	RValue item = item_id;
+	RValue* item_ptr = &item;
+
+	gml_script_inventory_count_item->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &item_ptr }
+	);
+
+	return result;
+}
+
+void InventoryRemoveItem(int item_id, int quantity, CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_inventory_remove_item = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_INVENTORY_REMOVE_ITEM,
+		(PVOID*)&gml_script_inventory_remove_item
+	);
+
+	RValue result;
+	RValue item = item_id;
+	RValue amount = quantity;
+	RValue* item_ptr = &item;
+	RValue* amount_ptr = &amount;
+	RValue* arguments[2] = { item_ptr, amount_ptr };
+
+	gml_script_inventory_remove_item->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		2,
+		arguments
+	);
+}
+
 bool AriCurrentGmRoomIsDungeonFloor()
 {
 	if (boss_battle != BossBattle::NONE)
@@ -5542,6 +5541,57 @@ void LoadStalagmiteAttackData()
 	x_aoe_points = generate_cross(18, -96, 96, 8, true);
 	checkerboard_room_wide_a_points = generate_checkerboard();
 	checkerboard_room_wide_b_points = generate_inverted_checkerboard();
+}
+
+void ResetStaticFields(bool returned_to_title_screen)
+{
+	if (returned_to_title_screen)
+	{
+		game_is_active = false;
+		unlock_recipes = true;
+		is_restoration_tracked_interval = false;
+		is_second_wind_tracked_interval = false;
+		ari_x = -1;
+		ari_y = -1;
+		floor_number = 0;
+		floor_start_time = 0;
+		current_time_in_seconds = -1;
+		time_of_last_restoration_tick = -1;
+		time_of_last_second_wind_tick = -1;
+		held_item_id = -1;
+		ari_current_location = "";
+		ari_current_gm_room = "";
+		script_name_to_reference_map.clear();
+	}
+
+	crafting_menu_open = false;
+	drop_biome_reward = false;
+	biome_reward_disabled = false;
+	dread_beast_configured = false;
+	sigil_item_used = false;
+	lift_key_used = false;
+	orb_item_used = false;
+	inner_fire_cast = false;
+	reckoning_applied = false;
+	fairy_buff_applied = false;
+	offering_chance_occurred = false;
+	obj_dungeon_elevator_focused = false;
+	obj_dungeon_ladder_down_focused = false;
+	sigil_of_silence_count = 0;
+	sigil_of_alteration_count = 0;
+	dread_beast_monster_id = -1;
+	boss_monsters_configured = 0;
+	salves_used.clear();
+	active_sigils.clear();
+	queued_offerings.clear();
+	active_offerings.clear();
+	active_floor_enchantments.clear();
+	active_traps.clear();
+	active_traps_to_value_map.clear();
+	floor_trap_positions.clear();
+	current_floor_monsters.clear();
+	ResetCustomDrawFields();
+	ModifySpellCosts(true, false); // TODO: Make sure this works. Go into the dungeon, Growth should be reduced to 4, exit to title, load back in, growth should be 8 (since you won't load into the dungeon).
 }
 
 void ObjectCallback(
@@ -6971,34 +7021,90 @@ RValue& GmlScriptPlayTextCallback(
 {
 	if (game_is_active)
 	{
-		bool is_offering = false;
-		std::string conversation_name = Arguments[0]->ToString();
+		std::string localization_key = Arguments[0]->ToString();
 
-		if (conversation_name == "Conversations/Mods/Deep Dungeon/offering/2/health")
+		if (localization_key.contains("Conversations/Mods/Deep Dungeon/offering"))
 		{
-			is_offering = true;
-			ari_resource_to_penalty_map[AriResources::HEALTH] = true;
+			bool is_offering = false;
+			if (localization_key == "Conversations/Mods/Deep Dungeon/offering/2/health")
+			{
+				is_offering = true;
+				ari_resource_to_penalty_map[AriResources::HEALTH] = true;
+			}
+			else if (localization_key == "Conversations/Mods/Deep Dungeon/offering/2/stamina")
+			{
+				is_offering = true;
+				ari_resource_to_penalty_map[AriResources::STAMINA] = true;
+			}
+			else if (localization_key == "Conversations/Mods/Deep Dungeon/offering/2/mana")
+			{
+				is_offering = true;
+				ari_resource_to_penalty_map[AriResources::MANA] = true;
+			}
+
+			if (is_offering)
+			{
+				// Pick a random offering effect
+				static thread_local std::mt19937 random_generator(std::random_device{}());
+				std::uniform_int_distribution<size_t> random_offering_distribution(0, magic_enum::enum_count<Offerings>() - 1);
+				Offerings offering = magic_enum::enum_value<Offerings>(random_offering_distribution(random_generator));
+				queued_offerings.insert(offering);
+			}
 		}
-			
-		if (conversation_name == "Conversations/Mods/Deep Dungeon/offering/2/stamina")
+		else if (localization_key == "Conversations/Mods/Deep Dungeon/placeholders/sigil_parchment_exchange/cursed_armor/result")
 		{
-			is_offering = true;
-			ari_resource_to_penalty_map[AriResources::STAMINA] = true;
+			int total_cursed_armor_inventory_count = 0;
+			std::map<std::string, int> cursed_armor_name_to_inventory_count = {};
+			std::unordered_set<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME };
+
+			for (std::string cursed_armor_name : cursed_armor)
+			{
+				int count = InventoryCountItem(item_name_to_id_map[cursed_armor_name], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][0], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][1]).ToInt64();
+				total_cursed_armor_inventory_count += count;
+				cursed_armor_name_to_inventory_count[cursed_armor_name] = count;
+			}
+
+			if (total_cursed_armor_inventory_count == 0)
+				*Arguments[0] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/insufficient";
+			else
+			{
+				*Arguments[0] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/cursed_armor";
+
+				for (size_t i = 0; i < total_cursed_armor_inventory_count * 3; i++)
+					DropItem(item_name_to_id_map["sigil_parchment"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+
+				for (auto& entry : cursed_armor_name_to_inventory_count)
+					if (entry.second > 0)
+						InventoryRemoveItem(item_name_to_id_map[entry.first], entry.second, script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][0], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][1]);
+			}
 		}
-			
-		if (conversation_name == "Conversations/Mods/Deep Dungeon/offering/2/mana")
+		else if (localization_key == "Conversations/Mods/Deep Dungeon/placeholders/sigil_parchment_exchange/soul_stone/result")
 		{
-			is_offering = true;
-			ari_resource_to_penalty_map[AriResources::MANA] = true;
-		}
-			
-		if (is_offering)
-		{
-			// Pick a random offering effect
-			static thread_local std::mt19937 random_generator(std::random_device{}());
-			std::uniform_int_distribution<size_t> random_offering_distribution(0, magic_enum::enum_count<Offerings>() - 1);
-			Offerings offering = magic_enum::enum_value<Offerings>(random_offering_distribution(random_generator));
-			queued_offerings.insert(offering);
+			int total_soul_stone_inventory_count = 0;
+			std::map<std::string, int> soul_stone_name_to_inventory_count = {};
+			// TODO: Update as soul stones are added
+			std::unordered_set<std::string> soul_stones = { SOUL_STONE_CLERIC, SOUL_STONE_DARK_KNIGHT, SOUL_STONE_MAGE };
+
+			for (std::string soul_stone_name : soul_stones)
+			{
+				int count = InventoryCountItem(item_name_to_id_map[soul_stone_name], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][0], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][1]).ToInt64();
+				total_soul_stone_inventory_count += count;
+				soul_stone_name_to_inventory_count[soul_stone_name] = count;
+			}
+
+			if (total_soul_stone_inventory_count == 0)
+				*Arguments[0] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/insufficient";
+			else
+			{
+				*Arguments[0] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/soul_stone";
+
+				for (size_t i = 0; i < total_soul_stone_inventory_count * 3; i++)
+					DropItem(item_name_to_id_map["sigil_parchment"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+
+				for (auto& entry : soul_stone_name_to_inventory_count)
+					if (entry.second > 0)
+						InventoryRemoveItem(item_name_to_id_map[entry.first], entry.second, script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][0], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][1]);
+			}
 		}
 	}
 
@@ -7024,6 +7130,14 @@ RValue& GmlScriptPlayConversationCallback(
 {
 	if (game_is_active && AriCurrentGmRoomIsDungeonFloor() && FLOOR_TEN_CONVERSATION_KEY == Arguments[1]->ToString())
 		return Result;
+
+	if (game_is_active && ari_current_gm_room == "rm_mines_entry" && Arguments[1]->ToString() == "Conversations/gameplay_triggered/inspect_seridia_statue")
+	{
+		if (!script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
+			*Arguments[1] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/unavailable";
+		else
+			*Arguments[1] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange";
+	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_CONVERSATION));
 	original(
@@ -7637,6 +7751,8 @@ RValue& GmlScriptGetWeatherCallback(
 			UnlockRecipe(item_name_to_id_map[armor_name], Self, Other);
 		for (std::string orb_name : ORB_NAMES)
 			UnlockRecipe(item_name_to_id_map[orb_name], Self, Other);
+		for (auto& entry : sigil_to_item_id_map)
+			UnlockRecipe(entry.second, Self, Other);
 	}
 	
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_WEATHER));
@@ -8279,6 +8395,29 @@ RValue& GmlScriptDeserializeLiveItemCallback(
 		script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_LIVE_ITEM] = { Self, Other };
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_DESERIALIZE_LIVE_ITEM));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
+RValue& GmlScriptDeserializeInventoryCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_DESERIALIZE_INVENTORY))
+		script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY] = { Self, Other };
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_DESERIALIZE_INVENTORY));
 	original(
 		Self,
 		Other,
@@ -9427,6 +9566,33 @@ void CreateHookGmlScriptDeserializeLiveItem(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptDeserializeInventory(AurieStatus& status)
+{
+	CScript* gml_script_deserialize_inventory = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_DESERIALIZE_INVENTORY,
+		(PVOID*)&gml_script_deserialize_inventory
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DESERIALIZE_INVENTORY);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_DESERIALIZE_INVENTORY,
+		gml_script_deserialize_inventory->m_Functions->m_ScriptFunction,
+		GmlScriptDeserializeInventoryCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DESERIALIZE_INVENTORY);
+	}
+}
+
 void CreateHookGmlScriptGetTreasureFromDistribution(AurieStatus& status)
 {
 	CScript* gml_script_get_treasure_from_distribution = nullptr;
@@ -9856,6 +10022,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptDeserializeLiveItem(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptDeserializeInventory(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
