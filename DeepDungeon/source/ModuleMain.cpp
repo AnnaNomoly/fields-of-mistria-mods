@@ -1053,158 +1053,158 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 		{ 384 + 8, 640 + 8 },
 		{ 544 + 8, 576 + 8 },
 	}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
+	{ "rm_mines_lava_61", {
+		{ 144 + 8, 224 + 8 },
+		{ 400 + 8, 240 + 8 },
+		{ 480 + 8, 256 + 8 },
+		{ 304 + 8, 352 + 8 },
+		{ 272 + 8, 432 + 8 },
+		{ 368 + 8, 416 + 8 },
+	}},
+	{ "rm_mines_lava_65", {
+		{ 384 + 8, 176 + 8 },
+		{ 352 + 8, 288 + 8 },
+		{ 352 + 8, 400 + 8 },
+		{ 464 + 8, 432 + 8 },
+		{ 528 + 8, 416 + 8 },
+		{ 624 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_lava_70", {
+		{ 384 + 8, 208 + 8 },
+		{ 368 + 8, 368 + 8 },
+		{ 496 + 8, 416 + 8 },
+		{ 592 + 8, 288 + 8 },
+		{ 656 + 8, 208 + 8 },
+		{ 576 + 8, 160 + 8 },
+	}},
+	{ "rm_mines_lava_75", {
+		{ 544 + 8, 144 + 8 },
+		{ 400 + 8, 160 + 8 },
+		{ 416 + 8, 256 + 8 },
+		{ 448 + 8, 320 + 8 },
+		{ 560 + 8, 352 + 8 },
+		{ 640 + 8, 208 + 8 },
+	}},
+	{ "rm_mines_lava_switch1", {
+		{ 352 + 8, 384 + 8 },
+		{ 576 + 8, 400 + 8 },
+		{ 704 + 8, 432 + 8 },
+		{ 768 + 8, 528 + 8 },
+		{ 768 + 8, 368 + 8 },
+		{ 784 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_lava_switch2", {
+		{ 256 + 8, 480 + 8 },
+		{ 304 + 8, 416 + 8 },
+		{ 432 + 8, 432 + 8 },
+		{ 544 + 8, 400 + 8 },
+		{ 528 + 8, 336 + 8 },
+		{ 416 + 8, 256 + 8 },
+	}},
+	{ "rm_mines_lava_switch3", {
+		{ 272 + 8, 192 + 8 },
+		{ 512 + 8, 256 + 8 },
+		{ 416 + 8, 304 + 8 },
+		{ 544 + 8, 416 + 8 },
+		{ 464 + 8, 496 + 8 },
+		{ 272 + 8, 560 + 8 },
+	}},
+	{ "rm_mines_lava_switch4", {
+		{ 464 + 8, 192 + 8 },
+		{ 368 + 8, 272 + 8 },
+		{ 288 + 8, 304 + 8 },
+		{ 448 + 8, 368 + 8 },
+		{ 576 + 8, 432 + 8 },
+		{ 320 + 8, 592 + 8 },
+	}},
+	{ "rm_mines_lava_switch5", {
+		{ 512 + 8, 144 + 8 },
+		{ 256 + 8, 352 + 8 },
+		{ 512 + 8, 336 + 8 },
+		{ 720 + 8, 384 + 8 },
+		{ 672 + 8, 544 + 8 },
+		{ 528 + 8, 656 + 8 },
+	}},
+	{ "rm_mines_lava_basic1", {
+		{ 768 + 8, 176 + 8 },
+		{ 880 + 8, 320 + 8 },
+		{ 736 + 8, 320 + 8 },
+		{ 720 + 8, 432 + 8 },
+		{ 800 + 8, 480 + 8 },
+		{ 224 + 8, 512 + 8 },
+	}},
+	{ "rm_mines_lava_basic2", {
+		{ 336 + 8, 240 + 8 },
+		{ 224 + 8, 416 + 8 },
+		{ 336 + 8, 480 + 8 },
+		{ 432 + 8, 384 + 8 },
+		{ 240 + 8, 656 + 8 },
+		{ 800 + 8, 400 + 8 },
+	}},
+	{ "rm_mines_lava_basic3", {
+		{ 320 + 8, 240 + 8 },
+		{ 448 + 8, 368 + 8 },
+		{ 256 + 8, 464 + 8 },
+		{ 352 + 8, 480 + 8 },
+		{ 288 + 8, 656 + 8 },
+		{ 368 + 8, 640 + 8 },
+	}},
+	{ "rm_mines_lava_basic4", {
+		{ 432 + 8, 400 + 8 },
+		{ 544 + 8, 320 + 8 },
+		{ 640 + 8, 416 + 8 },
+		{ 784 + 8, 160 + 8 },
+		{ 752 + 8, 400 + 8 },
+		{ 736 + 8, 592 + 8 },
+	}},
+	{ "", {
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+	}},
+	{ "rm_mines_lava_basic5", {
+		{ 304 + 8, 304 + 8 },
+		{ 528 + 8, 176 + 8 },
+		{ 560 + 8, 256 + 8 },
+		{ 544 + 8, 400 + 8 },
+		{ 544 + 8, 560 + 8 },
+		{ 736 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_lava_shrine1", {
+		{ 272 + 8, 416 + 8 },
+		{ 368 + 8, 384 + 8 },
+		{ 528 + 8, 320 + 8 },
+		{ 672 + 8, 368 + 8 },
+		{ 752 + 8, 352 + 8 },
+		{ 848 + 8, 272 + 8 },
+	}},
+	{ "rm_mines_lava_shrine2", {
+		{ 288 + 8, 224 + 8 },
+		{ 384 + 8, 208 + 8 },
+		{ 480 + 8, 192 + 8 },
+		{ 608 + 8, 208 + 8 },
+		{ 688 + 8, 208 + 8 },
+		{ 720 + 8, 336 + 8 },
+	}},
+	{ "rm_mines_lava_shrine3", {
+		{ 256 + 8, 176 + 8 },
+		{ 352 + 8, 288 + 8 },
+		{ 352 + 8, 400 + 8 },
+		{ 176 + 8, 464 + 8 },
+		{ 336 + 8, 512 + 8 },
+		{ 272 + 8, 560 + 8 },
+	}},
+	{ "rm_mines_lava_shrine4", {
+		{ 288 + 8, 160 + 8 },
+		{ 304 + 8, 240 + 8 },
+		{ 288 + 8, 544 + 8 },
+		{ 464 + 8, 336 + 8 },
+		{ 640 + 8, 320 + 8 },
+		{ 608 + 8, 608 + 8 },
+	}},
 	//{ "", {
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
@@ -1463,7 +1463,7 @@ static bool dread_beast_configured = false;
 static bool sigil_item_used = false;
 static bool lift_key_used = false;
 static bool orb_item_used = false;
-static bool fire_breath_cast = false;
+static bool inner_fire_cast = false;
 static bool reckoning_applied = false;
 static bool fairy_buff_applied = false;
 static bool is_restoration_tracked_interval = false;
@@ -1927,7 +1927,7 @@ void ResetStaticFields(bool returned_to_title_screen)
 	sigil_item_used = false;
 	lift_key_used = false;
 	orb_item_used = false;
-	fire_breath_cast = false;
+	inner_fire_cast = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
 	offering_chance_occurred = false;
@@ -1947,6 +1947,7 @@ void ResetStaticFields(bool returned_to_title_screen)
 	floor_trap_positions.clear();
 	current_floor_monsters.clear();
 	ResetCustomDrawFields();
+	ModifySpellCosts(true, false); // TODO: Make sure this works. Go into the dungeon, Growth should be reduced to 4, exit to title, load back in, growth should be 8 (since you won't load into the dungeon).
 }
 
 bool GameIsPaused()
@@ -3300,7 +3301,7 @@ void LoadSpells()
 	}
 }
 
-void ModifySpellCosts(bool reset_cost) {
+void ModifySpellCosts(bool reset_cost, bool in_dungeon) {
 	size_t array_length = 0;
 	RValue spells = global_instance->GetMember("__spells");
 	g_ModuleInterface->GetArraySize(spells, array_length);
@@ -3309,19 +3310,12 @@ void ModifySpellCosts(bool reset_cost) {
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(spells, i, array_element);
 
-		int cost = reset_cost ? spell_id_to_default_cost_map[i] : spell_id_to_default_cost_map[i] - static_cast<int>(spell_id_to_default_cost_map[i] * 0.5);
+		int cost = reset_cost ? spell_id_to_default_cost_map[i] : spell_id_to_default_cost_map[i] / 2;
+		if (in_dungeon && i == spell_name_to_id_map["growth"])
+			cost = reset_cost ? spell_id_to_default_cost_map[i] / 2 : spell_id_to_default_cost_map[i] / 4;
+
 		*array_element->GetRefMember("cost") = cost;
 	}
-}
-
-void ModifySpellCost(std::string spell_name, int cost)
-{
-	RValue spells = global_instance->GetMember("__spells");
-
-	RValue* spell;
-	g_ModuleInterface->GetArrayEntry(spells, spell_name_to_id_map[spell_name], spell);
-
-	*spell->GetRefMember("cost") = cost;
 }
 
 RValue LocalizeString(CInstance* Self, CInstance* Other, std::string localization_key)
@@ -5722,7 +5716,7 @@ void ObjectCallback(
 										{
 											std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE];
 
-											ModifySpellCosts(true);
+											ModifySpellCosts(true, true);
 											CancelStatusEffect(refs[0], refs[1], status_effect_name_to_id_map["fairy"]);
 										}
 
@@ -5858,13 +5852,13 @@ void ObjectCallback(
 				RegisterStatusEffect(refs[0], refs[1], status_effect_name_to_id_map["fairy"], RValue(), 1, 2147483647.0);
 				fairy_buff_applied = true;
 			}
-			ModifySpellCosts(false);
+			ModifySpellCosts(false, true);
 		}
 
 		// Inner Fire
-		if (active_offerings.contains(Offerings::INNER_FIRE) && !fire_breath_cast)
+		if (active_offerings.contains(Offerings::INNER_FIRE) && !inner_fire_cast)
 		{
-			fire_breath_cast = true;
+			inner_fire_cast = true;
 			CastSpell(global_instance->GetRefMember("__ari")->ToInstance(), self, spell_name_to_id_map["fire_breath"]); // TODO: Make sure this works using name_to_id_map
 		}
 
@@ -7723,7 +7717,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	initial_floor_monsters.clear();
 
 	DisableAllPerks();
-	ModifySpellCosts(true);
+	ModifySpellCosts(true, true);
 	ScaleMistpoolArmor(true);
 	ScaleMistpoolWeapon(true);
 	ScaleMistpoolPickaxe(true);
@@ -7732,7 +7726,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	SetInvulnerabilityHits(0);
 	SetFireBreathTime(0);
 	drop_biome_reward = false;
-	fire_breath_cast = false;
+	inner_fire_cast = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
 	offering_chance_occurred = false;
@@ -7917,7 +7911,7 @@ RValue& GmlScriptGoToRoomCallback(
 		active_traps_to_value_map.clear();
 		floor_trap_positions.clear();
 		current_floor_monsters.clear();
-		ModifySpellCosts(true);
+		ModifySpellCosts(true, false);
 		ScaleMistpoolArmor(false);
 		ScaleMistpoolWeapon(false);
 		ScaleMistpoolPickaxe(false);
@@ -7928,7 +7922,7 @@ RValue& GmlScriptGoToRoomCallback(
 		drop_biome_reward = false;
 		biome_reward_disabled = false;
 		dread_beast_configured = false;
-		fire_breath_cast = false;
+		inner_fire_cast = false;
 		reckoning_applied = false;
 		fairy_buff_applied = false;
 		offering_chance_occurred = false;
