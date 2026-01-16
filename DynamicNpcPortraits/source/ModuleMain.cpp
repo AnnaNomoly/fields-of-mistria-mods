@@ -8,7 +8,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "DynamicNpcPortraits";
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.0.1";
 static const char* const GML_SCRIPT_IS_DUNGEON_ROOM = "gml_Script_is_dungeon_room";
 static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
@@ -768,7 +768,7 @@ RValue& GmlScriptCalendarSeasonCallback(
 	);
 
 	if (game_is_active)
-		current_season = Result.ToInt64() + 1; // Result is a VALUE_REAL that is the 0-indexed calendar season
+		current_season = Result.ToInt64(); // Result is a VALUE_REAL that is the 0-indexed calendar season
 
 	return Result;
 }
