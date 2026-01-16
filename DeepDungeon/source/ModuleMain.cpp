@@ -1424,7 +1424,7 @@ static RValue __YYTK;
 static bool load_on_start = true;
 static bool localize_mod_text = false;
 static bool game_is_active = false;
-static bool unlock_recipes = false;
+static bool unlock_recipes = true;
 static bool crafting_menu_open = false;
 static bool drop_biome_reward = false;
 static bool biome_reward_disabled = false;
