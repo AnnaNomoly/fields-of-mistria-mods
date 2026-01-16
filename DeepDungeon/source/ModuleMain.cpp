@@ -157,6 +157,7 @@ static const std::string LAVA_CAVES_KEY_NAME = "lava_caves_key";
 static const std::string RUINS_KEY_NAME = "ruins_key";
 static const std::string TIDE_CAVERNS_ORB = "tide_caverns_orb";
 static const std::string DEEP_EARTH_ORB = "deep_earth_orb";
+static const std::string LAVA_CAVES_ORB = "lava_caves_orb";
 // TODO: More orbs
 static const std::string SOUL_STONE_CLERIC = "soul_stone_cleric";
 static const std::string SOUL_STONE_DARK_KNIGHT = "soul_stone_dark_knight";
@@ -187,6 +188,7 @@ static const std::string FLOOR_ENCHANTMENT_AND_DREAD_BEAST_WARNING_CONVERSATION_
 static const std::string ELEVATOR_LOCKED_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Progression Mode/elevator_locked";
 static const std::string BOSS_BATTLE_TIDE_CAVERNS_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/tide_caverns_orb";
 static const std::string BOSS_BATTLE_DEEP_EARTH_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/deep_earth_orb";
+static const std::string BOSS_BATTLE_LAVA_CAVES_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/lava_caves_orb";
 static const std::string OFFERINGS_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/offerings/result";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
 static const std::string DREAD_BEAST_WARNING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Special/dread";
@@ -209,6 +211,7 @@ static const std::string PERIL_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods
 static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/reckoning";
 static const std::string TIDE_CAVERNS_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Orbs/tide_caverns_orb/description";
 static const std::string DEEP_EARTH_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Orbs/deep_earth_orb/description";
+static const std::string LAVA_CAVES_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Orbs/lava_caves_orb/description";
 static const std::string HEALTH_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Salves/health_salve/description";
 static const std::string STAMINA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Salves/stamina_salve/description";
 static const std::string MANA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Salves/mana_salve/description";
@@ -263,7 +266,8 @@ static const bool DEFAULT_ENABLE_BOSS_FIGHT_RESTRICTIONS = true;
 static enum class BossBattle {
 	NONE,
 	TIDE_CAVERNS_ORB,
-	DEEP_EARTH_ORB
+	DEEP_EARTH_ORB,
+	LAVA_CAVES_ORB
 	// TODO
 };
 
@@ -400,7 +404,8 @@ static const std::vector<std::string> SOUL_STONE_NAMES = {
 static const std::vector<std::string> ORB_NAMES = {
 	// TODO: Add other orbs
 	TIDE_CAVERNS_ORB,
-	DEEP_EARTH_ORB
+	DEEP_EARTH_ORB,
+	LAVA_CAVES_ORB
 };
 
 static const std::vector<FloorEnchantments> GROUP_ONE_FLOOR_ENCHANTMENTS = {
@@ -2677,7 +2682,7 @@ void LoadObjectIds()
 void LoadItems()
 {
 	std::unordered_set<std::string> lift_key_names = { TIDE_CAVERNS_KEY_NAME, DEEP_EARTH_KEY_NAME, LAVA_CAVES_KEY_NAME, RUINS_KEY_NAME };
-	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB, DEEP_EARTH_ORB }; // TODO: Add other orbs
+	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB, DEEP_EARTH_ORB, LAVA_CAVES_ORB }; // TODO: Add other orbs
 	std::vector<std::string> custom_potions = { SUSTAINING_POTION_NAME, HEALTH_SALVE_NAME, STAMINA_SALVE_NAME, MANA_SALVE_NAME }; // TODO: Change to unordered_set
 	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME }; // TODO: Change to unordered_set
 
@@ -5820,6 +5825,11 @@ void ObjectCallback(
 										boss_battle = BossBattle::DEEP_EARTH_ORB;
 										EnterDungeon(39, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
 									}
+									else if (held_item_id == item_name_to_id_map[LAVA_CAVES_ORB])
+									{
+										boss_battle = BossBattle::LAVA_CAVES_ORB;
+										EnterDungeon(59, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
+									}
 								}
 							}
 						}
@@ -5978,6 +5988,20 @@ void ObjectCallback(
 						ModifyDreadBeastAttackPatterns(true, monster);
 				}
 				else if (boss_battle == BossBattle::DEEP_EARTH_ORB)
+				{
+					if (!StructVariableExists(monster, "__deep_dungeon__boss_monster") && StructVariableExists(monster, "hit_points"))
+					{
+						double hit_points = monster.GetMember("hit_points").ToDouble();
+						if (std::isfinite(hit_points))
+						{
+							*monster.GetRefMember("hit_points") = hit_points * 3;
+							StructVariableSet(monster, "__deep_dungeon__boss_monster", true);
+						}
+					}
+					else if (StructVariableExists(monster, "__deep_dungeon__boss_monster"))
+						ModifyDreadBeastAttackPatterns(true, monster);
+				}
+				else if (boss_battle == BossBattle::LAVA_CAVES_ORB)
 				{
 					if (!StructVariableExists(monster, "__deep_dungeon__boss_monster") && StructVariableExists(monster, "hit_points"))
 					{
@@ -7577,7 +7601,7 @@ RValue& GmlScriptGetLocalizerCallback(
 	{
 		// Orbs
 		// TODO: Other orbs when added
-		if (crafting_menu_open && (Arguments[0]->ToString() == TIDE_CAVERNS_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY || Arguments[0]->ToString() == DEEP_EARTH_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY))
+		if (crafting_menu_open && (Arguments[0]->ToString() == TIDE_CAVERNS_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY || Arguments[0]->ToString() == DEEP_EARTH_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY || Arguments[0]->ToString() == LAVA_CAVES_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY))
 		{
 			std::string result_str = Result.ToString();
 
@@ -7928,6 +7952,16 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 			SpawnMonster(Self, Other, 192 + 8, 240 + 8, monster_name_to_id_map["stalagmite"]); // Middle
 			PlayConversation(BOSS_BATTLE_DEEP_EARTH_ORB_CONVERSATION_KEY, Self, Other);
 		}
+		else if (boss_battle == BossBattle::LAVA_CAVES_ORB)
+		{
+			SpawnMonster(Self, Other, 128 + 8, 240 + 8, monster_name_to_id_map["bat_blue"]); // West
+			//SpawnMonster(Self, Other, 144 + 8, 192 + 8, monster_name_to_id_map["bat_blue"]); // Northwest
+			//SpawnMonster(Self, Other, 240 + 8, 192 + 8, monster_name_to_id_map["bat_blue"]); // Northeast
+			SpawnMonster(Self, Other, 256 + 8, 240 + 8, monster_name_to_id_map["bat_blue"]); // East
+			SpawnMonster(Self, Other, 192 + 8, 176 + 8, monster_name_to_id_map["bat_blue"]); // North
+			SpawnMonster(Self, Other, 192 + 8, 224 + 8, monster_name_to_id_map["cat"]); // Center
+			PlayConversation(BOSS_BATTLE_LAVA_CAVES_ORB_CONVERSATION_KEY, Self, Other);
+		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_DUNGEON_ROOM_START));
@@ -7958,6 +7992,8 @@ RValue& GmlScriptGoToRoomCallback(
 		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_tide_ritual_chamber" });
 	else if (boss_battle == BossBattle::DEEP_EARTH_ORB && !ari_current_gm_room.contains("ritual"))
 		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_deep_ritual_chamber" });
+	else if (boss_battle == BossBattle::LAVA_CAVES_ORB && !ari_current_gm_room.contains("ritual"))
+		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_lava_ritual_chamber" });
 	// End Boss Battles when leaving the ritual floor.
 	else if (boss_battle != BossBattle::NONE && ari_current_gm_room.contains("ritual"))
 		boss_battle = BossBattle::NONE;
