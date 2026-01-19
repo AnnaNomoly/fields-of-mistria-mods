@@ -8,7 +8,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "DynamicNpcPortraits";
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.0.1";
 static const char* const GML_SCRIPT_IS_DUNGEON_ROOM = "gml_Script_is_dungeon_room";
 static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
 static const char* const GML_SCRIPT_TRY_LOCATION_ID_TO_STRING = "gml_Script_try_location_id_to_string";
@@ -611,8 +611,18 @@ RValue GetDynamicNpcPortrait(std::string sprite_name)
 		if (dynamic_portrait.HasWeatherCondition() && current_weather != dynamic_portrait.weather)
 			continue;
 
-		if (dynamic_portrait.HasLocationCondition() && current_location != dynamic_portrait.location)
-			continue;
+		if (dynamic_portrait.HasLocationCondition())
+		{
+			if (dynamic_portrait.location == location_name_to_id_map[OUTDOORS] || dynamic_portrait.location == location_name_to_id_map[INDOORS])
+			{
+				if (dynamic_portrait.location == location_name_to_id_map[OUTDOORS] && AriIsIndoors())
+					continue;
+				if (dynamic_portrait.location == location_name_to_id_map[INDOORS] && !AriIsIndoors())
+					continue;
+			}
+			else if (dynamic_portrait.HasLocationCondition() && current_location != dynamic_portrait.location)
+				continue;
+		}
 
 		std::string sprite_name = dynamic_portrait.sprite_name + "_" + expression;
 		RValue sprite = g_ModuleInterface->CallBuiltin("asset_get_index", { sprite_name.c_str() });
@@ -758,7 +768,7 @@ RValue& GmlScriptCalendarSeasonCallback(
 	);
 
 	if (game_is_active)
-		current_season = Result.ToInt64() + 1; // Result is a VALUE_REAL that is the 0-indexed calendar season
+		current_season = Result.ToInt64(); // Result is a VALUE_REAL that is the 0-indexed calendar season
 
 	return Result;
 }
