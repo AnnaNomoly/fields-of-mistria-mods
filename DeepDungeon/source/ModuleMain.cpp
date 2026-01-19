@@ -27,7 +27,7 @@ struct pair_hash {
 };
 
 static const char* const MOD_NAME = "DeepDungeon";
-static const char* const VERSION = "0.6.1";
+static const char* const VERSION = "0.7.0";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_SPAWN_LADDER = "gml_Script_spawn_ladder@DungeonRunner@DungeonRunner";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
@@ -36,6 +36,8 @@ static const char* const GML_SCRIPT_SCENE_AUDIO_PLAYER_STOP = "gml_Script_stop@S
 static const char* const GML_SCRIPT_SPAWN_TUTORIAL = "gml_Script_spawn_tutorial";
 static const char* const GML_SCRIPT_UPDATE_TOOLBAR_MENU = "gml_Script_update@ToolbarMenu@ToolbarMenu";
 static const char* const GML_SCRIPT_ENTER_DUNGEON = "gml_Script_enter_dungeon";
+static const char* const GML_SCRIPT_INVENTORY_COUNT_ITEM = "gml_Script_item_id_quantity@anon@4086@__Inventory@Inventory";
+static const char* const GML_SCRIPT_INVENTORY_REMOVE_ITEM = "gml_Script_remove@anon@2001@__Inventory@Inventory";
 static const char* const GML_SCRIPT_CANCEL_STATUS_EFFECT = "gml_Script_cancel@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_REGISTER_STATUS_EFFECT = "gml_Script_register@StatusEffectManager@StatusEffectManager";
 static const char* const GML_SCRIPT_VITALS_MENU_SET_HEALTH = "gml_Script_set_health@VitalsMenu@VitalsMenu";
@@ -74,6 +76,7 @@ static const char* const GML_SCRIPT_DISPLAY_RESIZE = "gml_Script_resize_amount@D
 static const char* const GML_SCRIPT_GET_ITEM_UI_ICON = "gml_Script_get_ui_icon@anon@4053@LiveItem@LiveItem";
 static const char* const GML_SCRIPT_CREATE_ITEM_PROTOTYPES = "gml_Script_create_item_prototypes";
 static const char* const GML_SCRIPT_DESERIALIZE_LIVE_ITEM = "gml_Script_deserialize_live_item";
+static const char* const GML_SCRIPT_DESERIALIZE_INVENTORY = "gml_Script_deserialize@anon@6076@__Inventory@Inventory";
 static const char* const GML_SCRIPT_GET_TREASURE_FROM_DISTRIBUTION = "gml_Script_get_treasure_from_distribution";
 static const char* const GML_SCRIPT_CRAFTING_MENU_INITIALIZE = "gml_Script_initialize@CraftingMenu@CraftingMenu";
 static const char* const GML_SCRIPT_CRAFTING_MENU_CLOSE = "gml_Script_on_close@CraftingMenu@CraftingMenu";
@@ -138,6 +141,11 @@ static const std::string DARK_KNIGHT_CHESTPIECE_NAME = "dark_knight_chestpiece";
 static const std::string DARK_KNIGHT_GLOVES_NAME = "dark_knight_gloves";
 static const std::string DARK_KNIGHT_PANTS_NAME = "dark_knight_pants";
 static const std::string DARK_KNIGHT_BOOTS_NAME = "dark_knight_boots";
+static const std::string MAGE_HELMET_NAME = "mage_helmet";
+static const std::string MAGE_CHESTPIECE_NAME = "mage_chestpiece";
+static const std::string MAGE_GLOVES_NAME = "mage_gloves";
+static const std::string MAGE_PANTS_NAME = "mage_pants";
+static const std::string MAGE_BOOTS_NAME = "mage_boots";
 // TODO: More class gear
 static const std::string TREASURE_CHEST_WOOD_NAME = "treasure_chest_wood";
 static const std::string TREASURE_CHEST_COPPER_NAME = "treasure_chest_copper";
@@ -149,9 +157,11 @@ static const std::string LAVA_CAVES_KEY_NAME = "lava_caves_key";
 static const std::string RUINS_KEY_NAME = "ruins_key";
 static const std::string TIDE_CAVERNS_ORB = "tide_caverns_orb";
 static const std::string DEEP_EARTH_ORB = "deep_earth_orb";
+static const std::string LAVA_CAVES_ORB = "lava_caves_orb";
 // TODO: More orbs
 static const std::string SOUL_STONE_CLERIC = "soul_stone_cleric";
 static const std::string SOUL_STONE_DARK_KNIGHT = "soul_stone_dark_knight";
+static const std::string SOUL_STONE_MAGE = "soul_stone_mage";
 // TODO: More soul stones
 static const std::string SAVING_DISABLED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/saving_disabled";
 static const std::string LIFT_KEY_RESTRICTED_NOTIFICATION_KEY = "Notifications/Mods/Deep Dungeon/lift_key_restricted";
@@ -178,6 +188,7 @@ static const std::string FLOOR_ENCHANTMENT_AND_DREAD_BEAST_WARNING_CONVERSATION_
 static const std::string ELEVATOR_LOCKED_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Progression Mode/elevator_locked";
 static const std::string BOSS_BATTLE_TIDE_CAVERNS_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/tide_caverns_orb";
 static const std::string BOSS_BATTLE_DEEP_EARTH_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/deep_earth_orb";
+static const std::string BOSS_BATTLE_LAVA_CAVES_ORB_CONVERSATION_KEY = "Conversations/Mods/Deep Dungeon/Boss Battles/lava_caves_orb";
 static const std::string OFFERINGS_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/offerings/result";
 static const std::string FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY = "Conversations/Mods/Deep Dungeon/placeholders/floor_enchantments/init";
 static const std::string DREAD_BEAST_WARNING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Special/dread";
@@ -200,6 +211,7 @@ static const std::string PERIL_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods
 static const std::string RECKONING_OFFERING_LOCALIZED_TEXT_KEY = "Conversations/Mods/Deep Dungeon/Offerings/Negative/reckoning";
 static const std::string TIDE_CAVERNS_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Orbs/tide_caverns_orb/description";
 static const std::string DEEP_EARTH_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Orbs/deep_earth_orb/description";
+static const std::string LAVA_CAVES_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Orbs/lava_caves_orb/description";
 static const std::string HEALTH_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Salves/health_salve/description";
 static const std::string STAMINA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Salves/stamina_salve/description";
 static const std::string MANA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Salves/mana_salve/description";
@@ -207,6 +219,7 @@ static const std::string VALUE_PLACEHOLDER_TEXT = "<VALUE>";
 // TODO: Other classes
 static const std::string CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Armor/cleric/description";
 static const std::string DARK_KNIGHT_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Armor/dark_knight/description";
+static const std::string MAGE_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Armor/mage/description";
 static const std::string SET_PIECES_EQUIPPED_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/set_bonuses/equipped";
 static const std::string CLERIC_SET_BONUS_AUTO_REGEN_ONE_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/auto_regen/1";
 static const std::string CLERIC_SET_BONUS_AUTO_REGEN_TWO_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Cleric/set_bonuses/auto_regen/2";
@@ -218,8 +231,14 @@ static const std::string DARK_KNIGHT_SET_BONUS_DRAIN_TWO_LOCALIZED_TEXT_KEY = "I
 static const std::string DARK_KNIGHT_SET_BONUS_DRAIN_THREE_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Dark Knight/set_bonuses/drain/3";
 static const std::string DARK_KNIGHT_SET_BONUS_DARK_SEAL_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Dark Knight/set_bonuses/dark_seal";
 static const std::string DARK_KNIGHT_SET_BONUS_SOUL_EATER_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Dark Knight/set_bonuses/soul_eater";
+static const std::string MAGE_SET_BONUS_ASPIR_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Mage/set_bonuses/aspir";
+static const std::string MAGE_SET_BONUS_FLOOD_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Mage/set_bonuses/flood";
+static const std::string MAGE_SET_BONUS_ELEMENTAL_SEAL_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Mage/set_bonuses/elemental_seal";
+static const std::string MAGE_SET_BONUS_QUAKE_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Mage/set_bonuses/quake";
+static const std::string MAGE_SET_BONUS_MANA_FONT_LOCALIZED_TEXT_KEY = "Items/Mods/Deep Dungeon/Classes/Mage/set_bonuses/mana_font";
 
 static const int TWO_MINUTES_IN_SECONDS = 120;
+static const int THREE_MINUTES_IN_SECONDS = 180;
 static const int TRAP_ACTIVATION_DISTANCE = 16;
 
 // Configuration defaults
@@ -247,7 +266,8 @@ static const bool DEFAULT_ENABLE_BOSS_FIGHT_RESTRICTIONS = true;
 static enum class BossBattle {
 	NONE,
 	TIDE_CAVERNS_ORB,
-	DEEP_EARTH_ORB
+	DEEP_EARTH_ORB,
+	LAVA_CAVES_ORB
 	// TODO
 };
 
@@ -260,10 +280,25 @@ static enum class Classes {
 };
 
 static enum class ManagedSetBonuses { // Set bonuses that have actively managed values.
+	AUTO_REGEN, // Cleric
 	AFFLATUS_MISERY, // Cleric
 	DARK_SEAL, // Dark Knight
 	DRAIN, // Dark Knight
-	SOUL_EATER // Dark Knight
+	SOUL_EATER, // Dark Knight
+	ASPIR, // Mage
+	FLOOD, // Mage
+	ELEMENTAL_SEAL, // Mage
+	ENFIRE, // Mage
+	ENBLIZZARD, // Mage
+	ENPOISON, // Mage
+	QUAKE, // Mage
+	MANA_FONT // Mage
+};
+
+static enum class ElementalSealEffects {
+	FIRE = 1,
+	ICE = 2,
+	VENOM = 3
 };
 
 static enum class AriResources {
@@ -348,25 +383,29 @@ static const std::vector<std::string> MISTPOOL_ARMOR_NAMES = {
 static const std::unordered_set<std::string> CLASS_ARMOR_NAMES = {
 	// TODO: Add other class armor
 	CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME,
-	DARK_KNIGHT_HELMET_NAME, DARK_KNIGHT_CHESTPIECE_NAME, DARK_KNIGHT_GLOVES_NAME, DARK_KNIGHT_PANTS_NAME, DARK_KNIGHT_BOOTS_NAME
+	DARK_KNIGHT_HELMET_NAME, DARK_KNIGHT_CHESTPIECE_NAME, DARK_KNIGHT_GLOVES_NAME, DARK_KNIGHT_PANTS_NAME, DARK_KNIGHT_BOOTS_NAME,
+	MAGE_HELMET_NAME, MAGE_CHESTPIECE_NAME, MAGE_GLOVES_NAME, MAGE_PANTS_NAME, MAGE_BOOTS_NAME
 };
 
 static const std::map<Classes, std::unordered_set<std::string>> CLASS_NAME_TO_ARMOR_NAMES_MAP = {
 	// TODO: Add other class armor
 	{ Classes::CLERIC, { CLERIC_HELMET_NAME, CLERIC_CHESTPIECE_NAME, CLERIC_GLOVES_NAME, CLERIC_PANTS_NAME, CLERIC_BOOTS_NAME } },
-	{ Classes::DARK_KNIGHT, { DARK_KNIGHT_HELMET_NAME, DARK_KNIGHT_CHESTPIECE_NAME, DARK_KNIGHT_GLOVES_NAME, DARK_KNIGHT_PANTS_NAME, DARK_KNIGHT_BOOTS_NAME } }
+	{ Classes::DARK_KNIGHT, { DARK_KNIGHT_HELMET_NAME, DARK_KNIGHT_CHESTPIECE_NAME, DARK_KNIGHT_GLOVES_NAME, DARK_KNIGHT_PANTS_NAME, DARK_KNIGHT_BOOTS_NAME } },
+	{ Classes::MAGE, { MAGE_HELMET_NAME, MAGE_CHESTPIECE_NAME, MAGE_GLOVES_NAME, MAGE_PANTS_NAME, MAGE_BOOTS_NAME } }
 };
 
 static const std::vector<std::string> SOUL_STONE_NAMES = {
 	// TODO: Add other soul stones
 	SOUL_STONE_CLERIC,
-	SOUL_STONE_DARK_KNIGHT
+	SOUL_STONE_DARK_KNIGHT,
+	SOUL_STONE_MAGE
 };
 
 static const std::vector<std::string> ORB_NAMES = {
 	// TODO: Add other orbs
 	TIDE_CAVERNS_ORB,
-	DEEP_EARTH_ORB
+	DEEP_EARTH_ORB,
+	LAVA_CAVES_ORB
 };
 
 static const std::vector<FloorEnchantments> GROUP_ONE_FLOOR_ENCHANTMENTS = {
@@ -982,198 +1021,198 @@ static const std::map<std::string, std::vector<std::pair<int, int>>> TRAP_SPAWN_
 		{ 560 + 8, 192 + 8 },
 		{ 496 + 8, 144 + 8 },
 	}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
-	//{ "", {
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//	{ 0 + 8, 0 + 8 },
-	//}},
+	{ "rm_mines_lava_bullseye", {
+		{ 96 + 8, 256 + 8 },
+		{ 192 + 8, 240 + 8 },
+		{ 240 + 8, 288 + 8 },
+		{ 256 + 8, 192 + 8 },
+		{ 304 + 8, 240 + 8 },
+		{ 384 + 8, 256 + 8 },
+	}},
+	{ "rm_mines_lava_generic", {
+		{ 256 + 8, 560 + 8 },
+		{ 480 + 8, 560 + 8 },
+		{ 576 + 8, 512 + 8 },
+		{ 816 + 8, 512 + 8 },
+		{ 448 + 8, 288 + 8 },
+		{ 496 + 8, 208 + 8 },
+	}},
+	{ "rm_mines_lava_world", {
+		{ 192 + 8, 160 + 8 },
+		{ 448 + 8, 160 + 8 },
+		{ 480 + 8, 224 + 8 },
+		{ 208 + 8, 448 + 8 },
+		{ 432 + 8, 352 + 8 },
+		{ 496 + 8, 464 + 8 },
+	}},
+	{ "rm_mines_lava_elements", {
+		{ 352 + 8, 576 + 8 },
+		{ 352 + 8, 432 + 8 },
+		{ 288 + 8, 368 + 8 },
+		{ 368 + 8, 352 + 8 },
+		{ 448 + 8, 368 + 8 },
+		{ 368 + 8, 192 + 8 },
+	}},
+	{ "rm_mines_lava_arena", {
+		{ 400 + 8, 384 + 8 },
+		{ 240 + 8, 384 + 8 },
+		{ 544 + 8, 416 + 8 },
+		{ 160 + 8, 576 + 8 },
+		{ 384 + 8, 640 + 8 },
+		{ 544 + 8, 576 + 8 },
+	}},
+	{ "rm_mines_lava_61", {
+		{ 144 + 8, 224 + 8 },
+		{ 400 + 8, 240 + 8 },
+		{ 480 + 8, 256 + 8 },
+		{ 304 + 8, 352 + 8 },
+		{ 272 + 8, 432 + 8 },
+		{ 368 + 8, 416 + 8 },
+	}},
+	{ "rm_mines_lava_65", {
+		{ 384 + 8, 176 + 8 },
+		{ 352 + 8, 288 + 8 },
+		{ 352 + 8, 400 + 8 },
+		{ 464 + 8, 432 + 8 },
+		{ 528 + 8, 416 + 8 },
+		{ 624 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_lava_70", {
+		{ 384 + 8, 208 + 8 },
+		{ 368 + 8, 368 + 8 },
+		{ 496 + 8, 416 + 8 },
+		{ 592 + 8, 288 + 8 },
+		{ 656 + 8, 208 + 8 },
+		{ 576 + 8, 160 + 8 },
+	}},
+	{ "rm_mines_lava_75", {
+		{ 544 + 8, 144 + 8 },
+		{ 400 + 8, 160 + 8 },
+		{ 416 + 8, 256 + 8 },
+		{ 448 + 8, 320 + 8 },
+		{ 560 + 8, 352 + 8 },
+		{ 640 + 8, 208 + 8 },
+	}},
+	{ "rm_mines_lava_switch1", {
+		{ 352 + 8, 384 + 8 },
+		{ 576 + 8, 400 + 8 },
+		{ 704 + 8, 432 + 8 },
+		{ 768 + 8, 528 + 8 },
+		{ 768 + 8, 368 + 8 },
+		{ 784 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_lava_switch2", {
+		{ 256 + 8, 480 + 8 },
+		{ 304 + 8, 416 + 8 },
+		{ 432 + 8, 432 + 8 },
+		{ 544 + 8, 400 + 8 },
+		{ 528 + 8, 336 + 8 },
+		{ 416 + 8, 256 + 8 },
+	}},
+	{ "rm_mines_lava_switch3", {
+		{ 272 + 8, 192 + 8 },
+		{ 512 + 8, 256 + 8 },
+		{ 416 + 8, 304 + 8 },
+		{ 544 + 8, 416 + 8 },
+		{ 464 + 8, 496 + 8 },
+		{ 272 + 8, 560 + 8 },
+	}},
+	{ "rm_mines_lava_switch4", {
+		{ 464 + 8, 192 + 8 },
+		{ 368 + 8, 272 + 8 },
+		{ 288 + 8, 304 + 8 },
+		{ 448 + 8, 368 + 8 },
+		{ 576 + 8, 432 + 8 },
+		{ 320 + 8, 592 + 8 },
+	}},
+	{ "rm_mines_lava_switch5", {
+		{ 512 + 8, 144 + 8 },
+		{ 256 + 8, 352 + 8 },
+		{ 512 + 8, 336 + 8 },
+		{ 720 + 8, 384 + 8 },
+		{ 672 + 8, 544 + 8 },
+		{ 528 + 8, 656 + 8 },
+	}},
+	{ "rm_mines_lava_basic1", {
+		{ 768 + 8, 176 + 8 },
+		{ 880 + 8, 320 + 8 },
+		{ 736 + 8, 320 + 8 },
+		{ 720 + 8, 432 + 8 },
+		{ 800 + 8, 480 + 8 },
+		{ 224 + 8, 512 + 8 },
+	}},
+	{ "rm_mines_lava_basic2", {
+		{ 336 + 8, 240 + 8 },
+		{ 224 + 8, 416 + 8 },
+		{ 336 + 8, 480 + 8 },
+		{ 432 + 8, 384 + 8 },
+		{ 240 + 8, 656 + 8 },
+		{ 800 + 8, 400 + 8 },
+	}},
+	{ "rm_mines_lava_basic3", {
+		{ 320 + 8, 240 + 8 },
+		{ 448 + 8, 368 + 8 },
+		{ 256 + 8, 464 + 8 },
+		{ 352 + 8, 480 + 8 },
+		{ 288 + 8, 656 + 8 },
+		{ 368 + 8, 640 + 8 },
+	}},
+	{ "rm_mines_lava_basic4", {
+		{ 432 + 8, 400 + 8 },
+		{ 544 + 8, 320 + 8 },
+		{ 640 + 8, 416 + 8 },
+		{ 784 + 8, 160 + 8 },
+		{ 752 + 8, 400 + 8 },
+		{ 736 + 8, 592 + 8 },
+	}},
+	{ "", {
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+		{ 0 + 8, 0 + 8 },
+	}},
+	{ "rm_mines_lava_basic5", {
+		{ 304 + 8, 304 + 8 },
+		{ 528 + 8, 176 + 8 },
+		{ 560 + 8, 256 + 8 },
+		{ 544 + 8, 400 + 8 },
+		{ 544 + 8, 560 + 8 },
+		{ 736 + 8, 288 + 8 },
+	}},
+	{ "rm_mines_lava_shrine1", {
+		{ 272 + 8, 416 + 8 },
+		{ 368 + 8, 384 + 8 },
+		{ 528 + 8, 320 + 8 },
+		{ 672 + 8, 368 + 8 },
+		{ 752 + 8, 352 + 8 },
+		{ 848 + 8, 272 + 8 },
+	}},
+	{ "rm_mines_lava_shrine2", {
+		{ 288 + 8, 224 + 8 },
+		{ 384 + 8, 208 + 8 },
+		{ 480 + 8, 192 + 8 },
+		{ 608 + 8, 208 + 8 },
+		{ 688 + 8, 208 + 8 },
+		{ 720 + 8, 336 + 8 },
+	}},
+	{ "rm_mines_lava_shrine3", {
+		{ 256 + 8, 176 + 8 },
+		{ 352 + 8, 288 + 8 },
+		{ 352 + 8, 400 + 8 },
+		{ 176 + 8, 464 + 8 },
+		{ 336 + 8, 512 + 8 },
+		{ 272 + 8, 560 + 8 },
+	}},
+	{ "rm_mines_lava_shrine4", {
+		{ 288 + 8, 160 + 8 },
+		{ 304 + 8, 240 + 8 },
+		{ 288 + 8, 544 + 8 },
+		{ 464 + 8, 336 + 8 },
+		{ 640 + 8, 320 + 8 },
+		{ 608 + 8, 608 + 8 },
+	}},
 	//{ "", {
 	//	{ 0 + 8, 0 + 8 },
 	//	{ 0 + 8, 0 + 8 },
@@ -1432,7 +1471,7 @@ static bool dread_beast_configured = false;
 static bool sigil_item_used = false;
 static bool lift_key_used = false;
 static bool orb_item_used = false;
-static bool fire_breath_cast = false;
+static bool inner_fire_cast = false;
 static bool reckoning_applied = false;
 static bool fairy_buff_applied = false;
 static bool is_restoration_tracked_interval = false;
@@ -1866,56 +1905,6 @@ void ResetCustomDrawFields()
 	show_dashes = false;
 	show_danger_banner = false;
 	ResetFade();
-}
-
-void ResetStaticFields(bool returned_to_title_screen)
-{
-	if (returned_to_title_screen)
-	{
-		game_is_active = false;
-		unlock_recipes = true;
-		is_restoration_tracked_interval = false;
-		is_second_wind_tracked_interval = false;
-		ari_x = -1;
-		ari_y = -1;
-		floor_number = 0;
-		floor_start_time = 0;
-		current_time_in_seconds = -1;
-		time_of_last_restoration_tick = -1;
-		time_of_last_second_wind_tick = -1;
-		held_item_id = -1;
-		ari_current_location = "";
-		ari_current_gm_room = "";
-		script_name_to_reference_map.clear();
-	}
-
-	crafting_menu_open = false;
-	drop_biome_reward = false;
-	biome_reward_disabled = false;
-	dread_beast_configured = false;
-	sigil_item_used = false;
-	lift_key_used = false;
-	orb_item_used = false;
-	fire_breath_cast = false;
-	reckoning_applied = false;
-	fairy_buff_applied = false;
-	offering_chance_occurred = false;
-	obj_dungeon_elevator_focused = false;
-	obj_dungeon_ladder_down_focused = false;
-	sigil_of_silence_count = 0;
-	sigil_of_alteration_count = 0;
-	dread_beast_monster_id = -1;
-	boss_monsters_configured = 0;
-	salves_used.clear();
-	active_sigils.clear();
-	queued_offerings.clear();
-	active_offerings.clear();
-	active_floor_enchantments.clear();
-	active_traps.clear();
-	active_traps_to_value_map.clear();
-	floor_trap_positions.clear();
-	current_floor_monsters.clear();
-	ResetCustomDrawFields();
 }
 
 bool GameIsPaused()
@@ -2693,7 +2682,7 @@ void LoadObjectIds()
 void LoadItems()
 {
 	std::unordered_set<std::string> lift_key_names = { TIDE_CAVERNS_KEY_NAME, DEEP_EARTH_KEY_NAME, LAVA_CAVES_KEY_NAME, RUINS_KEY_NAME };
-	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB, DEEP_EARTH_ORB }; // TODO: Add other orbs
+	std::unordered_set<std::string> orb_item_names = { TIDE_CAVERNS_ORB, DEEP_EARTH_ORB, LAVA_CAVES_ORB }; // TODO: Add other orbs
 	std::vector<std::string> custom_potions = { SUSTAINING_POTION_NAME, HEALTH_SALVE_NAME, STAMINA_SALVE_NAME, MANA_SALVE_NAME }; // TODO: Change to unordered_set
 	std::vector<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME }; // TODO: Change to unordered_set
 
@@ -3223,15 +3212,22 @@ int GetClericAutoRegenPotency()
 
 double GetDarkKnightDrainPotency()
 {
-	int cleric_armor_pieces_equipped = CountEquippedClassArmor()[Classes::DARK_KNIGHT];
-	if (cleric_armor_pieces_equipped == 0)
+	int dark_knight_pieces_equipped = CountEquippedClassArmor()[Classes::DARK_KNIGHT];
+	if (dark_knight_pieces_equipped == 0)
 		return 0;
-	if (cleric_armor_pieces_equipped < 3)
+	if (dark_knight_pieces_equipped < 3)
 		return 0.03;
-	if (cleric_armor_pieces_equipped < 5)
+	if (dark_knight_pieces_equipped < 5)
 		return 0.05;
-	if (cleric_armor_pieces_equipped == 5)
+	if (dark_knight_pieces_equipped == 5)
 		return 0.08;
+}
+
+ElementalSealEffects GetRandomElementalSealEffect()
+{
+	static thread_local std::mt19937 random_generator(std::random_device{}());
+	std::uniform_int_distribution<size_t> random_elemental_seal_effect_distribution(0, magic_enum::enum_count<ElementalSealEffects>() - 1);
+	return magic_enum::enum_value<ElementalSealEffects>(random_elemental_seal_effect_distribution(random_generator));
 }
 
 void LoadSpellIds()
@@ -3262,7 +3258,7 @@ void LoadSpells()
 	}
 }
 
-void ModifySpellCosts(bool reset_cost) {
+void ModifySpellCosts(bool reset_cost, bool in_dungeon) {
 	size_t array_length = 0;
 	RValue spells = global_instance->GetMember("__spells");
 	g_ModuleInterface->GetArraySize(spells, array_length);
@@ -3271,7 +3267,10 @@ void ModifySpellCosts(bool reset_cost) {
 		RValue* array_element;
 		g_ModuleInterface->GetArrayEntry(spells, i, array_element);
 
-		int cost = reset_cost ? spell_id_to_default_cost_map[i] : spell_id_to_default_cost_map[i] - static_cast<int>(spell_id_to_default_cost_map[i] * 0.5);
+		int cost = reset_cost ? spell_id_to_default_cost_map[i] : spell_id_to_default_cost_map[i] / 2;
+		if (in_dungeon && i == spell_name_to_id_map["growth"])
+			cost = reset_cost ? spell_id_to_default_cost_map[i] / 2 : spell_id_to_default_cost_map[i] / 4;
+
 		*array_element->GetRefMember("cost") = cost;
 	}
 }
@@ -3874,6 +3873,131 @@ void ModifyEnchanternAttackPatterns(RValue monster)
 	}
 }
 
+void ModifySpiritAttackPatterns(RValue monster)
+{
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
+
+			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "projectile_damage", config_clone.GetMember("projectile_damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "projectile_turn_rate", 10);
+			StructVariableSet(config_clone, "projectile_turn_rate", 0.8);
+
+			RValue idle_duration = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { idle_duration, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { idle_duration, 1, 2 });
+			StructVariableSet(config_clone, "idle_duration", idle_duration);
+
+			RValue tired_duration = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { tired_duration, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { tired_duration, 1, 2 });
+			StructVariableSet(config_clone, "tired_duration", tired_duration);
+
+			RValue teleport_duration = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { teleport_duration, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { teleport_duration, 1, 2 });
+			StructVariableSet(config_clone, "teleport_duration", teleport_duration);
+
+			RValue teleport_distance_from_player = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { teleport_distance_from_player, 0, 10 });
+			g_ModuleInterface->CallBuiltin("array_set", { teleport_distance_from_player, 1, 30 });
+			StructVariableSet(config_clone, "teleport_distance_from_player", teleport_distance_from_player);
+
+			RValue projectile_life_time = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { projectile_life_time, 0, 240 });
+			g_ModuleInterface->CallBuiltin("array_set", { projectile_life_time, 1, 240 });
+			StructVariableSet(config_clone, "projectile_life_time", projectile_life_time);
+
+			StructVariableSet(monster, "config", config_clone);
+			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+		}
+	}
+}
+
+void ModifyCatAttackPatterns(RValue monster)
+{
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
+
+			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "charge_range", 192);
+			StructVariableSet(config_clone, "attack_movement_speed", 8);
+			StructVariableSet(config_clone, "petrified_duration", 60);
+			StructVariableSet(config_clone, "petrified_shakes", 10);
+
+			RValue windup_duration = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { windup_duration, 0, 15 });
+			g_ModuleInterface->CallBuiltin("array_set", { windup_duration, 1, 30 });
+			StructVariableSet(config_clone, "windup_duration", windup_duration);
+
+			RValue attack_duration = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { attack_duration, 0, 180 });
+			g_ModuleInterface->CallBuiltin("array_set", { attack_duration, 1, 180 });
+			StructVariableSet(config_clone, "attack_duration", attack_duration);
+
+			RValue attack_stall_duration = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { attack_stall_duration, 0, 15 });
+			g_ModuleInterface->CallBuiltin("array_set", { attack_stall_duration, 1, 30 });
+			StructVariableSet(config_clone, "attack_stall_duration", attack_stall_duration);
+
+			StructVariableSet(monster, "config", config_clone);
+			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+		}
+	}
+}
+
+void ModifyBatAttackPatterns(RValue monster)
+{
+	RValue custom_attack_pattern_exists = g_ModuleInterface->CallBuiltin("struct_exists", { monster, "__deep_dungeon__custom_attack_pattern" });
+	if (!custom_attack_pattern_exists.ToBoolean())
+	{
+		if (StructVariableExists(monster, "config"))
+		{
+			RValue config = monster.GetMember("config");
+			RValue config_clone = g_ModuleInterface->CallBuiltin("variable_clone", { config });
+
+			StructVariableSet(config_clone, "damage", config_clone.GetMember("damage").ToDouble() * 2);
+			StructVariableSet(config_clone, "speed", 3);
+			StructVariableSet(config_clone, "flee_speed", 3); // -1
+			StructVariableSet(config_clone, "attack_radius", 144);
+			StructVariableSet(config_clone, "variant_attack", true);
+
+			RValue acknowledgment = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { acknowledgment, 0, 9 }); // 45
+			g_ModuleInterface->CallBuiltin("array_set", { acknowledgment, 1, 11 }); // 55
+			StructVariableSet(config_clone, "acknowledgment", acknowledgment);
+
+			RValue flee_timer = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { flee_timer, 0, 90 }); // 30
+			g_ModuleInterface->CallBuiltin("array_set", { flee_timer, 1, 120 }); // 45
+			StructVariableSet(config_clone, "flee_timer", flee_timer);
+
+			RValue attack_duration = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { attack_duration, 0, 1 });
+			g_ModuleInterface->CallBuiltin("array_set", { attack_duration, 1, 2 });
+			StructVariableSet(config_clone, "attack_duration", attack_duration);
+
+			RValue windup_duration = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { windup_duration, 0, 5 }); // 15
+			g_ModuleInterface->CallBuiltin("array_set", { windup_duration, 1, 10 }); // 30
+			StructVariableSet(config_clone, "windup_duration", windup_duration);
+
+			StructVariableSet(monster, "config", config_clone);
+			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
+		}
+	}
+}
+
 void ModifyDreadBeastAttackPatterns(bool is_boss_battle, RValue monster)
 {
 	int monster_id = monster.GetMember("monster_id").ToInt64();
@@ -3881,12 +4005,18 @@ void ModifyDreadBeastAttackPatterns(bool is_boss_battle, RValue monster)
 		ModifyRockClodAttackPatterns(is_boss_battle, monster);
 	if (monster_id == monster_name_to_id_map["stalagmite"] || monster_id == monster_name_to_id_map["stalagmite_green"] || monster_id == monster_name_to_id_map["stalagmite_purple"])
 		ModifyStalagmiteAttackPatterns(is_boss_battle, monster);
-	if (monster_id == monster_name_to_id_map["sapling"] || monster_id == monster_name_to_id_map["sapling_blue"] || monster_id == monster_name_to_id_map["sapling_purple"] || monster_id == monster_name_to_id_map["sapling_orange"])
+	if (monster_id == monster_name_to_id_map["sapling"] || monster_id == monster_name_to_id_map["sapling_cool"] || monster_id == monster_name_to_id_map["sapling_blue"] || monster_id == monster_name_to_id_map["sapling_purple"] || monster_id == monster_name_to_id_map["sapling_orange"])
 		ModifySaplingAttackPatterns(monster, monster_id);
 	if (monster_id == monster_name_to_id_map["mushroom"] || monster_id == monster_name_to_id_map["mushroom_green"] || monster_id == monster_name_to_id_map["mushroom_blue"] || monster_id == monster_name_to_id_map["mushroom_purple"])
 		ModifyShroomAttackPatterns(monster);
 	if (monster_id == monster_name_to_id_map["enchantern"] || monster_id == monster_name_to_id_map["enchantern_blue"])
 		ModifyEnchanternAttackPatterns(monster);
+	if (monster_id == monster_name_to_id_map["spirit"])
+		ModifySpiritAttackPatterns(monster);
+	if (monster_id == monster_name_to_id_map["cat"])
+		ModifyCatAttackPatterns(monster);
+	if (monster_id == monster_name_to_id_map["bat"] || monster_id == monster_name_to_id_map["bat_blue"])
+		ModifyBatAttackPatterns(monster);
 }
 
 void UnlockRecipe(int item_id, CInstance* Self, CInstance* Other)
@@ -4095,6 +4225,53 @@ void EnterDungeon(double dungeon_level, CInstance* Self, CInstance* Other)
 		Other,
 		result,
 		3,
+		arguments
+	);
+}
+
+RValue InventoryCountItem(int item_id, CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_inventory_count_item = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_INVENTORY_COUNT_ITEM,
+		(PVOID*)&gml_script_inventory_count_item
+	);
+
+	RValue result;
+	RValue item = item_id;
+	RValue* item_ptr = &item;
+
+	gml_script_inventory_count_item->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &item_ptr }
+	);
+
+	return result;
+}
+
+void InventoryRemoveItem(int item_id, int quantity, CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_inventory_remove_item = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_INVENTORY_REMOVE_ITEM,
+		(PVOID*)&gml_script_inventory_remove_item
+	);
+
+	RValue result;
+	RValue item = item_id;
+	RValue amount = quantity;
+	RValue* item_ptr = &item;
+	RValue* amount_ptr = &amount;
+	RValue* arguments[2] = { item_ptr, amount_ptr };
+
+	gml_script_inventory_remove_item->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		2,
 		arguments
 	);
 }
@@ -4363,35 +4540,88 @@ RValue GetDynamicItemSprite(int item_id)
 
 RValue GetDynamicUiSprite(std::string sprite_name)
 {
+	// Full Restore (Spell Icon)
 	if (sprite_name == "spr_ui_journal_magic_restore_spell_icon_main")
 	{
-		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+		// Dark Seal (Dark Knight Set Bonus)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3)
 		{
 			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_spell_icon_disabled" });
 			else
 				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_spell_icon_main" });
 		}
+		// Elemental Seal (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+		{
+			ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+			if (elemental_seal_effect == ElementalSealEffects::FIRE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enfire_spell_icon_disabled" });
+				else
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enfire_spell_icon_main" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::ICE)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enblizzard_spell_icon_disabled" });
+				else
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enblizzard_spell_icon_main" });
+			}
+			else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+			{
+				if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enpoison_spell_icon_disabled" });
+				else
+					return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enpoison_spell_icon_main" });
+			}
+		}
+		// Full Restore Disabled
 		else if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_restore_spell_icon_disabled" });
 	}
-	if (sprite_name == "spr_ui_journal_magic_rain_spell_icon_main")
+	// Summon Rain (Spell Icon)
+	else if (sprite_name == "spr_ui_journal_magic_rain_spell_icon_main")
 	{
-		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+		// Flood (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
+		{
+			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_flood_spell_icon_disabled" });
+			else
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_flood_spell_icon_main" });
+		}
+		// Summon Rain Disabled
+		else if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_rain_spell_icon_disabled" });
 	}
-	if (sprite_name == "spr_ui_journal_magic_growth_spell_icon_main")
+	// Growth (Spell Icon)
+	else if (sprite_name == "spr_ui_journal_magic_growth_spell_icon_main")
 	{
-		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+		// Quake (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 4)
+		{
+			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::QUAKE] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_quake_spell_icon_disabled" });
+			else
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_quake_spell_icon_main" });
+		}
+		// Growth Disabled
+		else if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_growth_spell_icon_disabled" });
 	}
-	if (sprite_name == "spr_ui_journal_magic_fire_spell_icon_main")
+	// Fire Breath (Spell Icon)
+	else if (sprite_name == "spr_ui_journal_magic_fire_spell_icon_main")
 	{
+		// Fire Breath Disabled
 		if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_fire_spell_icon_disabled" });
 	}
-	if (sprite_name == "spr_ui_dungeon_backplate")
+	// Dungeon Backplate
+	else if (sprite_name == "spr_ui_dungeon_backplate")
 	{
+		// Floor Enchantments & Offerings
 		if (!active_floor_enchantments.empty() || !active_offerings.empty())
 		{
 			std::string sprite_name = "backplate";
@@ -4430,23 +4660,97 @@ RValue GetDynamicUiSprite(std::string sprite_name)
 			std::transform(sprite_name.begin(), sprite_name.end(), sprite_name.begin(), [](unsigned char c) { return std::tolower(c); });
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { RValue(sprite_name) });
 		}
+		// Empty
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { RValue("backplate_empty") });
 	}
-	if (sprite_name == "spr_ui_journal_magic_restore_card_icon")
+	// Full Restore (Card Icon)
+	else if (sprite_name == "spr_ui_journal_magic_restore_card_icon")
 	{
-		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+		// Dark Seal (Dark Knight Set Bonus)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) 
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_siphon_life_card_icon" });
+		// Elemental Seal (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+		{
+			ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+			if (elemental_seal_effect == ElementalSealEffects::FIRE)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enfire_card_icon" });
+			else if (elemental_seal_effect == ElementalSealEffects::ICE)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enblizzard_card_icon" });
+			else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enpoison_card_icon" });
+		}
 	}
-	if (sprite_name == "spr_ui_journal_magic_card_backplate")
+	// Summon Rain (Card Icon)
+	else if (sprite_name == "spr_ui_journal_magic_rain_card_icon")
 	{
-		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
-			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_sipon_life_card_backplate" });
+		// Flood (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_flood_card_icon" });
 	}
-	if (sprite_name == "spr_ui_journal_magic_card_ribbon_restore")
+	// Growth (Card Icon)
+	else if (sprite_name == "spr_ui_journal_magic_growth_card_icon")
 	{
-		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
+		// Quake (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 4)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_quake_card_icon" });
+	}
+	// Full Restore (Card Ribbon)
+	else if (sprite_name == "spr_ui_journal_magic_card_ribbon_restore")
+	{
+		// Dark Seal (Dark Knight Set Bonus)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3)
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_siphon_life" });
+		// Elemental Seal (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+		{
+			ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+			if (elemental_seal_effect == ElementalSealEffects::FIRE)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enfire_card_icon" });
+			else if (elemental_seal_effect == ElementalSealEffects::ICE)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enblizzard_card_icon" });
+			else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enpoison_card_icon" });
+		}
+	}
+	// Summon Rain (Card Ribbon)
+	else if (sprite_name == "spr_ui_journal_magic_card_ribbon_rain")
+	{
+		// Flood (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_flood" });
+	}
+	// Growth (Card Ribbon)
+	else if (sprite_name == "spr_ui_journal_magic_card_ribbon_growth")
+	{
+		// Quake (Mage Set Bonus)
+		if (CountEquippedClassArmor()[Classes::MAGE] >= 4)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_quake" });
+	}
+	// Spell Card Backplate
+	else if (sprite_name == "spr_ui_journal_magic_card_backplate")
+	{
+		// Dark Seal (Dark Knight Set Bonus)
+		if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_sipon_life_card_backplate" });
+		// Flood (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_flood_card_backplate" });
+		// Elemental Seal (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+		{
+			ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+			if (elemental_seal_effect == ElementalSealEffects::FIRE)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_enfire_card_backplate" });
+			else if (elemental_seal_effect == ElementalSealEffects::ICE)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_enblizzard_card_backplate" });
+			else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_enpoison_card_backplate" });
+		}
+		// Quake (Mage Set Bonus)
+		else if (CountEquippedClassArmor()[Classes::MAGE] >= 4)
+			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_quake_card_backplate" });
 	}
 	return RValue();
 }
@@ -4677,16 +4981,15 @@ void SpawnDreadBeast(CInstance* Self, CInstance* Other)
 		std::pair<int, int> spawn_point = spawn_points[random_index];
 
 		// TODO: Update this as dread beast logic is implemented
-		// TODO: Essence Bat, Flame Spirit, Lava Cat
 		std::vector<std::string> possible_dread_beast_monsters = {};
 		if (floor_number < 20)
-			possible_dread_beast_monsters = { "rockclod", "sapling", "mushroom", "enchantern" };
+			possible_dread_beast_monsters = { "rockclod", "sapling", "sapling_cool", "mushroom", "enchantern" };
 		else if (floor_number < 40)
-			possible_dread_beast_monsters = { "rockclod_blue", "sapling_blue", "mushroom_green", "enchantern_blue", "stalagmite" };
+			possible_dread_beast_monsters = { "rockclod_blue", "sapling_blue", "mushroom_green", "enchantern_blue", "stalagmite", "bat" };
 		else if (floor_number < 60)
-			possible_dread_beast_monsters = { "rockclod_green", "sapling_purple", "mushroom_blue", "stalagmite_green" };
+			possible_dread_beast_monsters = { "rockclod_green", "sapling_purple", "mushroom_blue", "stalagmite_green", "bat_blue" };
 		else if (floor_number < 80)
-			possible_dread_beast_monsters = { "rockclod_red", "sapling_orange", "mushroom_purple", "stalagmite_purple" };
+			possible_dread_beast_monsters = { "rockclod_red", "sapling_orange", "mushroom_purple", "stalagmite_purple", "spirit", "cat" };
 		else
 			return; // TODO
 
@@ -4703,9 +5006,6 @@ void SelectDreadBeast(CInstance* Self, CInstance* Other)
 {
 	// TODO: Update this as Dread Beasts are implemented by removing the prune statements below.
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["barrel"]), initial_floor_monsters.end());
-	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["bat"]), initial_floor_monsters.end());
-	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["bat_blue"]), initial_floor_monsters.end());
-	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["cat"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["copperclod"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["goldclod"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["ironclod"]), initial_floor_monsters.end());
@@ -4713,10 +5013,8 @@ void SelectDreadBeast(CInstance* Self, CInstance* Other)
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["mistrilclod"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["rock_stack"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["rock_stack_lava"]), initial_floor_monsters.end());
-	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["sapling_cool"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["sapling_orange_mini"]), initial_floor_monsters.end());
 	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["silverclod"]), initial_floor_monsters.end());
-	initial_floor_monsters.erase(std::remove(initial_floor_monsters.begin(), initial_floor_monsters.end(), monster_name_to_id_map["spirit"]), initial_floor_monsters.end());
 
 	if (initial_floor_monsters.size() > 0)
 	{
@@ -5250,6 +5548,57 @@ void LoadStalagmiteAttackData()
 	checkerboard_room_wide_b_points = generate_inverted_checkerboard();
 }
 
+void ResetStaticFields(bool returned_to_title_screen)
+{
+	if (returned_to_title_screen)
+	{
+		game_is_active = false;
+		unlock_recipes = true;
+		is_restoration_tracked_interval = false;
+		is_second_wind_tracked_interval = false;
+		ari_x = -1;
+		ari_y = -1;
+		floor_number = 0;
+		floor_start_time = 0;
+		current_time_in_seconds = -1;
+		time_of_last_restoration_tick = -1;
+		time_of_last_second_wind_tick = -1;
+		held_item_id = -1;
+		ari_current_location = "";
+		ari_current_gm_room = "";
+		script_name_to_reference_map.clear();
+	}
+
+	crafting_menu_open = false;
+	drop_biome_reward = false;
+	biome_reward_disabled = false;
+	dread_beast_configured = false;
+	sigil_item_used = false;
+	lift_key_used = false;
+	orb_item_used = false;
+	inner_fire_cast = false;
+	reckoning_applied = false;
+	fairy_buff_applied = false;
+	offering_chance_occurred = false;
+	obj_dungeon_elevator_focused = false;
+	obj_dungeon_ladder_down_focused = false;
+	sigil_of_silence_count = 0;
+	sigil_of_alteration_count = 0;
+	dread_beast_monster_id = -1;
+	boss_monsters_configured = 0;
+	salves_used.clear();
+	active_sigils.clear();
+	queued_offerings.clear();
+	active_offerings.clear();
+	active_floor_enchantments.clear();
+	active_traps.clear();
+	active_traps_to_value_map.clear();
+	floor_trap_positions.clear();
+	current_floor_monsters.clear();
+	ResetCustomDrawFields();
+	ModifySpellCosts(true, false); // TODO: Make sure this works. Go into the dungeon, Growth should be reduced to 4, exit to title, load back in, growth should be 8 (since you won't load into the dungeon).
+}
+
 void ObjectCallback(
 	IN FWCodeEvent& CodeEvent
 )
@@ -5422,7 +5771,7 @@ void ObjectCallback(
 										{
 											std::vector<CInstance*> refs = script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE];
 
-											ModifySpellCosts(true);
+											ModifySpellCosts(true, true);
 											CancelStatusEffect(refs[0], refs[1], status_effect_name_to_id_map["fairy"]);
 										}
 
@@ -5476,6 +5825,11 @@ void ObjectCallback(
 										boss_battle = BossBattle::DEEP_EARTH_ORB;
 										EnterDungeon(39, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
 									}
+									else if (held_item_id == item_name_to_id_map[LAVA_CAVES_ORB])
+									{
+										boss_battle = BossBattle::LAVA_CAVES_ORB;
+										EnterDungeon(59, script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1]);
+									}
 								}
 							}
 						}
@@ -5484,14 +5838,12 @@ void ObjectCallback(
 			}
 		}
 
-		// Restoration & Auto Regen (Cleric Set Bonus)
+		// Restoration
 		if (is_restoration_tracked_interval)
 		{
-			int recovery = 1;
-			if (!GameIsPaused())
-				recovery = max(recovery, GetClericAutoRegenPotency());
-
-			ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, recovery);
+			int current_health = GetHealth(global_instance->GetRefMember("__ari")->ToInstance(), self).ToInt64();
+			if (current_health > 0)
+				ModifyHealth(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
 			is_restoration_tracked_interval = false;
 		}
 
@@ -5513,6 +5865,37 @@ void ObjectCallback(
 			class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::SOUL_EATER] = 0;
 		}
 
+		// Aspir (Mage Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR] > 0)
+		{
+			ModifyMana(global_instance->GetRefMember("__ari")->ToInstance(), self, 1);
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR] = 0;
+		}
+
+		// Mana Font (Mage Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::MANA_FONT] >= 3)
+		{
+			ModifyMana(global_instance->GetRefMember("__ari")->ToInstance(), self, 4);
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::MANA_FONT] = 0;
+		}
+
+		// Flood (Mage Set Bonus)
+		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] > 0 && current_time_in_seconds > class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] + 90)
+		{
+			for (CInstance* monster : current_floor_monsters)
+			{
+				if (StructVariableExists(monster, "hit_points"))
+				{
+					double hit_points = monster->GetMember("hit_points").ToDouble();
+					if (std::isfinite(hit_points) && hit_points > 0)
+						*monster->GetRefMember("hit_points") = hit_points - 1;
+				}
+			}
+
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = 0;
+			CastSpell(global_instance->GetRefMember("__ari")->ToInstance(), self, spell_name_to_id_map["summon_rain"]);
+		}
+
 		// Second Wind
 		if (is_second_wind_tracked_interval)
 		{
@@ -5529,14 +5912,14 @@ void ObjectCallback(
 				RegisterStatusEffect(refs[0], refs[1], status_effect_name_to_id_map["fairy"], RValue(), 1, 2147483647.0);
 				fairy_buff_applied = true;
 			}
-			ModifySpellCosts(false);
+			ModifySpellCosts(false, true);
 		}
 
 		// Inner Fire
-		if (active_offerings.contains(Offerings::INNER_FIRE) && !fire_breath_cast)
+		if (active_offerings.contains(Offerings::INNER_FIRE) && !inner_fire_cast)
 		{
-			fire_breath_cast = true;
-			CastSpell(global_instance->GetRefMember("__ari")->ToInstance(), self, 0);
+			inner_fire_cast = true;
+			CastSpell(global_instance->GetRefMember("__ari")->ToInstance(), self, spell_name_to_id_map["fire_breath"]); // TODO: Make sure this works using name_to_id_map
 		}
 
 		// Reckoning
@@ -5605,6 +5988,20 @@ void ObjectCallback(
 						ModifyDreadBeastAttackPatterns(true, monster);
 				}
 				else if (boss_battle == BossBattle::DEEP_EARTH_ORB)
+				{
+					if (!StructVariableExists(monster, "__deep_dungeon__boss_monster") && StructVariableExists(monster, "hit_points"))
+					{
+						double hit_points = monster.GetMember("hit_points").ToDouble();
+						if (std::isfinite(hit_points))
+						{
+							*monster.GetRefMember("hit_points") = hit_points * 3;
+							StructVariableSet(monster, "__deep_dungeon__boss_monster", true);
+						}
+					}
+					else if (StructVariableExists(monster, "__deep_dungeon__boss_monster"))
+						ModifyDreadBeastAttackPatterns(true, monster);
+				}
+				else if (boss_battle == BossBattle::LAVA_CAVES_ORB)
 				{
 					if (!StructVariableExists(monster, "__deep_dungeon__boss_monster") && StructVariableExists(monster, "hit_points"))
 					{
@@ -5736,6 +6133,23 @@ void ObjectCallback(
 							DropItem(GetRandomSoulStone(), ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
 						boss_battle = BossBattle::NONE;
 						ResetCustomDrawFields();
+					}
+				}
+
+				// Aspir (Mage Set Bonus)
+				if (!StructVariableExists(monster, "__deep_dungeon__aspir_proc") && StructVariableExists(monster, "hit_points"))
+				{
+					double hit_points = monster.GetMember("hit_points").ToDouble();
+					if (std::isfinite(hit_points) && hit_points <= 0)
+					{
+						static thread_local std::mt19937 random_generator(std::random_device{}());
+						std::uniform_int_distribution<size_t> zero_to_ninety_nine_distribution(0, 99);
+
+						bool aspir_proc = zero_to_ninety_nine_distribution(random_generator) < 15 ? true : false; // TODO: Tune this. Should Aspir have a 15% chance to proc?
+						if (aspir_proc)
+							class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ASPIR]++;
+
+						StructVariableSet(monster, "__deep_dungeon__aspir_proc", true);
 					}
 				}
 
@@ -5909,7 +6323,7 @@ RValue& GmlScriptModifyHealthCallback(
 )
 {
 	// Afflatus Misery (Cleric Set Bonus)
-	if (Arguments[0]->ToInt64() < 0 && CountEquippedClassArmor()[Classes::CLERIC] == 5 && floor_number != 0)
+	if (Arguments[0]->ToInt64() < 0 && CountEquippedClassArmor()[Classes::CLERIC] == 5 && AriCurrentGmRoomIsDungeonFloor())
 		class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AFFLATUS_MISERY] += abs(Arguments[0]->ToInt64());
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_MODIFY_HEALTH));
@@ -6053,15 +6467,54 @@ RValue& GmlScriptCanCastSpellCallback(
 
 	// Amnesia
 	if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA))
-		Result = 0.0;
+		Result = 0;
 
 	// Boss Fights
 	if (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE)
-		Result = 0.0;
+		Result = 0;
 	
 	// Dark Seal (Dark Knight Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0)
-		Result = 0.0;
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && AriCurrentGmRoomIsDungeonFloor())
+	{
+		if (class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0)
+			Result = 0;
+		else if (active_floor_enchantments.contains(FloorEnchantments::FEY) && ari_resource_to_value_map[AriResources::MANA] < (spell_id_to_default_cost_map[spell_name_to_id_map["full_restore"]] / 2))
+			Result = 0;
+		else if (!active_floor_enchantments.contains(FloorEnchantments::FEY) && ari_resource_to_value_map[AriResources::MANA] < (spell_id_to_default_cost_map[spell_name_to_id_map["full_restore"]]))
+			Result = 0;
+		else
+			Result = 1;
+	}
+
+	// Flood (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && AriCurrentGmRoomIsDungeonFloor() && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] > 0)
+		Result = 0;
+
+	// Elemental Seal (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && AriCurrentGmRoomIsDungeonFloor())
+	{
+		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] > 0 || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] > 0 || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] > 0)
+			Result = 0;
+		else if (active_floor_enchantments.contains(FloorEnchantments::FEY) && ari_resource_to_value_map[AriResources::MANA] < (spell_id_to_default_cost_map[spell_name_to_id_map["full_restore"]] / 2))
+			Result = 0;
+		else if (!active_floor_enchantments.contains(FloorEnchantments::FEY) && ari_resource_to_value_map[AriResources::MANA] < (spell_id_to_default_cost_map[spell_name_to_id_map["full_restore"]]))
+			Result = 0;
+		else
+			Result = 1;
+	}
+
+	// Quake (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["growth"] && CountEquippedClassArmor()[Classes::MAGE] >= 4 && AriCurrentGmRoomIsDungeonFloor())
+	{
+		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::QUAKE] > 0)
+			Result = 0;
+		else if (active_floor_enchantments.contains(FloorEnchantments::FEY) && ari_resource_to_value_map[AriResources::MANA] < (spell_id_to_default_cost_map[spell_name_to_id_map["growth"]] / 2))
+			Result = 0;
+		else if (!active_floor_enchantments.contains(FloorEnchantments::FEY) && ari_resource_to_value_map[AriResources::MANA] < (spell_id_to_default_cost_map[spell_name_to_id_map["growth"]]))
+			Result = 0;
+		else
+			Result = 1;
+	}
 
 	return Result;
 }
@@ -6074,8 +6527,12 @@ RValue& GmlScriptCastSpellCallback(
 	IN RValue** Arguments
 )
 {
+	// Mana Font (Mage Set Bonus)
+	if (CountEquippedClassArmor()[Classes::MAGE] == 5 && AriCurrentGmRoomIsDungeonFloor())
+		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::MANA_FONT]++;
+
 	// Dark Seal (Dark Knight Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && floor_number != 0)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && AriCurrentGmRoomIsDungeonFloor())
 	{
 		for (CInstance* monster : current_floor_monsters)
 		{
@@ -6104,6 +6561,54 @@ RValue& GmlScriptCastSpellCallback(
 		return Result;
 	}
 
+	// Elemental Seal (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && AriCurrentGmRoomIsDungeonFloor())
+	{
+		ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+
+		if (elemental_seal_effect == ElementalSealEffects::FIRE)
+		{
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] = 1;
+			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["fire_sword"], 1.25, 1, 2147483647.0);
+		}
+		else if (elemental_seal_effect == ElementalSealEffects::ICE)
+		{
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] = 1;
+			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["ice_sword"], 1.0, 1, 2147483647.0);
+		}
+		else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+		{
+			class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] = 1;
+			RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["venom_sword"], 1.0, 1, 2147483647.0);
+		}
+
+		return Result;
+	}
+
+	// Quake (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["growth"] && CountEquippedClassArmor()[Classes::MAGE] >= 4 && AriCurrentGmRoomIsDungeonFloor())
+	{
+		int ari_max_health = ari_resource_to_value_map[AriResources::MAX_HEALTH];
+		int ari_quake_damage = std::trunc(ari_max_health * 0.9);
+		ModifyHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], ari_quake_damage * -1);
+
+		for (CInstance* monster : current_floor_monsters)
+		{
+			if (StructVariableExists(monster, "hit_points") && StructVariableExists(monster, "__deep_dungeon__default_hit_points"))
+			{
+				double hit_points = monster->GetMember("hit_points").ToDouble();
+				if (std::isfinite(hit_points) && hit_points > 0)
+				{
+					double default_hit_points = monster->GetMember("__deep_dungeon__default_hit_points").ToDouble();
+					int monster_quake_damage = std::trunc(hit_points * 0.9);
+					*monster->GetRefMember("hit_points") = max(0, hit_points - monster_quake_damage);
+				}
+			}
+		}
+
+		return Result;
+	}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CAST_SPELL));
 	original(
 		Self,
@@ -6114,13 +6619,17 @@ RValue& GmlScriptCastSpellCallback(
 	);
 
 	// Divine Seal (Cleric Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::CLERIC] >= 3 && floor_number != 0)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::CLERIC] >= 3 && AriCurrentGmRoomIsDungeonFloor())
 	{
 		RegisterStatusEffect(script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][0], script_name_to_reference_map[GML_SCRIPT_STATUS_EFFECT_MANAGER_UPDATE][1], status_effect_name_to_id_map["fairy"], RValue(), 1, 2147483647.0);
 
 		active_floor_enchantments.clear();
 		active_sigils.insert(Sigils::SERENITY); // Prevent Serenity on the floor so it isn't wasted.
 	}
+
+	// Flood (Mage Set Bonus)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && AriCurrentGmRoomIsDungeonFloor() && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] == 0)
+		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = current_time_in_seconds;
 
 	return Result;
 }
@@ -6252,7 +6761,7 @@ RValue& GmlScriptDamageCallback(
 
 	// Afflatus Misery (Cleric Set Bonus)
 	bool afflatus_misery_proc = false;
-	if (floor_number != 0 && CountEquippedClassArmor()[Classes::CLERIC] == 5 && !active_sigils.contains(Sigils::RAGE) && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
+	if (AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[Classes::CLERIC] == 5 && !active_sigils.contains(Sigils::RAGE) && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
 	{
 		RValue target = Arguments[0]->GetMember("target");
 		if (target.ToInt64() != 1) // Everything not Ari
@@ -6278,7 +6787,7 @@ RValue& GmlScriptDamageCallback(
 	// Soul Eater (Dark Knight Set Bonus)
 	bool soul_eater_proc = false;
 	int soul_eater_amount = 0;
-	if (floor_number != 0 && CountEquippedClassArmor()[Classes::DARK_KNIGHT] == 5 && !active_sigils.contains(Sigils::RAGE) && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
+	if (AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[Classes::DARK_KNIGHT] == 5 && !active_sigils.contains(Sigils::RAGE) && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
 	{
 		RValue target = Arguments[0]->GetMember("target");
 		if (target.ToInt64() != 1) // Everything not Ari
@@ -6308,7 +6817,7 @@ RValue& GmlScriptDamageCallback(
 
 	// Drain (Dark Knight Set Bonus)
 	bool drain_proc = false;
-	if (floor_number != 0 && !soul_eater_proc && CountEquippedClassArmor()[Classes::DARK_KNIGHT] > 0 && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
+	if (AriCurrentGmRoomIsDungeonFloor() && !soul_eater_proc && CountEquippedClassArmor()[Classes::DARK_KNIGHT] > 0 && global_instance->GetMember("__ari").GetMember("fire_breath_time").ToInt64() == 0)
 	{
 		RValue target = Arguments[0]->GetMember("target");
 		if (target.ToInt64() != 1) // Everything not Ari
@@ -6536,34 +7045,90 @@ RValue& GmlScriptPlayTextCallback(
 {
 	if (game_is_active)
 	{
-		bool is_offering = false;
-		std::string conversation_name = Arguments[0]->ToString();
+		std::string localization_key = Arguments[0]->ToString();
 
-		if (conversation_name == "Conversations/Mods/Deep Dungeon/offering/2/health")
+		if (localization_key.contains("Conversations/Mods/Deep Dungeon/offering"))
 		{
-			is_offering = true;
-			ari_resource_to_penalty_map[AriResources::HEALTH] = true;
+			bool is_offering = false;
+			if (localization_key == "Conversations/Mods/Deep Dungeon/offering/2/health")
+			{
+				is_offering = true;
+				ari_resource_to_penalty_map[AriResources::HEALTH] = true;
+			}
+			else if (localization_key == "Conversations/Mods/Deep Dungeon/offering/2/stamina")
+			{
+				is_offering = true;
+				ari_resource_to_penalty_map[AriResources::STAMINA] = true;
+			}
+			else if (localization_key == "Conversations/Mods/Deep Dungeon/offering/2/mana")
+			{
+				is_offering = true;
+				ari_resource_to_penalty_map[AriResources::MANA] = true;
+			}
+
+			if (is_offering)
+			{
+				// Pick a random offering effect
+				static thread_local std::mt19937 random_generator(std::random_device{}());
+				std::uniform_int_distribution<size_t> random_offering_distribution(0, magic_enum::enum_count<Offerings>() - 1);
+				Offerings offering = magic_enum::enum_value<Offerings>(random_offering_distribution(random_generator));
+				queued_offerings.insert(offering);
+			}
 		}
-			
-		if (conversation_name == "Conversations/Mods/Deep Dungeon/offering/2/stamina")
+		else if (localization_key == "Conversations/Mods/Deep Dungeon/placeholders/sigil_parchment_exchange/cursed_armor/result")
 		{
-			is_offering = true;
-			ari_resource_to_penalty_map[AriResources::STAMINA] = true;
+			int total_cursed_armor_inventory_count = 0;
+			std::map<std::string, int> cursed_armor_name_to_inventory_count = {};
+			std::unordered_set<std::string> cursed_armor = { CURSED_HELMET_NAME, CURSED_CHESTPIECE_NAME, CURSED_PANTS_NAME, CURSED_BOOTS_NAME, CURSED_GLOVES_NAME };
+
+			for (std::string cursed_armor_name : cursed_armor)
+			{
+				int count = InventoryCountItem(item_name_to_id_map[cursed_armor_name], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][0], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][1]).ToInt64();
+				total_cursed_armor_inventory_count += count;
+				cursed_armor_name_to_inventory_count[cursed_armor_name] = count;
+			}
+
+			if (total_cursed_armor_inventory_count == 0)
+				*Arguments[0] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/insufficient";
+			else
+			{
+				*Arguments[0] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/cursed_armor";
+
+				for (size_t i = 0; i < total_cursed_armor_inventory_count * 3; i++)
+					DropItem(item_name_to_id_map["sigil_parchment"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+
+				for (auto& entry : cursed_armor_name_to_inventory_count)
+					if (entry.second > 0)
+						InventoryRemoveItem(item_name_to_id_map[entry.first], entry.second, script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][0], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][1]);
+			}
 		}
-			
-		if (conversation_name == "Conversations/Mods/Deep Dungeon/offering/2/mana")
+		else if (localization_key == "Conversations/Mods/Deep Dungeon/placeholders/sigil_parchment_exchange/soul_stone/result")
 		{
-			is_offering = true;
-			ari_resource_to_penalty_map[AriResources::MANA] = true;
-		}
-			
-		if (is_offering)
-		{
-			// Pick a random offering effect
-			static thread_local std::mt19937 random_generator(std::random_device{}());
-			std::uniform_int_distribution<size_t> random_offering_distribution(0, magic_enum::enum_count<Offerings>() - 1);
-			Offerings offering = magic_enum::enum_value<Offerings>(random_offering_distribution(random_generator));
-			queued_offerings.insert(offering);
+			int total_soul_stone_inventory_count = 0;
+			std::map<std::string, int> soul_stone_name_to_inventory_count = {};
+			// TODO: Update as soul stones are added
+			std::unordered_set<std::string> soul_stones = { SOUL_STONE_CLERIC, SOUL_STONE_DARK_KNIGHT, SOUL_STONE_MAGE };
+
+			for (std::string soul_stone_name : soul_stones)
+			{
+				int count = InventoryCountItem(item_name_to_id_map[soul_stone_name], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][0], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][1]).ToInt64();
+				total_soul_stone_inventory_count += count;
+				soul_stone_name_to_inventory_count[soul_stone_name] = count;
+			}
+
+			if (total_soul_stone_inventory_count == 0)
+				*Arguments[0] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/insufficient";
+			else
+			{
+				*Arguments[0] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/soul_stone";
+
+				for (size_t i = 0; i < total_soul_stone_inventory_count * 3; i++)
+					DropItem(item_name_to_id_map["sigil_parchment"], ari_x, ari_y, script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][0], script_name_to_reference_map[GML_SCRIPT_DROP_ITEM][1]);
+
+				for (auto& entry : soul_stone_name_to_inventory_count)
+					if (entry.second > 0)
+						InventoryRemoveItem(item_name_to_id_map[entry.first], entry.second, script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][0], script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY][1]);
+			}
 		}
 	}
 
@@ -6587,8 +7152,16 @@ RValue& GmlScriptPlayConversationCallback(
 	IN RValue** Arguments
 )
 {
-	if (game_is_active && floor_number != 0 && FLOOR_TEN_CONVERSATION_KEY == Arguments[1]->ToString())
+	if (game_is_active && AriCurrentGmRoomIsDungeonFloor() && FLOOR_TEN_CONVERSATION_KEY == Arguments[1]->ToString())
 		return Result;
+
+	if (game_is_active && ari_current_gm_room == "rm_mines_entry" && Arguments[1]->ToString() == "Conversations/gameplay_triggered/inspect_seridia_statue")
+	{
+		if (!script_name_to_reference_map.contains(GML_SCRIPT_DROP_ITEM))
+			*Arguments[1] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange/unavailable";
+		else
+			*Arguments[1] = "Conversations/Mods/Deep Dungeon/sigil_parchment_exchange";
+	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_PLAY_CONVERSATION));
 	original(
@@ -6858,7 +7431,7 @@ RValue& GmlScriptGetMinutesCallback(
 		ApplyFloorTraps(Self, Other);
 
 		// Restoration
-		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION) || (!GameIsPaused() && AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[Classes::CLERIC] > 0))
+		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION))
 		{
 			if (!is_restoration_tracked_interval && (current_time_in_seconds - time_of_last_restoration_tick) >= TWO_MINUTES_IN_SECONDS)
 			{
@@ -6874,6 +7447,23 @@ RValue& GmlScriptGetMinutesCallback(
 			{
 				is_second_wind_tracked_interval = true;
 				time_of_last_second_wind_tick = current_time_in_seconds;
+			}
+		}
+
+		// Auto Regen (Cleric Set Bonus)
+		if (!GameIsPaused() && AriCurrentGmRoomIsDungeonFloor() && CountEquippedClassArmor()[Classes::CLERIC] > 0)
+		{
+			if (class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] == 0)
+				class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] = current_time_in_seconds;
+			else if (current_time_in_seconds - class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] >= THREE_MINUTES_IN_SECONDS)
+			{
+				int current_health = GetHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
+				if (current_health > 0)
+				{
+					int recovery = GetClericAutoRegenPotency();
+					ModifyHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], recovery);
+				}
+				class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] = current_time_in_seconds;
 			}
 		}
 	}
@@ -6915,15 +7505,87 @@ RValue& GmlScriptGetLocalizerCallback(
 		// TODO: Other classes
 		classes_to_localized_armor_description_string_map[Classes::CLERIC] = LocalizeString(Self, Other, CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY).ToString();
 		classes_to_localized_armor_description_string_map[Classes::DARK_KNIGHT] = LocalizeString(Self, Other, DARK_KNIGHT_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY).ToString();
+		classes_to_localized_armor_description_string_map[Classes::MAGE] = LocalizeString(Self, Other, MAGE_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY).ToString();
 	}
-	else if (game_is_active)
+	else if (game_is_active && AriCurrentGmRoomIsDungeonFloor())
 	{
-		if (Arguments[0]->ToString() == "spells/full_restore/name" && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
-			*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/name");
-		if (Arguments[0]->ToString() == "spells/full_restore/description" && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
-			*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/description");
-		if (Arguments[0]->ToString() == "spells/full_restore/type" && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3) // Dark Seal (Dark Knight Set Bonus)
-			*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/type");
+		std::string localization_key = Arguments[0]->ToString();
+
+		// Full Restore
+		if (localization_key.contains("spells/full_restore"))
+		{
+			// Dark Seal (Dark Knight Set Bonus)
+			if (CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3)
+			{
+				if (localization_key == "spells/full_restore/name")
+					*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/name");
+				else if (localization_key == "spells/full_restore/description")
+					*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/description");
+				else if (localization_key == "spells/full_restore/type")
+					*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Siphon Life/type");
+			}
+			// Elemental Seal (Mage Set Bonus)
+			else if (CountEquippedClassArmor()[Classes::MAGE] >= 3 && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] > 0)
+			{
+				ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
+
+				if (localization_key == "spells/full_restore/name")
+				{
+					if (elemental_seal_effect == ElementalSealEffects::FIRE)
+						*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Enfire/name");
+					else if (elemental_seal_effect == ElementalSealEffects::ICE)
+						*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Enblizzard/name");
+					else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+						*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Enpoison/name");
+				}
+				else if (localization_key == "spells/full_restore/description")
+				{
+					if (elemental_seal_effect == ElementalSealEffects::FIRE)
+						*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Enfire/description");
+					else if (elemental_seal_effect == ElementalSealEffects::ICE)
+						*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Enblizzard/description");
+					else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+						*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Enpoison/description");
+				}
+				else if (localization_key == "spells/full_restore/type")
+				{
+					if (elemental_seal_effect == ElementalSealEffects::FIRE)
+						*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Enfire/type");
+					else if (elemental_seal_effect == ElementalSealEffects::ICE)
+						*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Enblizzard/type");
+					else if (elemental_seal_effect == ElementalSealEffects::VENOM)
+						*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Enpoison/type");
+				}
+			}
+		}
+		// Summon Rain
+		else if (localization_key.contains("spells/summon_rain"))
+		{
+			// Flood (Mage Set Bonus)
+			if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
+			{
+				if (localization_key == "spells/summon_rain/name")
+					*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Flood/name");
+				else if (localization_key == "spells/summon_rain/description")
+					*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Flood/description");
+				else if (localization_key == "spells/summon_rain/type")
+					*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Flood/type");
+			}
+		}
+		// Growth
+		else if (localization_key.contains("spells/growth"))
+		{
+			// Quake (Mage Set Bonus)
+			if (CountEquippedClassArmor()[Classes::MAGE] >= 4)
+			{
+				if (localization_key == "spells/growth/name")
+					*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Quake/name");
+				else if (localization_key == "spells/growth/description")
+					*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Quake/description");
+				else if (localization_key == "spells/growth/type")
+					*Arguments[0] = RValue("Spells/Mods/Deep Dungeon/Quake/type");
+			}
+		}
 	}
 
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_LOCALIZER));
@@ -6937,8 +7599,9 @@ RValue& GmlScriptGetLocalizerCallback(
 
 	if (game_is_active)
 	{
+		// Orbs
 		// TODO: Other orbs when added
-		if (crafting_menu_open && (Arguments[0]->ToString() == TIDE_CAVERNS_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY || Arguments[0]->ToString() == DEEP_EARTH_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY))
+		if (crafting_menu_open && (Arguments[0]->ToString() == TIDE_CAVERNS_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY || Arguments[0]->ToString() == DEEP_EARTH_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY || Arguments[0]->ToString() == LAVA_CAVES_ORB_DESCRIPTION_LOCALIZED_TEXT_KEY))
 		{
 			std::string result_str = Result.ToString();
 
@@ -6950,6 +7613,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(result_str);
 			return Result;
 		}
+		// Health Salve
 		else if (Arguments[0]->ToString() == HEALTH_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY)
 		{
 			std::string result_str = Result.ToString();
@@ -6961,6 +7625,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(result_str);
 			return Result;
 		}
+		// Stamina Salve
 		else if (Arguments[0]->ToString() == STAMINA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY)
 		{
 			std::string result_str = Result.ToString();
@@ -6972,6 +7637,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(result_str);
 			return Result;
 		}
+		// Mana Salve
 		else if (Arguments[0]->ToString() == MANA_SALVE_DESCRIPTION_LOCALIZED_TEXT_KEY)
 		{
 			std::string result_str = Result.ToString();
@@ -6983,6 +7649,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(result_str);
 			return Result;
 		}
+		// Floor Enchantments
 		else if (Arguments[0]->ToString() == FLOOR_ENCHANTMENT_PLACEHOLDER_TEXT_KEY)
 		{
 			std::string custom_text = "";
@@ -6997,6 +7664,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
+		// Offerings
 		else if (Arguments[0]->ToString() == OFFERINGS_PLACEHOLDER_TEXT_KEY)
 		{
 			std::string custom_text = "";
@@ -7011,6 +7679,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
+		// Cleric Armor
 		else if (Arguments[0]->ToString() == CLERIC_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY && !crafting_menu_open)
 		{
 			int cleric_armor_pieces_equipped = CountEquippedClassArmor()[Classes::CLERIC];
@@ -7034,6 +7703,7 @@ RValue& GmlScriptGetLocalizerCallback(
 			Result = RValue(custom_text);
 			return Result;
 		}
+		// Dark Knight Armor
 		else if (Arguments[0]->ToString() == DARK_KNIGHT_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY && !crafting_menu_open)
 		{
 			int dark_knight_armor_pieces_equipped = CountEquippedClassArmor()[Classes::DARK_KNIGHT];
@@ -7053,6 +7723,27 @@ RValue& GmlScriptGetLocalizerCallback(
 				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_DARK_SEAL_LOCALIZED_TEXT_KEY).ToString();
 				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_SOUL_EATER_LOCALIZED_TEXT_KEY).ToString();
 			}
+
+			Result = RValue(custom_text);
+			return Result;
+		}
+		// Mage Armor
+		else if (Arguments[0]->ToString() == MAGE_ARMOR_DESCRIPTION_LOCALIZED_TEXT_KEY && !crafting_menu_open)
+		{
+			int mage_armor_pieces_equipped = CountEquippedClassArmor()[Classes::MAGE];
+
+			std::string custom_text = classes_to_localized_armor_description_string_map[Classes::MAGE];
+			custom_text += "\n\n" + LocalizeString(Self, Other, SET_PIECES_EQUIPPED_LOCALIZED_TEXT_KEY).ToString() + " [" + std::to_string(mage_armor_pieces_equipped) + "/5]";
+			if (mage_armor_pieces_equipped >= 1)
+				custom_text += "\n- " + LocalizeString(Self, Other, MAGE_SET_BONUS_ASPIR_LOCALIZED_TEXT_KEY).ToString();
+			if (mage_armor_pieces_equipped >= 2)
+				custom_text += "\n- " + LocalizeString(Self, Other, MAGE_SET_BONUS_FLOOD_LOCALIZED_TEXT_KEY).ToString();
+			if (mage_armor_pieces_equipped >= 3)
+				custom_text += "\n- " + LocalizeString(Self, Other, MAGE_SET_BONUS_ELEMENTAL_SEAL_LOCALIZED_TEXT_KEY).ToString();
+			if (mage_armor_pieces_equipped >= 4)
+				custom_text += "\n- " + LocalizeString(Self, Other, MAGE_SET_BONUS_QUAKE_LOCALIZED_TEXT_KEY).ToString();
+			if (mage_armor_pieces_equipped == 5)
+				custom_text += "\n- " + LocalizeString(Self, Other, MAGE_SET_BONUS_MANA_FONT_LOCALIZED_TEXT_KEY).ToString();
 
 			Result = RValue(custom_text);
 			return Result;
@@ -7084,6 +7775,8 @@ RValue& GmlScriptGetWeatherCallback(
 			UnlockRecipe(item_name_to_id_map[armor_name], Self, Other);
 		for (std::string orb_name : ORB_NAMES)
 			UnlockRecipe(item_name_to_id_map[orb_name], Self, Other);
+		for (auto& entry : sigil_to_item_id_map)
+			UnlockRecipe(entry.second, Self, Other);
 	}
 	
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_WEATHER));
@@ -7164,7 +7857,7 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	initial_floor_monsters.clear();
 
 	DisableAllPerks();
-	ModifySpellCosts(true);
+	ModifySpellCosts(true, true);
 	ScaleMistpoolArmor(true);
 	ScaleMistpoolWeapon(true);
 	ScaleMistpoolPickaxe(true);
@@ -7173,15 +7866,12 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	SetInvulnerabilityHits(0);
 	SetFireBreathTime(0);
 	drop_biome_reward = false;
-	fire_breath_cast = false;
+	inner_fire_cast = false;
 	reckoning_applied = false;
 	fairy_buff_applied = false;
 	offering_chance_occurred = false;
 	sigil_of_silence_count = 0;
 	sigil_of_alteration_count = 0;
-
-	// Reset any floor specific set bonus effects.
-	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
 
 	// Track Unmodified Max HP
 	unmodified_base_health = GetMaxHealth(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]).ToInt64();
@@ -7215,16 +7905,12 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 		else if(active_offerings.contains(Offerings::DREAD))
 			PlayConversation(DREAD_BEAST_WARNING_CONVERSATION_KEY, Self, Other);
 
-		for (FloorEnchantments floor_enchantment : active_floor_enchantments)
-		{
-			if (floor_enchantment == FloorEnchantments::RESTORATION)
-				time_of_last_restoration_tick = current_time_in_seconds;
-			if (floor_enchantment == FloorEnchantments::SECOND_WIND)
-				time_of_last_second_wind_tick = current_time_in_seconds;
-		}
-
-		if (CountEquippedClassArmor()[Classes::CLERIC] > 0)
+		if (active_floor_enchantments.contains(FloorEnchantments::RESTORATION))
 			time_of_last_restoration_tick = current_time_in_seconds;
+		if (active_floor_enchantments.contains(FloorEnchantments::SECOND_WIND))
+			time_of_last_second_wind_tick = current_time_in_seconds;
+		if (CountEquippedClassArmor()[Classes::CLERIC] > 0)
+			class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] = current_time_in_seconds;
 
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
@@ -7245,9 +7931,6 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 	}
 	else if (boss_battle != BossBattle::NONE)
 	{
-		if (CountEquippedClassArmor()[Classes::CLERIC] > 0)
-			time_of_last_restoration_tick = current_time_in_seconds;
-
 		if (script_name_to_reference_map.contains(GML_SCRIPT_UPDATE_TOOLBAR_MENU))
 			UpdateToolbarMenu(script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][0], script_name_to_reference_map[GML_SCRIPT_UPDATE_TOOLBAR_MENU][1]);
 
@@ -7268,6 +7951,16 @@ RValue& GmlScriptOnDungeonRoomStartCallback(
 			SpawnMonster(Self, Other, 240 + 8, 208 + 8, monster_name_to_id_map["enchantern_blue"]); // Right
 			SpawnMonster(Self, Other, 192 + 8, 240 + 8, monster_name_to_id_map["stalagmite"]); // Middle
 			PlayConversation(BOSS_BATTLE_DEEP_EARTH_ORB_CONVERSATION_KEY, Self, Other);
+		}
+		else if (boss_battle == BossBattle::LAVA_CAVES_ORB)
+		{
+			SpawnMonster(Self, Other, 128 + 8, 240 + 8, monster_name_to_id_map["bat_blue"]); // West
+			//SpawnMonster(Self, Other, 144 + 8, 192 + 8, monster_name_to_id_map["bat_blue"]); // Northwest
+			//SpawnMonster(Self, Other, 240 + 8, 192 + 8, monster_name_to_id_map["bat_blue"]); // Northeast
+			SpawnMonster(Self, Other, 256 + 8, 240 + 8, monster_name_to_id_map["bat_blue"]); // East
+			SpawnMonster(Self, Other, 192 + 8, 176 + 8, monster_name_to_id_map["bat_blue"]); // North
+			SpawnMonster(Self, Other, 192 + 8, 224 + 8, monster_name_to_id_map["cat"]); // Center
+			PlayConversation(BOSS_BATTLE_LAVA_CAVES_ORB_CONVERSATION_KEY, Self, Other);
 		}
 	}
 
@@ -7299,6 +7992,8 @@ RValue& GmlScriptGoToRoomCallback(
 		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_tide_ritual_chamber" });
 	else if (boss_battle == BossBattle::DEEP_EARTH_ORB && !ari_current_gm_room.contains("ritual"))
 		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_deep_ritual_chamber" });
+	else if (boss_battle == BossBattle::LAVA_CAVES_ORB && !ari_current_gm_room.contains("ritual"))
+		*Arguments[0] = g_ModuleInterface->CallBuiltin("asset_get_index", { "rm_mines_lava_ritual_chamber" });
 	// End Boss Battles when leaving the ritual floor.
 	else if (boss_battle != BossBattle::NONE && ari_current_gm_room.contains("ritual"))
 		boss_battle = BossBattle::NONE;
@@ -7335,7 +8030,13 @@ RValue& GmlScriptGoToRoomCallback(
 		SceneAudioPlayerStop(script_name_to_reference_map[GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY][0], script_name_to_reference_map[GML_SCRIPT_SCENE_AUDIO_PLAYER_PLAY][1]);
 
 	// Reset any floor specific set bonus effects.
+	class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] = 0;
 	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = magic_enum::enum_integer(GetRandomElementalSealEffect());
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] = 0;
 
 	// Reset Max HP Adjustments
 	if (unmodified_base_health != -1)
@@ -7362,7 +8063,7 @@ RValue& GmlScriptGoToRoomCallback(
 		active_traps_to_value_map.clear();
 		floor_trap_positions.clear();
 		current_floor_monsters.clear();
-		ModifySpellCosts(true);
+		ModifySpellCosts(true, false);
 		ScaleMistpoolArmor(false);
 		ScaleMistpoolWeapon(false);
 		ScaleMistpoolPickaxe(false);
@@ -7373,7 +8074,7 @@ RValue& GmlScriptGoToRoomCallback(
 		drop_biome_reward = false;
 		biome_reward_disabled = false;
 		dread_beast_configured = false;
-		fire_breath_cast = false;
+		inner_fire_cast = false;
 		reckoning_applied = false;
 		fairy_buff_applied = false;
 		offering_chance_occurred = false;
@@ -7741,6 +8442,29 @@ RValue& GmlScriptDeserializeLiveItemCallback(
 	return Result;
 }
 
+RValue& GmlScriptDeserializeInventoryCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_DESERIALIZE_INVENTORY))
+		script_name_to_reference_map[GML_SCRIPT_DESERIALIZE_INVENTORY] = { Self, Other };
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_DESERIALIZE_INVENTORY));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
 RValue& GmlScriptGetTreasureFromDistributionCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -7832,7 +8556,7 @@ RValue& GmlScriptVertigoDrawWithColorCallback(
 	IN RValue** Arguments
 )
 {
-	if (game_is_active && !crafting_menu_open)
+	if (game_is_active && !crafting_menu_open && AriCurrentGmRoomIsDungeonFloor()) // TODO: Make sure the AriCurrentGmRoomIsDungeonFloor() condition is working correctly.
 	{
 		RValue type = g_ModuleInterface->CallBuiltin("asset_get_type", { *Arguments[0] });
 		if (type.ToInt64() == 1) // asset_sprite
@@ -8878,6 +9602,33 @@ void CreateHookGmlScriptDeserializeLiveItem(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptDeserializeInventory(AurieStatus& status)
+{
+	CScript* gml_script_deserialize_inventory = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_DESERIALIZE_INVENTORY,
+		(PVOID*)&gml_script_deserialize_inventory
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DESERIALIZE_INVENTORY);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_DESERIALIZE_INVENTORY,
+		gml_script_deserialize_inventory->m_Functions->m_ScriptFunction,
+		GmlScriptDeserializeInventoryCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_DESERIALIZE_INVENTORY);
+	}
+}
+
 void CreateHookGmlScriptGetTreasureFromDistribution(AurieStatus& status)
 {
 	CScript* gml_script_get_treasure_from_distribution = nullptr;
@@ -9307,6 +10058,13 @@ EXPORTED AurieStatus ModuleInitialize(
 	}
 
 	CreateHookGmlScriptDeserializeLiveItem(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptDeserializeInventory(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
