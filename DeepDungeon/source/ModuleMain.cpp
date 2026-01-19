@@ -4587,7 +4587,7 @@ RValue GetDynamicUiSprite(std::string sprite_name)
 		// Flood (Mage Set Bonus)
 		if (CountEquippedClassArmor()[Classes::MAGE] >= 2)
 		{
-			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] > 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
+			if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA) || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] >= 0 || (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE))
 				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_flood_spell_icon_disabled" });
 			else
 				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_flood_spell_icon_main" });
@@ -4707,11 +4707,11 @@ RValue GetDynamicUiSprite(std::string sprite_name)
 		{
 			ElementalSealEffects elemental_seal_effect = *magic_enum::enum_cast<ElementalSealEffects>(class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL]);
 			if (elemental_seal_effect == ElementalSealEffects::FIRE)
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enfire_card_icon" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_enfire" });
 			else if (elemental_seal_effect == ElementalSealEffects::ICE)
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enblizzard_card_icon" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_enblizzard" });
 			else if (elemental_seal_effect == ElementalSealEffects::VENOM)
-				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_enpoison_card_icon" });
+				return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_journal_magic_card_ribbon_enpoison" });
 		}
 	}
 	// Summon Rain (Card Ribbon)
@@ -6487,7 +6487,7 @@ RValue& GmlScriptCanCastSpellCallback(
 	}
 
 	// Flood (Mage Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && AriCurrentGmRoomIsDungeonFloor() && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] > 0)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && AriCurrentGmRoomIsDungeonFloor() && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] >= 0)
 		Result = 0;
 
 	// Elemental Seal (Mage Set Bonus)
@@ -6528,7 +6528,7 @@ RValue& GmlScriptCastSpellCallback(
 )
 {
 	// Mana Font (Mage Set Bonus)
-	if (CountEquippedClassArmor()[Classes::MAGE] == 5 && AriCurrentGmRoomIsDungeonFloor())
+	if (CountEquippedClassArmor()[Classes::MAGE] == 5 && AriCurrentGmRoomIsDungeonFloor() && (Arguments[0]->ToInt64() != spell_name_to_id_map["summon_rain"] || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] == -1))
 		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::MANA_FONT]++;
 
 	// Dark Seal (Dark Knight Set Bonus)
@@ -6628,7 +6628,7 @@ RValue& GmlScriptCastSpellCallback(
 	}
 
 	// Flood (Mage Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && AriCurrentGmRoomIsDungeonFloor() && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] == 0)
+	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && AriCurrentGmRoomIsDungeonFloor() && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] <= 0)
 		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = current_time_in_seconds;
 
 	return Result;
@@ -8032,7 +8032,7 @@ RValue& GmlScriptGoToRoomCallback(
 	// Reset any floor specific set bonus effects.
 	class_name_to_set_bonus_effect_value_map[Classes::CLERIC][ManagedSetBonuses::AUTO_REGEN] = 0;
 	class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] = 0;
-	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = 0;
+	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] = -1;
 	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ELEMENTAL_SEAL] = magic_enum::enum_integer(GetRandomElementalSealEffect());
 	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] = 0;
 	class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] = 0;
