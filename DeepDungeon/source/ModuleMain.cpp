@@ -1941,6 +1941,17 @@ RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue va
 	);
 }
 
+void StructVariableRemove(RValue the_struct, const char* variable_name)
+{
+	if (StructVariableExists(the_struct, variable_name))
+	{
+		RValue struct_exists = g_ModuleInterface->CallBuiltin(
+			"struct_remove",
+			{ the_struct, variable_name }
+		);
+	}
+}
+
 bool GlobalVariableExists(const char* variable_name)
 {
 	RValue global_variable_exists = g_ModuleInterface->CallBuiltin(
@@ -6203,6 +6214,8 @@ void ObjectCallback(
 						}
 					}
 				}
+				else
+					StructVariableRemove(monster, "__deep_dungeon__conceal_hit_points");
 				
 				// Sigil of Rage
 				if (active_sigils.contains(Sigils::RAGE))
@@ -6468,13 +6481,11 @@ RValue& GmlScriptCanCastSpellCallback(
 	// Amnesia
 	if (active_floor_enchantments.contains(FloorEnchantments::AMNESIA))
 		Result = 0;
-
 	// Boss Fights
-	if (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE)
+	else if (configuration.enable_boss_fight_restrictions && boss_battle != BossBattle::NONE)
 		Result = 0;
-	
 	// Dark Seal (Dark Knight Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && AriCurrentGmRoomIsDungeonFloor())
+	else if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::DARK_KNIGHT] >= 3 && AriCurrentGmRoomIsDungeonFloor())
 	{
 		if (class_name_to_set_bonus_effect_value_map[Classes::DARK_KNIGHT][ManagedSetBonuses::DARK_SEAL] > 0)
 			Result = 0;
@@ -6485,13 +6496,11 @@ RValue& GmlScriptCanCastSpellCallback(
 		else
 			Result = 1;
 	}
-
 	// Flood (Mage Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && AriCurrentGmRoomIsDungeonFloor() && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] >= 0)
+	else if (Arguments[0]->ToInt64() == spell_name_to_id_map["summon_rain"] && CountEquippedClassArmor()[Classes::MAGE] >= 2 && AriCurrentGmRoomIsDungeonFloor() && class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::FLOOD] >= 0)
 		Result = 0;
-
 	// Elemental Seal (Mage Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && AriCurrentGmRoomIsDungeonFloor())
+	else if (Arguments[0]->ToInt64() == spell_name_to_id_map["full_restore"] && CountEquippedClassArmor()[Classes::MAGE] >= 3 && AriCurrentGmRoomIsDungeonFloor())
 	{
 		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENFIRE] > 0 || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENBLIZZARD] > 0 || class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::ENPOISON] > 0)
 			Result = 0;
@@ -6502,9 +6511,8 @@ RValue& GmlScriptCanCastSpellCallback(
 		else
 			Result = 1;
 	}
-
 	// Quake (Mage Set Bonus)
-	if (Arguments[0]->ToInt64() == spell_name_to_id_map["growth"] && CountEquippedClassArmor()[Classes::MAGE] >= 4 && AriCurrentGmRoomIsDungeonFloor())
+	else if (Arguments[0]->ToInt64() == spell_name_to_id_map["growth"] && CountEquippedClassArmor()[Classes::MAGE] >= 4 && AriCurrentGmRoomIsDungeonFloor())
 	{
 		if (class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::QUAKE] > 0)
 			Result = 0;
@@ -6606,6 +6614,7 @@ RValue& GmlScriptCastSpellCallback(
 			}
 		}
 
+		class_name_to_set_bonus_effect_value_map[Classes::MAGE][ManagedSetBonuses::QUAKE] = 1;
 		return Result;
 	}
 
