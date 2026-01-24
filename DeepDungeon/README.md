@@ -189,7 +189,7 @@ The **game HUD is hidden** for a brief period.
 
 Dread Beasts are *incredibly powerful* **monsters** that may *rarely* appear in the Deep Dungeon. These monsters have *significantly increased* **stats** and use *custom* **attack patterns** to engage you. The formidable enemies pose a significant threat and should be approached with extreme caution. Defeating a dread beast has a *chance* to reward you with a rare **soulstone item** used for *crafting* special **class gear**.
 
-![](https://i.imgur.com/NeCgjbq.gif)
+https://github.com/user-attachments/assets/d806aafb-5e4f-4301-a274-73ba5dd4fcc4
 
 ### Clods
 
