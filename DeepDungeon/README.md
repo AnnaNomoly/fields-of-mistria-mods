@@ -3,8 +3,7 @@
 
 A *first of its kind* mod for [Fields of Mistria](https://www.fieldsofmistria.com/) that adds entirely new **custom content** to the **dungeon**. This mod *completely overhauls* the game's **dungeon** by adding several entirely new dungeon **mechanics**, **items**, **armor**, **weapons**, **monsters**, and *more*!
 
-![Demo video](https://i.imgur.com/ARr1wVE.gif)
-
+https://github.com/user-attachments/assets/c481e023-1ec8-4a55-b246-90c6870c7367
 
 ## Rules of the Dungeon
 
