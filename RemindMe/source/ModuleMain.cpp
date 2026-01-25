@@ -8,7 +8,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "RemindMe";
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.1.0";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
@@ -32,6 +32,8 @@ static const std::string YEAR_KEY = "year";
 static const std::string WEATHER_KEY = "weather";
 static const std::string CURRENT_LOCATION_KEY = "current_location";
 static const std::string NPC_NEARBY_KEY = "npc_nearby";
+static const std::string NPC_GIFTABLE_KEY = "npc_giftable";
+static const std::string FARM_ANIMAL_OUTSIDE_KEY = "farm_animal_outside";
 static const std::string RESET_AFTER_KEY = "reset_after";
 static const std::string CAN_TRIGGER_AFTER_KEY = "can_trigger_after";
 
@@ -136,6 +138,8 @@ static struct Reminder {
 	int npc = -1;
 	int last_triggered_time = -1;
 	int reset_after_time_incremement = -1;
+	bool npc_giftable = false; // Ignored unless explicitly set to true
+	bool farm_animal_outside = false; // Ignored unless explicitly set to true
 	bool has_triggered = false;
 	bool can_trigger_after = false;
 	ResetAfter reset_after = ResetAfter::DAY;
@@ -202,8 +206,6 @@ uint64_t GetCurrentSystemTime() {
 
 bool GameIsPaused()
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
 	RValue paused = global_instance->GetMember("__pause_status");
 	return paused.ToInt64() > 0;
 }
@@ -614,13 +616,13 @@ void CreateOrLoadConfigFile()
 									{
 										season_str = to_upper(season_str);
 										if (season_str == SPRING)
-											reminder.season = 1; // This will correspond to current_season == 1
+											reminder.season = 0; // This will correspond to current_season == 0 (SPRING)
 										if (season_str == SUMMER)
-											reminder.season = 2; // This will correspond to current_season == 2
+											reminder.season = 1; // This will correspond to current_season == 1 (SUMMER)
 										if (season_str == FALL)
-											reminder.season = 3; // This will correspond to current_season == 3
+											reminder.season = 2; // This will correspond to current_season == 2 (FALL)
 										if (season_str == WINTER)
-											reminder.season = 4; // This will correspond to current_season == 4
+											reminder.season = 3; // This will correspond to current_season == 3 (WINTER)
 									}
 									else
 									{
@@ -654,11 +656,11 @@ void CreateOrLoadConfigFile()
 										if (weather_str == CALM_WEATHER)
 											reminder.weather = weather_name_to_id_map["calm"]; // This will correspond to current_weather == CALM
 										if (weather_str == INCLEMENT_WEATHER)
-											reminder.season = weather_name_to_id_map["inclement"]; // This will correspond to current_weather == INCLEMENT
+											reminder.weather = weather_name_to_id_map["inclement"]; // This will correspond to current_weather == INCLEMENT
 										if (weather_str == SEVERE_WEATHER)
-											reminder.season = weather_name_to_id_map["heavy_inclement"]; // This will correspond to current_weather == HEAVY_INCLEMENT
+											reminder.weather = weather_name_to_id_map["heavy_inclement"]; // This will correspond to current_weather == HEAVY_INCLEMENT
 										if (weather_str == SPECIAL_WEATHER)
-											reminder.season = weather_name_to_id_map["special"]; // This will correspond to current_weather == SPECIAL
+											reminder.weather = weather_name_to_id_map["special"]; // This will correspond to current_weather == SPECIAL
 									}
 									else
 									{
@@ -718,6 +720,34 @@ void CreateOrLoadConfigFile()
 									}
 								}
 
+								// npc_giftable condition.
+								if (reminder_conditions.contains(NPC_GIFTABLE_KEY))
+								{
+									if (reminder_conditions.at(NPC_GIFTABLE_KEY).is_boolean())
+									{
+										reminder.npc_giftable = reminder_conditions[NPC_GIFTABLE_KEY];
+									}
+									else
+									{
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition!", MOD_NAME, VERSION, NPC_GIFTABLE_KEY.c_str());
+										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
+									}
+								}
+
+								// farm_animal_outside condition.
+								if (reminder_conditions.contains(FARM_ANIMAL_OUTSIDE_KEY))
+								{
+									if (reminder_conditions.at(FARM_ANIMAL_OUTSIDE_KEY).is_boolean())
+									{
+										reminder.farm_animal_outside = reminder_conditions[FARM_ANIMAL_OUTSIDE_KEY];
+									}
+									else
+									{
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition!", MOD_NAME, VERSION, FARM_ANIMAL_OUTSIDE_KEY.c_str());
+										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
+									}
+								}
+
 								// can_trigger_after instruction.
 								if (reminder_conditions.contains(CAN_TRIGGER_AFTER_KEY))
 								{
@@ -760,7 +790,7 @@ void CreateOrLoadConfigFile()
 								}
 								
 								// Final validation. Confirm the reminder has at least one valid condition.
-								if (reminder.HasTimeCondition() || reminder.HasWeekDayCondition() || reminder.HasMonthDayCondition() || reminder.HasSeasonCondition() || reminder.HasYearCondition() || reminder.HasWeatherCondition() || reminder.HasLocationCondition() || reminder.HasNpcCondition())
+								if (reminder.HasTimeCondition() || reminder.HasWeekDayCondition() || reminder.HasMonthDayCondition() || reminder.HasSeasonCondition() || reminder.HasYearCondition() || reminder.HasWeatherCondition() || reminder.HasLocationCondition() || reminder.HasNpcCondition() || reminder.farm_animal_outside)
 									reminders.push_back(reminder);
 								else
 								{
@@ -840,6 +870,57 @@ void CreateNotification(std::string notification_localization_str, CInstance* Se
 	);
 }
 
+RValue GetAllAnimals(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_get_all_animals = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_get_all_animals",
+		(PVOID*)&gml_script_get_all_animals
+	);
+
+	RValue all_animals;
+	gml_script_get_all_animals->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		all_animals,
+		0,
+		nullptr
+	);
+
+	return all_animals;
+}
+
+bool AnyFarmAnimalOutside(CInstance* Self, CInstance* Other)
+{
+	RValue all_animals = GetAllAnimals(Self, Other);
+	if (all_animals.m_Kind == VALUE_OBJECT)
+	{
+		RValue __buffer = *all_animals.GetRefMember("__buffer");
+		if (__buffer.m_Kind == VALUE_ARRAY)
+		{
+			size_t size = 0;
+			g_ModuleInterface->GetArraySize(__buffer, size);
+
+			for (size_t i = 0; i < size; i++)
+			{
+				RValue entry = __buffer[i];
+				if (entry.m_Kind == VALUE_OBJECT && StructVariableExists(entry, "location_position"))
+				{
+					RValue location_position = entry.GetMember("location_position");
+					if (location_position.m_Kind == VALUE_OBJECT && StructVariableExists(location_position, "location_id"))
+					{
+						RValue location_id = location_position.GetMember("location_id");
+						if (IsNumeric(location_id) && location_id.ToInt64() == location_name_to_id_map["farm"])
+							return true;
+					}
+				}
+			}
+		}
+	}
+
+	return false;
+}
+
 void TrackNPC(CInstance* npc, std::string npc_name)
 {
 	RValue me_exists = g_ModuleInterface->CallBuiltin("struct_exists", { npc, "me" });
@@ -852,6 +933,17 @@ void UpdateTrackedNPCs()
 	for (auto& entry : npc_name_to_tracker_map)
 		if (current_time_in_seconds > entry.second.time_last_checked + 300) // 5m
 			entry.second.is_nearby = false;
+}
+
+bool NpcGiftable(int npc_id)
+{
+	RValue npc_data = global_instance->GetMember("__npc_database");
+	RValue npc = npc_data[npc_id];
+
+	if (npc.m_Kind == VALUE_OBJECT && StructVariableExists(npc, "gift_flag"))
+		return npc.GetMember("gift_flag").ToBoolean();
+
+	return false;
 }
 
 void ObjectCallback(
@@ -1062,6 +1154,10 @@ RValue& GmlScriptGetMinutesCallback(
 				trigger &= reminder.location == gm_room_name_to_location_id_map[ari_current_gm_room];
 			if (reminder.HasNpcCondition())
 				trigger &= npc_name_to_tracker_map[npc_id_to_name_map[reminder.npc]].is_nearby;
+			if (reminder.npc_giftable && reminder.HasNpcCondition())
+				trigger &= NpcGiftable(reminder.npc);
+			if (reminder.farm_animal_outside)
+				trigger &= AnyFarmAnimalOutside(Self, Other);
 
 			if (trigger)
 			{
@@ -1117,7 +1213,7 @@ RValue& GmlScriptCalendarSeasonCallback(
 	);
 
 	if (game_is_active)
-		current_season = Result.ToInt64() + 1; // Result is a VALUE_REAL that is the 0-indexed calendar season
+		current_season = Result.ToInt64(); // Result is a VALUE_REAL that is the 0-indexed calendar season
 
 	return Result;
 }
