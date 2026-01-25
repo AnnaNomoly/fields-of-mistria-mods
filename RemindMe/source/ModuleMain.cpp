@@ -958,7 +958,7 @@ void ObjectCallback(
 	if (!self->m_Object)
 		return;
 
-	if (!GameIsPaused() && !cutscene_is_running)
+	if (game_is_active && !GameIsPaused() && !cutscene_is_running)
 	{
 		UpdateTrackedNPCs();
 
