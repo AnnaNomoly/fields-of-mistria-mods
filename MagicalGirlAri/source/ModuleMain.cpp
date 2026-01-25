@@ -8,7 +8,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "MagicalGirlAri";
-static const char* const VERSION = "1.0.1";
+static const char* const VERSION = "1.0.3";
 static const char* const EASTER_EGG_SET_PIECE_REQUIREMENT_KEY = "easter_egg_set_piece_requirement";
 static const char* const BONUS_DAILY_MANA_SET_PIECE_REQUIREMENT_KEY = "bonus_daily_mana_set_piece_requirement";
 static const char* const VANQUISH_ENEMY_SET_PIECE_REQUIREMENT_KEY = "vanquish_enemy_set_piece_requirement";
@@ -24,7 +24,8 @@ static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@Weathe
 static const char* const GML_SCRIPT_ARI_ON_NEW_DAY = "gml_Script_on_new_day@Ari@Ari";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const std::string JUNIPER_EASTER_EGG_CONVERSATION_KEY = "Conversations/Mods/Magical Girl Ari/juniper_contract";
-static const std::string SAILOR_MISTRIA_DRESS_ITEM_NAME = "sailor_mistria"; // Core set piece
+static const std::string SAILOR_MISTRIA_DRESS_ITEM_NAME = "sailor_mistria"; // Core set piece (interchangeable with sailor_mistria_m)
+static const std::string SAILOR_MISTRIA_SUIT_ITEM_NAME = "sailor_mistria_m"; // Core set piece (interchangeable with sailor_mistria)
 static const std::string SAILOR_MISTRIA_HEELS_ITEM_NAME = "sailor_mistria_heels"; // Core set piece (interchangeable with boots)
 static const std::string SAILOR_MISTRIA_BOOTS_ITEM_NAME = "sailor_mistria_boots"; // Core set piece (interchangeable with heels)
 static const std::string PRINCESS_TWINTAILS_HAIR_NAME = "princess_twintails"; // Additional set piece
@@ -36,7 +37,7 @@ static const std::string SAILOR_MISTRIA_PINS_B_ACCESSORY_NAME = "sailor_mistria_
 static const std::string SAILOR_MISTRIA_PINS_C_ACCESSORY_NAME = "sailor_mistria_pins_c"; // Additional set piece
 static const std::string HEART_SWORD_NAME = "sword_verdigris";
 
-static const std::unordered_set<std::string> MAGICAL_GIRL_ARI_CORE_SET_PIECE_NAMES = { SAILOR_MISTRIA_DRESS_ITEM_NAME, SAILOR_MISTRIA_HEELS_ITEM_NAME, SAILOR_MISTRIA_BOOTS_ITEM_NAME };
+static const std::unordered_set<std::string> MAGICAL_GIRL_ARI_CORE_SET_PIECE_NAMES = { SAILOR_MISTRIA_DRESS_ITEM_NAME, SAILOR_MISTRIA_SUIT_ITEM_NAME, SAILOR_MISTRIA_HEELS_ITEM_NAME, SAILOR_MISTRIA_BOOTS_ITEM_NAME };
 static const std::unordered_set<std::string> MAGICAL_GIRL_ARI_ADDITIONAL_SET_PIECE_NAMES = { PRINCESS_TWINTAILS_HAIR_NAME, SERENE_BUN_HAIR_NAME, RINI_BUN_HAIR_NAME, SAILOR_MISTRIA_PINS_ACCESSORY_NAME, SAILOR_MISTRIA_PINS_B_ACCESSORY_NAME, SAILOR_MISTRIA_PINS_C_ACCESSORY_NAME };
 static const std::string MANA_POTION_ITEM_NAME = "mana_potion";
 static const int DEFAULT_EASTER_EGG_SET_PIECE_REQUIREMENT = 3;
