@@ -30,7 +30,7 @@ static const std::string DAY_OF_MONTH_KEY = "day_of_month";
 static const std::string SEASON_KEY = "season";
 static const std::string YEAR_KEY = "year";
 static const std::string WEATHER_KEY = "weather";
-static const std::string CURRENT_LOCATION_KEY = "current_location";
+static const std::string LOCATION_KEY = "location";
 static const std::string NPC_NEARBY_KEY = "npc_nearby";
 static const std::string NPC_GIFTABLE_KEY = "npc_giftable";
 static const std::string FARM_ANIMAL_OUTSIDE_KEY = "farm_animal_outside";
@@ -670,9 +670,9 @@ void CreateOrLoadConfigFile()
 								}
 
 								// location condition.
-								if (reminder_conditions.contains(CURRENT_LOCATION_KEY))
+								if (reminder_conditions.contains(LOCATION_KEY))
 								{
-									std::string current_location_str = reminder_conditions[CURRENT_LOCATION_KEY];
+									std::string current_location_str = reminder_conditions[LOCATION_KEY];
 									if (IsValidLocation(current_location_str))
 									{
 										current_location_str = to_upper(current_location_str);
@@ -699,7 +699,7 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, CURRENT_LOCATION_KEY.c_str(), current_location_str.c_str());
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, LOCATION_KEY.c_str(), current_location_str.c_str());
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
@@ -715,7 +715,7 @@ void CreateOrLoadConfigFile()
 									}
 									else
 									{
-										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, CURRENT_LOCATION_KEY.c_str(), npc_str.c_str());
+										g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Invalid \"%s\" value in a condition: %s!", MOD_NAME, VERSION, LOCATION_KEY.c_str(), npc_str.c_str());
 										g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The condition will be ignored.", MOD_NAME, VERSION);
 									}
 								}
