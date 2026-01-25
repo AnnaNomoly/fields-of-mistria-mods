@@ -9,7 +9,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "UtilitySword";
-static const char* const VERSION = "1.0.0";
+static const char* const VERSION = "1.1.0";
 static const char* const SWORD_CAN_PICK_KEY = "sword_can_pick";
 static const char* const SWORD_CAN_CHOP_KEY = "sword_can_chop";
 static const char* const ENABLED_ON_FARM_KEY = "enabled_on_farm";
@@ -19,6 +19,7 @@ static const char* const ENABLED_IN_MINES_KEY = "enabled_in_mines";
 static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
 static const char* const GML_SCRIPT_HELD_ITEM = "gml_Script_held_item@Ari@Ari";
 static const char* const GML_SCRIPT_DAMAGE = "gml_Script_damage@gml_Object_obj_damage_receiver_Create_0";
+static const char* const GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT = "gml_Script_choose_random_artifact@Archaeology@Archaeology";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const bool DEFAULT_SWORD_CAN_PICK = true;
 static const bool DEFAULT_SWORD_CAN_CHOP = true;
@@ -37,8 +38,11 @@ static bool enabled_in_farm_house = DEFAULT_ENABLED_IN_FARM_HOUSE;
 static bool enabled_in_mistria = DEFAULT_ENABLED_IN_MISTRIA;
 static bool enabled_in_mines = DEFAULT_ENABLED_IN_MINES;
 static int held_item_id = -1;
+static int dig_spot_xp = 3; // game default
 static std::string ari_current_gm_room = "";
 static std::unordered_set<int> swords = {};
+static std::map<std::string, int> skill_name_to_id_map = {};
+static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map = {};
 
 bool GameIsPaused()
 {
@@ -61,6 +65,7 @@ void ResetStaticFields()
 {
 	held_item_id = -1;
 	ari_current_gm_room = "";
+	script_name_to_reference_map = {};
 }
 
 void PrintError(std::exception_ptr eptr)
@@ -324,6 +329,67 @@ void LoadItems()
 	}
 }
 
+void LoadSkills()
+{
+	size_t array_length;
+	RValue skills = *global_instance->GetRefMember("__skill__");
+	g_ModuleInterface->GetArraySize(skills, array_length);
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(skills, i, array_element);
+		skill_name_to_id_map[array_element->ToString()] = i;
+	}
+}
+
+void LoadXpValues()
+{
+	RValue __xp_values = global_instance->GetMember("__xp_values");
+	if (StructVariableExists(__xp_values, "break_dig_spot"))
+		dig_spot_xp = __xp_values.GetMember("break_dig_spot").ToInt64();
+}
+
+void AriGainXP(CInstance* Self, CInstance* Other, int skill_id, double xp_gained)
+{
+	CScript* gml_script_ari_gain_xp = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		"gml_Script_gain_xp@Ari@Ari",
+		(PVOID*)&gml_script_ari_gain_xp
+	);
+
+	RValue skill = skill_id;
+	RValue xp = xp_gained;
+
+	RValue result;
+	RValue* skill_ptr = &skill;
+	RValue* xp_ptr = &xp;
+	RValue* arguments[2] = { skill_ptr, xp_ptr };
+
+	gml_script_ari_gain_xp->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		2,
+		arguments
+	);
+}
+
+void ObjectCallback(
+	IN FWCodeEvent& CodeEvent
+)
+{
+	auto& [self, other, code, argc, argv] = CodeEvent.Arguments();
+
+	if (!self)
+		return;
+
+	if (!self->m_Object)
+		return;
+
+	if (strstr(self->m_Object->m_Name, "obj_ari") && !script_name_to_reference_map.contains("obj_ari"))
+		script_name_to_reference_map["obj_ari"] = { global_instance->GetRefMember("__ari")->ToInstance(), self };
+}
+
 RValue& GmlScriptGoToRoomCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -418,6 +484,29 @@ RValue& GmlScriptDamageCallback(
 	return Result;
 }
 
+RValue& GmlScriptChooseRandomArtifactCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if(swords.contains(held_item_id) && script_name_to_reference_map.contains("obj_ari"))
+		AriGainXP(script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1], skill_name_to_id_map["archaeology"], dig_spot_xp);
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
 RValue& GmlScriptSetupMainScreenCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -431,6 +520,8 @@ RValue& GmlScriptSetupMainScreenCallback(
 		g_ModuleInterface->GetGlobalInstance(&global_instance);
 		CreateOrLoadConfigFile();
 		LoadItems();
+		LoadSkills();
+		LoadXpValues();
 		load_on_start = false;
 	}
 	else
@@ -446,6 +537,21 @@ RValue& GmlScriptSetupMainScreenCallback(
 	);
 
 	return Result;
+}
+
+void CreateObjectCallback(AurieStatus& status)
+{
+	status = g_ModuleInterface->CreateCallback(
+		g_ArSelfModule,
+		EVENT_OBJECT_CALL,
+		ObjectCallback,
+		0
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook (EVENT_OBJECT_CALL)!", MOD_NAME, VERSION);
+	}
 }
 
 void CreateHookGmlScriptGoToRoom(AurieStatus& status)
@@ -530,6 +636,34 @@ void CreateHookGmlScriptDamage(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptChooseRandomArtifact(AurieStatus& status)
+{
+	CScript* gml_script_choose_random_artifact = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT,
+		(PVOID*)&gml_script_choose_random_artifact
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT,
+		gml_script_choose_random_artifact->m_Functions->m_ScriptFunction,
+		GmlScriptChooseRandomArtifactCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT);
+	}
+}
+
 void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 {
 	CScript* gml_script_setup_main_screen = nullptr;
@@ -572,6 +706,13 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 
 	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
 
+	CreateObjectCallback(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
 	CreateHookGmlScriptGoToRoom(status);
 	if (!AurieSuccess(status))
 	{
@@ -587,6 +728,13 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptDamage(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptChooseRandomArtifact(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
