@@ -3,7 +3,7 @@
 
 A *first of its kind* mod for [Fields of Mistria](https://www.fieldsofmistria.com/) that adds entirely new **custom content** to the **dungeon**. This mod *completely overhauls* the game's **dungeon** by adding several entirely new dungeon **mechanics**, **items**, **armor**, **weapons**, **monsters**, and *more*!
 
-https://github.com/user-attachments/assets/c481e023-1ec8-4a55-b246-90c6870c7367
+https://github.com/user-attachments/assets/cc245020-9022-4e91-9ee9-8ec120abdda3
 
 ## Rules of the Dungeon
 
@@ -189,7 +189,7 @@ The **game HUD is hidden** for a brief period.
 
 Dread Beasts are *incredibly powerful* **monsters** that may *rarely* appear in the Deep Dungeon. These monsters have *significantly increased* **stats** and use *custom* **attack patterns** to engage you. The formidable enemies pose a significant threat and should be approached with extreme caution. Defeating a dread beast has a *chance* to reward you with a rare **soulstone item** used for *crafting* special **class gear**.
 
-https://github.com/user-attachments/assets/d806aafb-5e4f-4301-a274-73ba5dd4fcc4
+https://github.com/user-attachments/assets/1b35e92f-8d1d-48f7-8434-0447b82f7e4c
 
 ### Clods
 
