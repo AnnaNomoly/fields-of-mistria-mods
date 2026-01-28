@@ -2375,6 +2375,28 @@ void LoadPerks()
 	}
 }
 
+bool FairyBuffIsActive()
+{
+	RValue ari = global_instance->GetMember("__ari");
+	RValue status_effects = ari.GetMember("status_effects");
+	RValue effects = status_effects.GetMember("effects");
+	RValue inner = effects.GetMember("inner");
+
+	if (StructVariableExists(inner, std::to_string(status_effect_name_to_id_map["fairy"]).c_str()))
+	{
+		RValue fairy_status = inner.GetMember(std::to_string(status_effect_name_to_id_map["fairy"]));
+		return fairy_status.m_Kind == VALUE_OBJECT;
+	}
+
+	return false;
+}
+
+double GetInvulnerabilityHits()
+{
+	RValue ari = global_instance->GetMember("__ari");
+	return ari.GetMember("invulnerable_hits").ToDouble();
+}
+
 void SetInvulnerabilityHits(double amount)
 {
 	RValue ari = *global_instance->GetRefMember("__ari");
@@ -3887,9 +3909,20 @@ void ModifySaplingAttackPatterns(RValue monster, int monster_id)
 			StructVariableSet(config_clone, "sap_children", 3);
 			StructVariableSet(config_clone, "sap_children_species", RValue(monster_id_to_name_map[monster_id]));
 
-			// acknowledgement
-			// windup
-			// tired
+			RValue acknowledgment = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { acknowledgment, 0, 15 }); // 45
+			g_ModuleInterface->CallBuiltin("array_set", { acknowledgment, 1, 25 }); // 55
+			StructVariableSet(config_clone, "acknowledgment", acknowledgment);
+
+			RValue tired = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { tired, 0, 10 }); // 90
+			g_ModuleInterface->CallBuiltin("array_set", { tired, 1, 30 }); // 110
+			StructVariableSet(config_clone, "tired", tired);
+
+			RValue windup = g_ModuleInterface->CallBuiltin("array_create", { 2 });
+			g_ModuleInterface->CallBuiltin("array_set", { windup, 0, 1 }); // 35
+			g_ModuleInterface->CallBuiltin("array_set", { windup, 1, 1 }); // 55
+			StructVariableSet(config_clone, "windup", windup);
 
 			StructVariableSet(monster, "config", config_clone);
 			StructVariableSet(monster, "__deep_dungeon__custom_attack_pattern", 0);
@@ -4577,7 +4610,7 @@ RValue GetDynamicItemSprite(int item_id)
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::PROTECTION])
 	{
-		if (active_sigils.contains(Sigils::PROTECTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+		if (active_sigils.contains(Sigils::PROTECTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || GetInvulnerabilityHits() > 0 || !AriCurrentGmRoomIsDungeonFloor())
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_protection_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_protection" });
@@ -4591,7 +4624,7 @@ RValue GetDynamicItemSprite(int item_id)
 	}
 	if (item_id == sigil_to_item_id_map[Sigils::REDEMPTION])
 	{
-		if (active_sigils.contains(Sigils::REDEMPTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || !AriCurrentGmRoomIsDungeonFloor())
+		if (active_sigils.contains(Sigils::REDEMPTION) || active_floor_enchantments.contains(FloorEnchantments::ITEM_PENALTY) || FairyBuffIsActive() || !AriCurrentGmRoomIsDungeonFloor())
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_redemption_disabled" });
 		else
 			return g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_ui_item_sigil_of_redemption" });
@@ -7471,6 +7504,22 @@ RValue& GmlScriptUseItemCallback(
 			{
 				// Sigil Already Used
 				if (item_id_to_sigil_map.contains(held_item_id) && active_sigils.contains(item_id_to_sigil_map[held_item_id]))
+				{
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - That sigil is already active!", MOD_NAME, VERSION);
+					CreateNotification(false, SIGIL_LIMIT_NOTIFICATION_KEY, Self, Other);
+					return Result;
+				}
+
+				// Protection Already Active
+				if (held_item_id == sigil_to_item_id_map[Sigils::PROTECTION] && GetInvulnerabilityHits() > 0)
+				{
+					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - That sigil is already active!", MOD_NAME, VERSION);
+					CreateNotification(false, SIGIL_LIMIT_NOTIFICATION_KEY, Self, Other);
+					return Result;
+				}
+
+				// Redemption Already Active
+				if (held_item_id == sigil_to_item_id_map[Sigils::REDEMPTION] && FairyBuffIsActive())
 				{
 					g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - That sigil is already active!", MOD_NAME, VERSION);
 					CreateNotification(false, SIGIL_LIMIT_NOTIFICATION_KEY, Self, Other);
