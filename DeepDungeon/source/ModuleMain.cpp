@@ -5549,7 +5549,7 @@ void ApplyFloorTraps(CInstance* Self, CInstance* Other)
 
 			// Hallowed Ground (Paladin Set Bonus)
 			bool malfunction = zero_to_ninety_nine_distribution(random_generator) < 50 ? true : false;
-			if (malfunction)
+			if (CountEquippedClassArmor()[Classes::PALADIN] == 5 && malfunction)
 			{
 				PlaySoundEffect("snd_bark_heart603", 100);
 				CreateNotification(true, MALFUNCTION_TRAP_NOTIFICATION_KEY, Self, Other);
@@ -7957,9 +7957,9 @@ RValue& GmlScriptGetLocalizerCallback(
 
 			std::string custom_text = classes_to_localized_armor_description_string_map[Classes::CLERIC];
 			custom_text += "\n\n" + LocalizeString(Self, Other, SET_PIECES_EQUIPPED_LOCALIZED_TEXT_KEY).ToString() + " [" + std::to_string(cleric_armor_pieces_equipped) + "/5]";
-			if (cleric_armor_pieces_equipped == 1)
+			if (cleric_armor_pieces_equipped >= 1 && cleric_armor_pieces_equipped < 3)
 				custom_text += "\n- " + LocalizeString(Self, Other, CLERIC_SET_BONUS_AUTO_REGEN_ONE_LOCALIZED_TEXT_KEY).ToString();
-			else if (cleric_armor_pieces_equipped == 3)
+			else if (cleric_armor_pieces_equipped >= 3 && cleric_armor_pieces_equipped < 5)
 			{
 				custom_text += "\n- " + LocalizeString(Self, Other, CLERIC_SET_BONUS_AUTO_REGEN_TWO_LOCALIZED_TEXT_KEY).ToString() + "";
 				custom_text += "\n- " + LocalizeString(Self, Other, CLERIC_SET_BONUS_DIVINE_SEAL_LOCALIZED_TEXT_KEY).ToString() + "";
@@ -7981,9 +7981,9 @@ RValue& GmlScriptGetLocalizerCallback(
 
 			std::string custom_text = classes_to_localized_armor_description_string_map[Classes::DARK_KNIGHT];
 			custom_text += "\n\n" + LocalizeString(Self, Other, SET_PIECES_EQUIPPED_LOCALIZED_TEXT_KEY).ToString() + " [" + std::to_string(dark_knight_armor_pieces_equipped) + "/5]";
-			if (dark_knight_armor_pieces_equipped == 1)
+			if (dark_knight_armor_pieces_equipped >= 1 && dark_knight_armor_pieces_equipped < 3)
 				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_DRAIN_ONE_LOCALIZED_TEXT_KEY).ToString();
-			else if (dark_knight_armor_pieces_equipped == 3)
+			else if (dark_knight_armor_pieces_equipped >= 3 && dark_knight_armor_pieces_equipped < 5)
 			{
 				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_DRAIN_TWO_LOCALIZED_TEXT_KEY).ToString() + "";
 				custom_text += "\n- " + LocalizeString(Self, Other, DARK_KNIGHT_SET_BONUS_DARK_SEAL_LOCALIZED_TEXT_KEY).ToString() + "";
@@ -8026,9 +8026,9 @@ RValue& GmlScriptGetLocalizerCallback(
 
 			std::string custom_text = classes_to_localized_armor_description_string_map[Classes::PALADIN];
 			custom_text += "\n\n" + LocalizeString(Self, Other, SET_PIECES_EQUIPPED_LOCALIZED_TEXT_KEY).ToString() + " [" + std::to_string(paladin_armor_pieces_equipped) + "/5]";
-			if (paladin_armor_pieces_equipped == 1)
+			if (paladin_armor_pieces_equipped >= 1 && paladin_armor_pieces_equipped < 3)
 				custom_text += "\n- " + LocalizeString(Self, Other, PALADIN_SET_BONUS_HOLY_CIRCLE_ONE_LOCALIZED_TEXT_KEY).ToString();
-			else if (paladin_armor_pieces_equipped == 3)
+			else if (paladin_armor_pieces_equipped >= 3 && paladin_armor_pieces_equipped < 5)
 			{
 				custom_text += "\n- " + LocalizeString(Self, Other, PALADIN_SET_BONUS_HOLY_CIRCLE_TWO_LOCALIZED_TEXT_KEY).ToString() + "";
 				custom_text += "\n- " + LocalizeString(Self, Other, PALADIN_SET_BONUS_TEMPERANCE_LOCALIZED_TEXT_KEY).ToString() + "";
