@@ -18,11 +18,12 @@ The table below will be updated with mod development to indicate the status of a
 | Cookbook | 1.1.6 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/162 |
 | Curator | 1.1.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/337 |
 | DataMining | 1.0.1 | 🟡 | N/A |
-| Deep Dungeon | 0.6.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/523 |
+| Deep Dungeon | 0.8.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/523 |
 | Dig Up Anything | 1.2.4 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/138 |
 | Directional Attacks | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/248 |
 | D.I.Y | 1.1.3 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/243 |
 | Dynamic NPC Portraits | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/535 |
+| Dynamic Object Sprites | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/545 |
 | Elegance | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/453 |
 | Friday Night Reminder | 1.1.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/290 |
 | Infinite Health | 1.0.2 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/83 |
