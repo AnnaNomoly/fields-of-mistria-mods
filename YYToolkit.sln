@@ -83,6 +83,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DynamicNpcPortraits", "Dyna
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DynamicObjectSprites", "DynamicObjectSprites\DynamicObjectSprites.vcxproj", "{3f251b70-a989-4681-8377-a300f2f3b0f9}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NoTrespassing", "NoTrespassing\NoTrespassing.vcxproj", "{18511768-8af9-4680-892c-83102b66720c}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -411,6 +413,14 @@ Global
 		{3F251B70-A989-4681-8377-A300F2F3B0F9}.Release|x64.Build.0 = Release|x64
 		{3F251B70-A989-4681-8377-A300F2F3B0F9}.Release|x86.ActiveCfg = Release|Win32
 		{3F251B70-A989-4681-8377-A300F2F3B0F9}.Release|x86.Build.0 = Release|Win32
+		{18511768-8AF9-4680-892C-83102B66720C}.Debug|x64.ActiveCfg = Debug|x64
+		{18511768-8AF9-4680-892C-83102B66720C}.Debug|x64.Build.0 = Debug|x64
+		{18511768-8AF9-4680-892C-83102B66720C}.Debug|x86.ActiveCfg = Debug|Win32
+		{18511768-8AF9-4680-892C-83102B66720C}.Debug|x86.Build.0 = Debug|Win32
+		{18511768-8AF9-4680-892C-83102B66720C}.Release|x64.ActiveCfg = Release|x64
+		{18511768-8AF9-4680-892C-83102B66720C}.Release|x64.Build.0 = Release|x64
+		{18511768-8AF9-4680-892C-83102B66720C}.Release|x86.ActiveCfg = Release|Win32
+		{18511768-8AF9-4680-892C-83102B66720C}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
