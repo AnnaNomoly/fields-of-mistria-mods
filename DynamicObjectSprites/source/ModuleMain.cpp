@@ -67,6 +67,7 @@ static std::map<std::string, int> season_name_to_id_map = {}; // __season__
 static std::map<int, std::string> season_id_to_name_map = {}; // __season__
 static std::map<std::string, int> weather_name_to_id_map = {}; // __weather__
 static std::map<int, std::string> weather_id_to_name_map = {}; // __weather__
+static std::unordered_set<std::string> sprite_names = {};
 
 void ResetStaticFields(bool title_screen)
 {
@@ -625,10 +626,22 @@ RValue& GmlScriptNodeObjectSetSpriteCallback(
 		{
 			RValue sprite_name = g_ModuleInterface->CallBuiltin("sprite_get_name", { *Arguments[0] });
 			std::string sprite_name_str = sprite_name.ToString();
+			sprite_names.insert(sprite_name_str);
 
-			RValue dynamic_object_sprite = GetDynamicObjectSprite(sprite_name_str);
-			if(dynamic_object_sprite.m_Kind == VALUE_REF)
-				*Arguments[0] = dynamic_object_sprite;
+			if (!sprite_name_str.contains("rock") && !sprite_name_str.contains("break") && !sprite_name_str.contains("coral"))
+			{
+				int temp = 5;
+				RValue replacement_sprite = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_lightning" });
+				if (replacement_sprite.m_Kind == VALUE_REF)
+					*Arguments[0] = replacement_sprite;
+			}
+			else
+			{
+				RValue dynamic_object_sprite = GetDynamicObjectSprite(sprite_name_str);
+				if (dynamic_object_sprite.m_Kind == VALUE_REF)
+					*Arguments[0] = dynamic_object_sprite;
+			}
+
 		}
 	}
 

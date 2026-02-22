@@ -22,7 +22,9 @@ static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_not
 static const char* const GML_SCRIPT_ON_ROOM_START = "gml_Script_on_room_start@WeatherManager@Weather";
 static const char* const GML_SCRIPT_GET_WEATHER = "gml_Script_get_weather@WeatherManager@Weather";
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
+static const char* const GML_SCRIPT_ON_BEGIN_STEP = "gml_Script_on_begin_step@Anchor@Anchor";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
+static const char* const GML_SCRIPT_GET_MINUTES = "gml_Script_update@Clock@Clock";
 static const char* const GML_SCRIPT_ERROR = "gml_Script_error";
 static const char* const GML_SCRIPT_GO_TO_ROOM = "gml_Script_goto_gm_room";
 static const int DEFAULT_RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE = 0;
@@ -161,6 +163,7 @@ static int ari_y = -1;
 static bool teleport_ari = false;
 static bool ari_is_teleporting = false;
 static bool create_ritual_altar = false;
+static bool meteor_fall = false;
 static int ritual_chamber_additional_spawn_chance = DEFAULT_RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE;
 static bool spawn_ladder_at_player_position = DEFAULT_SPAWN_LADDER_AT_PLAYER_POSITION;
 static std::mt19937 generator(std::random_device{}());
@@ -168,6 +171,16 @@ static std::map<std::string, bool> active_perk_map = {};
 static std::map<std::string, int> location_name_to_id_map = {};
 static std::map<std::string, int64_t> perk_name_to_id_map = {};
 static std::map<std::string, uint64_t> notification_name_to_last_display_time_map = {};
+
+static struct Meteor {
+	int x;
+	int y;
+	int spawned_time;
+	int duration;
+	bool is_active;
+	RValue instance;
+};
+static std::vector<Meteor> meteors = {};
 
 RValue StructVariableGet(RValue the_struct, const char* variable_name)
 {
@@ -846,6 +859,24 @@ RValue& GmlScriptOnRoomStartCallback(
 			std::string layer_name = "Impl_Ritual";
 			g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, RValue(layer_name), obj_dungeon_ritual_altar_index });
 			create_ritual_altar = false;
+			
+			// Meteor fall prep
+			meteor_fall = true;
+
+			RValue spr_mines_level3_lavabubbles_1 = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_mines_level3_lavabubbles_1" });
+			RValue spr_mines_level3_lavabubbles_2 = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_mines_level3_lavabubbles_2" });
+			RValue spr_mines_level3_lavabubbles_3 = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_mines_level3_lavabubbles_3" });
+			RValue spr_meteor_effect = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_meteor_effect" });
+
+			g_ModuleInterface->CallBuiltin("sprite_assign", { spr_mines_level3_lavabubbles_1, spr_meteor_effect });
+			g_ModuleInterface->CallBuiltin("sprite_assign", { spr_mines_level3_lavabubbles_2, spr_meteor_effect });
+			g_ModuleInterface->CallBuiltin("sprite_assign", { spr_mines_level3_lavabubbles_3, spr_meteor_effect });
+
+			// spr_debris
+			//RValue spr_rain_splash = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_rain_splash" });
+			//RValue spr_circle_aoe = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_circle_aoe" });
+
+			//g_ModuleInterface->CallBuiltin("sprite_assign", { spr_rain_splash, spr_circle_aoe });
 		}
 	}
 
@@ -913,6 +944,32 @@ RValue& GmlScriptSetupMainScreenCallback(
 	return Result;
 }
 
+RValue& GmlScriptOnBeginStepCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (meteors.size() == 5 && meteors[4].is_active)
+	{
+		RValue spr_circle_aoe = g_ModuleInterface->CallBuiltin("asset_get_index", { "spr_circle_aoe_32px" }); // "spr_circle_aoe"
+		g_ModuleInterface->CallBuiltin("variable_instance_set", { meteors[4].instance, "sprite_index", spr_circle_aoe });
+	}
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_BEGIN_STEP));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	return Result;
+}
+
 RValue& GmlScriptOnDrawGuiCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -944,6 +1001,28 @@ RValue& GmlScriptOnDrawGuiCallback(
 		processing_user_input = false;
 	}
 
+	if (meteor_fall)
+	{
+		for (int i = 0; i < meteors.size(); i++)
+		{
+			if (meteors[i].is_active)
+			{
+				if(i <= 3)
+					g_ModuleInterface->CallBuiltin("variable_instance_set", { meteors[i].instance, "image_speed", 1.0});
+				//else
+				//	g_ModuleInterface->CallBuiltin("variable_instance_set", { meteors[i].instance, "image_speed", 0.35});
+			}
+		}
+
+		for (Meteor meteor : meteors)
+		{
+			if (meteor.is_active)
+			{
+				
+			}
+		}
+	}
+
 	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_ON_DRAW_GUI));
 	original(
 		Self,
@@ -952,6 +1031,117 @@ RValue& GmlScriptOnDrawGuiCallback(
 		ArgumentCount,
 		Arguments
 	);
+
+	return Result;
+}
+
+RValue& GmlScriptGetMinutesCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_GET_MINUTES));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	if (meteor_fall)
+	{
+		CInstance* global_instance = nullptr;
+		g_ModuleInterface->GetGlobalInstance(&global_instance);
+
+		RValue time = global_instance->GetMember("__clock").GetMember("time");
+		int current_time_in_seconds = time.ToInt64();
+
+		// TESTING - DEBUG
+		// obj_signpost
+		// 192, 160
+		RValue instance_layer_exists = g_ModuleInterface->CallBuiltin("layer_exists", { "Instances" });
+		if (instance_layer_exists.ToBoolean())
+		{
+			if (meteors.size() == 0)
+			{
+				RValue obj_lavabubble = g_ModuleInterface->CallBuiltin("asset_get_index", { "obj_lavabubble" }); // "obj_lavabubble"
+				double x = 192.0 + 8;
+				double y = 160.0 + 8;
+				RValue instance = g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, RValue("Instances"), obj_lavabubble });
+				
+				Meteor meteor = Meteor(x, y, current_time_in_seconds, 600, true, instance);
+				meteors.push_back(meteor);
+			}
+			else if (meteors.size() == 1 && current_time_in_seconds >= meteors[0].spawned_time + 150)
+			{
+				RValue obj_lavabubble = g_ModuleInterface->CallBuiltin("asset_get_index", { "obj_lavabubble" }); // "obj_lavabubble"
+				double x = 272.0 + 8;
+				double y = 240.0 + 8;
+				RValue instance = g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, RValue("Instances"), obj_lavabubble });
+
+				Meteor meteor = Meteor(x, y, current_time_in_seconds, 600, true, instance);
+				meteors.push_back(meteor);
+			}
+			else if (meteors.size() == 2 && current_time_in_seconds >= meteors[1].spawned_time + 150)
+			{
+				RValue obj_lavabubble = g_ModuleInterface->CallBuiltin("asset_get_index", { "obj_lavabubble" }); // "obj_lavabubble"
+				double x = 192.0 + 8;
+				double y = 304.0 + 8;
+				RValue instance = g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, RValue("Instances"), obj_lavabubble });
+
+				Meteor meteor = Meteor(x, y, current_time_in_seconds, 600, true, instance);
+				meteors.push_back(meteor);
+			}
+			else if (meteors.size() == 3 && current_time_in_seconds >= meteors[2].spawned_time + 150)
+			{
+				RValue obj_lavabubble = g_ModuleInterface->CallBuiltin("asset_get_index", { "obj_lavabubble" }); // "obj_lavabubble"
+				double x = 128.0 + 8;
+				double y = 240.0 + 8;
+				RValue instance = g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, RValue("Instances"), obj_lavabubble });
+
+				Meteor meteor = Meteor(x, y, current_time_in_seconds, 600, true, instance);
+				meteors.push_back(meteor);
+			}
+			else if (meteors.size() == 4 && current_time_in_seconds >= meteors[3].spawned_time + 150)
+			{
+				RValue obj_lavabubble = g_ModuleInterface->CallBuiltin("asset_get_index", { "obj_lavabubble" }); // "obj_lavabubble"
+				double x = 192.0 + 8;
+				double y = 240.0 + 8;
+				RValue instance = g_ModuleInterface->CallBuiltin("instance_create_layer", { x, y, RValue("Instances"), obj_lavabubble });
+
+				Meteor meteor = Meteor(x, y, current_time_in_seconds, 1800, true, instance);
+				meteors.push_back(meteor);
+			}
+
+			//RValue sprite = g_ModuleInterface->CallBuiltin(
+			//	"asset_get_index",
+			//	{ "spr_abandoned_mines_ground_crack_animation" }
+			//);
+
+			//g_ModuleInterface->CallBuiltin(
+			//	"variable_instance_set",
+			//	{ inst, RValue("sprite_index"), sprite }
+			//);
+		}
+
+		for (Meteor meteor : meteors)
+		{
+			if (meteor.is_active && current_time_in_seconds >= meteor.spawned_time + meteor.duration)
+			{
+				meteor.is_active = false;
+
+				RValue meteor_instance_exists = g_ModuleInterface->CallBuiltin("instance_exists", { meteor.instance } );
+				if (meteor_instance_exists.ToBoolean())
+				{
+					g_ModuleInterface->CallBuiltin("instance_destroy", { meteor.instance } );
+				}
+			}
+		}
+	}
 
 	return Result;
 }
@@ -1138,6 +1328,33 @@ void CreateHookGmlScriptSetupMainScreen(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptOnBeginStep(AurieStatus& status)
+{
+	CScript* gml_script_on_begin_step = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_ON_BEGIN_STEP,
+		(PVOID*)&gml_script_on_begin_step
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ON_BEGIN_STEP);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_ON_BEGIN_STEP,
+		gml_script_on_begin_step->m_Functions->m_ScriptFunction,
+		GmlScriptOnBeginStepCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ON_BEGIN_STEP);
+	}
+}
+
 void CreateHookGmlScriptOnDrawGui(AurieStatus& status)
 {
 	CScript* gml_script_try_location_id_to_string = nullptr;
@@ -1162,6 +1379,33 @@ void CreateHookGmlScriptOnDrawGui(AurieStatus& status)
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_ON_DRAW_GUI);
+	}
+}
+
+void CreateHookGmlScriptGetMinutes(AurieStatus& status)
+{
+	CScript* gml_script_get_minutes = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_GET_MINUTES,
+		(PVOID*)&gml_script_get_minutes
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_MINUTES);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_GET_MINUTES,
+		gml_script_get_minutes->m_Functions->m_ScriptFunction,
+		GmlScriptGetMinutesCallback,
+		nullptr
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_GET_MINUTES);
 	}
 }
 
@@ -1262,7 +1506,21 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		return status;
 	}
 
+	CreateHookGmlScriptOnBeginStep(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
 	CreateHookGmlScriptOnDrawGui(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptGetMinutes(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
