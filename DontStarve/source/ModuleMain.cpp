@@ -9,7 +9,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "Mistbloom";
-static const char* const VERSION = "1.0.3";
+static const char* const VERSION = "1.0.4";
 static const char* const HUNGER_VALUE_KEY = "hunger";
 static const char* const SANITY_VALUE_KEY = "sanity";
 static const char* const FOOD_QUEUE_KEY = "food_queue";
@@ -40,7 +40,7 @@ static const char* const GUARDIANS_SHIELD = "guardians_shield";
 static const char* const MISTBLOOM_INTRODUCTION_LETTER = "mistbloom_introduction";
 static const char* const GML_SCRIPT_IS_DUNGEON_ROOM = "gml_Script_is_dungeon_room";
 static const char* const GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_NAME = "gml_Script_get_display_name@anon@2420@LiveItem@LiveItem";
-static const char* const GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION = "gml_Script_get_display_description@anon@3505@LiveItem@LiveItem";
+static const char* const GML_SCRIPT_LIVE_ITEM_GET_DISPLAY_DESCRIPTION = "gml_Script_get_display_description@anon@3696@LiveItem@LiveItem";
 static const char* const GML_SCRIPT_LOCALIZER_GET = "gml_Script_get@Localizer@Localizer";
 static const char* const GML_SCRIPT_STATUS_EFFECT_MANAGER_DESERIALIZE = "gml_Script_deserialize@StatusEffectManager@StatusEffectManager";
 static const std::string FOOD_QUEUE_IGNORED_ITEMS[] = {
