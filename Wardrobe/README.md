@@ -39,7 +39,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 }
 ```
 
-## Cosmetic Table (FoM v0.14.4)
+## Cosmetic Table (FoM v0.15.0)
 | Internal Cosmetic Name | Displayed Cosmetic Name |
 | ---------------------- | ----------------------- |
 | back_gear_ancient_witch_broom | Ancient Witch Broom |
