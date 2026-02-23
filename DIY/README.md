@@ -14,10 +14,11 @@ From the perspective of this mod there are two "types" of furniture in the game:
 - **Non-craftable** furniture __has no recipe__. You normally receive it as a reward for doing something or buy it from a shop. This mod does NOT allow you to obtain those furniture items. Use the **DigUpAnything** mod to obtain them if desired.
 > **REMINDER**: This mod only unlocks **craftable** furniture (those __with recipes__).
 
-## Craftable Furniture Recipe Table (FoM v0.14.4)
+## Craftable Furniture Recipe Table (FoM v0.15.0)
 | Internal Recipe Name | Displayed Recipe Name |
 | -------------------- | --------------------- |
-| alda_pot_replica | Alda Pot Replica |
+| alda_pot_replica | Large Alda Pot |
+| animated_waterfall | Animated Waterfall |
 | bakery_bread_basket | Bakery Bread Basket |
 | bakery_cake | Bakery Display Cake |
 | bakery_cake_case | Bakery Dessert Case |
@@ -53,9 +54,11 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | big_bell | Big Bell |
 | box_medium | Medium Box |
 | box_small | Small Box |
+| broken_pillar | Broken Pillar |
 | bumblebee_plushie | Bumblebee Plushie |
 | butterfly_bed | Butterfly Bed |
 | butterfly_double_bed | Butterfly Double Bed |
+| butterfly_painting | Butterfly Painting |
 | butterfly_wall_lamp | Butterfly Wall Lamp |
 | cabin_bed | Rustic Cabin Bed |
 | cabin_bed_double | Rustic Cabin Double Bed |
@@ -157,6 +160,7 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | crop_faux_chestnut | Faux Chestnut |
 | crop_faux_chickpea | Faux Chickpea |
 | crop_faux_chili_pepper | Faux Chili Pepper |
+| crop_faux_chirping_fern | Faux Chirping Fern |
 | crop_faux_chrysanthemum | Faux Chrysanthemum |
 | crop_faux_corn | Faux Corn |
 | crop_faux_cosmos | Faux Cosmos |
@@ -171,6 +175,8 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | crop_faux_dandelion | Faux Dandelion |
 | crop_faux_dill | Faux Dill |
 | crop_faux_earthshroom | Faux Earthshroom |
+| crop_faux_essence_blossom | Faux Essence Blossom |
+| crop_faux_ethereal_grass | Faux Ethereal Grass |
 | crop_faux_fennel | Faux Fennel |
 | crop_faux_fiddlehead | Faux Fiddlehead |
 | crop_faux_flame_pepper | Faux Flame Pepper |
@@ -216,6 +222,7 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | crop_faux_snapdragon | Faux Snapdragon |
 | crop_faux_snow_peas | Faux Snow Peas |
 | crop_faux_snowdrop_anemone | Faux Snowdrop Anemone |
+| crop_faux_spell_fruit | Faux Spell Fruit |
 | crop_faux_spirit_mushroom | Faux Spirit Mushroom |
 | crop_faux_spirula_shell | Faux Spirula Shell |
 | crop_faux_strawberry | Faux Strawberry |
@@ -233,10 +240,12 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | crop_faux_turnip | Faux Turnip |
 | crop_faux_upper_mines_mushroom | Faux Upper Mines Mushroom |
 | crop_faux_viola | Faux Viola |
+| crop_faux_void_herb | Faux Void Herb |
 | crop_faux_walnut | Faux Walnut |
 | crop_faux_watermelon | Faux Watermelon |
 | crop_faux_wheat | Faux Wheat |
 | crop_faux_wild_leek | Faux Wild Leek |
+| crop_faux_written_root | Faux Written Root |
 | crop_sign_apple | Apple Sign |
 | crop_sign_basil | Basil Sign |
 | crop_sign_beet | Beet Sign |
@@ -376,6 +385,7 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | haunted_attic_wall_window | Haunted Attic Window |
 | haunted_attic_wallpaper | Haunted Attic Wallpaper |
 | herringbone_tile_floor | Herringbone Tile Floor |
+| honeycomb_shelf | Honeycomb Shelf |
 | insect_flooring | Insect Flooring |
 | insect_rug | Insect Rug |
 | insect_wallpaper | Insect Wallpaper |
@@ -448,6 +458,10 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | picnic_sandwich_plate | Picnic Display Sandwiches |
 | picnic_sunflower_vase | Picnic Sunflower Vase |
 | round_cushioned_stool | Round Cushioned Stool |
+| ruins_flooring | Ruins Floor |
+| ruins_mistril_node | Ornamental Mistril Node |
+| ruins_pink_diamond_rock | Ornamental Pink Diamond Rock |
+| ruins_wallpaper | Ruins Wall |
 | sand_rug | Sand Rug |
 | small_bathmat | Small Bathmat |
 | small_vase | Small Vase |
@@ -496,7 +510,19 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | tile_roof_fence | Tile Roof Fence |
 | toilet | Toilet |
 | training_dummy | Training Dummy |
+| void_bonsai | Void Bonsai |
+| void_fireplace | Void Fireplace |
+| void_flagstone_large | Large Void Flagstone |
+| void_flagstone_small | Small Void Flagstone |
+| void_flooring | Void Floor |
+| void_lamp | Void Lamp |
+| void_storage_chest | Void Storage Chest |
+| void_throne_1 | Void Throne |
+| void_throne_2 | Void Throne II |
+| void_wallpaper | Void Wall |
+| void_window | Void Window |
 | water_sprite | Water Sprite Statue |
+| water_sprite_large | Large Water Sprite Statue |
 | wine_glass_red | Red Wine Glass |
 | wine_glass_rose | Rose Wine Glass |
 | wine_glass_white | White Wine Glass |
@@ -530,6 +556,111 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | ------------------ | ------------------- |
 | animated_bird_fountain | Animated Bird Fountain |
 | animated_snow_globe | Animated Snow Globe |
+| artifact_replica_alda_bronze_sword | Replica Alda Bronze Sword |
+| artifact_replica_alda_clay_pot | Replica Alda Clay Pot |
+| artifact_replica_alda_feather_pendant | Replica Alda Feather Pendant |
+| artifact_replica_alda_gem_bracelet | Replica Alda Gem Bracelet |
+| artifact_replica_alda_mural_tablet | Replica Alda Mural Tablet |
+| artifact_replica_aldarian_gauntlet | Replica Aldarian Gauntlet |
+| artifact_replica_aldarian_sword | Replica Aldarian Sword |
+| artifact_replica_aldarian_war_banner | Replica Aldarian War Banner |
+| artifact_replica_amber_trapped_insect | Replica Amber Trapped Insect |
+| artifact_replica_ancient_crystal_goblet | Replica Ancient Crystal Goblet |
+| artifact_replica_ancient_gold_coin | Replica Ancient Gold Coin |
+| artifact_replica_ancient_horn_circlet | Replica Ancient Horn Circlet |
+| artifact_replica_ancient_royal_scepter | Replica Ancient Royal Scepter |
+| artifact_replica_ancient_stone_lantern | Replica Ancient Stone Lantern |
+| artifact_replica_black_tablet | Replica Black Tablet |
+| artifact_replica_caldosian_breastplate | Replica Caldosian Breastplate |
+| artifact_replica_caldosian_drinking_horn | Replica Caldosian Drinking Horn |
+| artifact_replica_caldosian_emperor_bust | Replica Caldosian Emperor Bust |
+| artifact_replica_caldosian_sword | Replica Caldosian Sword |
+| artifact_replica_clay_amphora | Replica Clay Amphora |
+| artifact_replica_coin_lump | Replica Coin Lump |
+| artifact_replica_completely_wrong_map | Replica Completely Wrong Map |
+| artifact_replica_crab_statue | Replica Crab Statue |
+| artifact_replica_criminal_confession | Replica Criminal Confession |
+| artifact_replica_crystal_apple | Replica Crystal Apple |
+| artifact_replica_dense_water | Replica Dense Water |
+| artifact_replica_diamond_backed_mirror | Replica Diamond-Backed Mirror |
+| artifact_replica_dragon_claw | Replica Dragon Claw |
+| artifact_replica_dragon_forged_bracelet | Replica Dragon-Forged Bracelet |
+| artifact_replica_dragon_pact_tablet | Replica Dragon Pact Tablet |
+| artifact_replica_dragon_scale | Replica Dragon Scale |
+| artifact_replica_earth_infused_stone | Replica Earth-Infused Stone |
+| artifact_replica_faceted_rock_gem | Replica Faceted Rock Gem |
+| artifact_replica_family_crest_pendant | Replica Family Crest Pendant |
+| artifact_replica_fire_crystal | Replica Fire Crystal |
+| artifact_replica_flint_arrowhead | Replica Flint Arrowhead |
+| artifact_replica_fossilized_egg | Replica Fossilized Egg |
+| artifact_replica_fossilized_mandrake_root | Replica Fossilized Mandrake Root |
+| artifact_replica_gathering_basket | Replica Gathering Basket |
+| artifact_replica_giant_fish_scale | Replica Giant Fish Scale |
+| artifact_replica_hardened_essence | Replica Hardened Essence |
+| artifact_replica_lost_crown_of_aldaria | Replica Lost Crown of Aldaria |
+| artifact_replica_mermaids_comb | Replica Mermaid's Comb |
+| artifact_replica_message_in_a_bottle | Replica Message in a Bottle |
+| artifact_replica_metal_leaf | Replica Metal Leaf |
+| artifact_replica_meteorite | Replica Meteorite |
+| artifact_replica_miners_helmet | Replica Miner's Helmet |
+| artifact_replica_miners_pickaxe | Replica Miner's Pickaxe |
+| artifact_replica_miners_rucksack | Replica Miner's Rucksack |
+| artifact_replica_miners_slab | Replica Miner's Slab |
+| artifact_replica_mist_crystal | Replica Mist Crystal |
+| artifact_replica_mist_flute | Replica Mist Flute |
+| artifact_replica_mist_scroll | Replica Mist Scroll |
+| artifact_replica_misty_black_mirror | Replica Misty Black Mirror |
+| artifact_replica_misty_feather_quill | Replica Misty Feather Quill |
+| artifact_replica_muttering_cube | Replica Muttering Cube |
+| artifact_replica_obsidian_blade | Replica Obsidian Blade |
+| artifact_replica_perfect_copper_ore | Replica Perfect Copper Ore |
+| artifact_replica_perfect_diamond | Replica Perfect Diamond |
+| artifact_replica_perfect_emerald | Replica Perfect Emerald |
+| artifact_replica_perfect_gold_ore | Replica Perfect Gold Ore |
+| artifact_replica_perfect_iron_ore | Replica Perfect Iron Ore |
+| artifact_replica_perfect_mistril_ore | Replica Perfect Mistril Ore |
+| artifact_replica_perfect_pink_diamond | Replica Perfect Pink Diamond |
+| artifact_replica_perfect_ruby | Replica Perfect Ruby |
+| artifact_replica_perfect_sapphire | Replica Perfect Sapphire |
+| artifact_replica_perfect_silver_ore | Replica Perfect Silver Ore |
+| artifact_replica_petrified_wood | Replica Petrified Wood |
+| artifact_replica_porcelain_figurine | Replica Porcelain Figure |
+| artifact_replica_rainbow_geode | Replica Rainbow Geode |
+| artifact_replica_rainbow_seaweed | Replica Rainbow Seaweed |
+| artifact_replica_really_round_rock | Replica Really Round Rock |
+| artifact_replica_red_obsidian | Replica Red Obsidian |
+| artifact_replica_ritual_beads | Replica Ritual Beads |
+| artifact_replica_ritual_chalice | Replica Ritual Chalice |
+| artifact_replica_ritual_incense_burner | Replica Ritual Incense Burner |
+| artifact_replica_ritual_scepter | Replica Ritual Scepter |
+| artifact_replica_ritual_tablet | Replica Ritual Tablet |
+| artifact_replica_rock_statue | Replica Rock Statue |
+| artifact_replica_rock_with_a_hole | Replica Rock with a Hole |
+| artifact_replica_rubber_fish | Replica Rubber Fish |
+| artifact_replica_rusted_shield | Replica Rusted Shield |
+| artifact_replica_rusted_treasure_chest | Replica Rusted Treasure Chest |
+| artifact_replica_sea_glass | Replica Sea Glass |
+| artifact_replica_seriously_square_stone | Replica Seriously Square Stone |
+| artifact_replica_shortcut_scroll | Replica Shortcut Scroll |
+| artifact_replica_starlight_coral | Replica Starlight Coral |
+| artifact_replica_statuette_of_caldarus | Replica Statuette of Caldarus |
+| artifact_replica_stone_horse | Replica Stone Horse |
+| artifact_replica_stone_shell | Replica Stone Shell |
+| artifact_replica_tidestone | Replica Tidestone |
+| artifact_replica_tin_lunchbox | Replica Tin Lunchbox |
+| artifact_replica_tiny_dinosaur_skeleton | Replica Tiny Dinosaur Skeleton |
+| artifact_replica_tiny_volcano | Replica Tiny Volcano |
+| artifact_replica_trilobite_fossil | Replica Trilobite Fossil |
+| artifact_replica_unknown_dragon_statuette | Replica Unknown Dragon Statuette |
+| artifact_replica_vintage_brush | Replica Vintage Brush |
+| artifact_replica_vintage_cow_bell | Replica Vintage Cow Bell |
+| artifact_replica_vintage_hammer | Replica Vintage Hammer |
+| artifact_replica_vintage_sickle | Replica Vintage Sickle |
+| artifact_replica_vintage_watering_can | Replica Vintage Watering Can |
+| artifact_replica_warm_rock | Replica Warm Rock |
+| artifact_replica_water_sphere | Replica Water Sphere |
+| artifact_replica_weightless_stone | Replica Weightless Stone |
+| artifact_replica_worn_pendant | Replica Worn Pendant |
 | blue_pet_bed | Blue Pet Bed |
 | blue_pet_dish | Blue Pet Dish |
 | chess_scroll_bundle | Chess Piece Scroll Bundle |
@@ -553,6 +684,36 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | deluxe_storage_chest_purple | Deluxe Storage Chest |
 | deluxe_storage_chest_red | Deluxe Storage Chest |
 | deluxe_storage_chest_white | Deluxe Storage Chest |
+| dingy_broken_bottle_v1 | Broken Bottle |
+| dingy_broken_bottle_v2 | Broken Bottle |
+| dingy_broken_plate_v1 | Broken Plate |
+| dingy_broken_plate_v2 | Broken Plate |
+| dingy_chair_v1 | Cardboard Box Chair |
+| dingy_chair_v2 | Cardboard Box Chair |
+| dingy_chipped_cup_v1 | Chipped Cup |
+| dingy_chipped_cup_v2 | Chipped Cup |
+| dingy_couch_v1 | Broken Springs Couch |
+| dingy_couch_v2 | Broken Springs Couch |
+| dingy_flooring_v1 | Dirty Tiles Flooring |
+| dingy_flooring_v2 | Dirty Tiles Flooring |
+| dingy_garbage_bag_v1 | Garbage Bag |
+| dingy_garbage_bag_v2 | Garbage Bag |
+| dingy_mouse_hole_v1 | Mouse Hole |
+| dingy_mouse_hole_v2 | Mouse Hole |
+| dingy_pile_of_laundry_v1 | Pile of Laundry |
+| dingy_pile_of_laundry_v2 | Pile of Laundry |
+| dingy_pile_of_newspapers_v1 | Pile of Newspapers |
+| dingy_pile_of_newspapers_v2 | Pile of Newspapers |
+| dingy_rug_v1 | Tattered Rug |
+| dingy_rug_v2 | Tattered Rug |
+| dingy_string_lights_v1 | Mostly Broken String Lights |
+| dingy_string_lights_v2 | Mostly Broken String Lights |
+| dingy_table_v1 | Rickety Table |
+| dingy_table_v2 | Rickety Table |
+| dingy_wallpaper_v1 | Peeling Wallpaper |
+| dingy_wallpaper_v2 | Peeling Wallpaper |
+| dingy_window_v1 | Broken Window |
+| dingy_window_v2 | Broken Window |
 | fall_crop_sign_scroll_bundle | Fall Crop Sign Scroll Bundle |
 | inn_candle | Inn Candle |
 | inn_counter | Inn Counter |
@@ -594,6 +755,16 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | mournful_clown_painting | Mournful Clown Painting |
 | pink_pet_bed | Pink Pet Bed |
 | pink_pet_dish | Pink Pet Dish |
+| pirate_anchor_v1 | Anchor |
+| pirate_anchor_v2 | Anchor |
+| pirate_counterfeit_gold_pile_v1 | Counterfeit Gold Pile |
+| pirate_counterfeit_gold_pile_v2 | Counterfeit Gold Pile |
+| pirate_nautical_compass_v1 | Nautical Compass |
+| pirate_nautical_compass_v2 | Nautical Compass |
+| pirate_ship_in_a_bottle_v1 | Ship in a Bottle |
+| pirate_ship_in_a_bottle_v2 | Ship in a Bottle |
+| pirate_wall_flag_v1 | Pirate Flag |
+| pirate_wall_flag_v2 | Pirate Flag |
 | rustic_cabin_scroll_bundle | Rustic Cabin Scroll Bundle |
 | spring_crop_sign_scroll_bundle | Spring Crop Sign Scroll Bundle |
 | spring_festival_basket | Breath of Spring Basket |
@@ -606,4 +777,3 @@ From the perspective of this mod there are two "types" of furniture in the game:
 | teleportation_pad | Teleportation Circle |
 | weather_crystal_ball | Weather Crystal Ball |
 | winter_crop_sign_scroll_bundle | Winter Crop Sign Scroll Bundle |
-
