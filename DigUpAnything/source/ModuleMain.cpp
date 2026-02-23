@@ -9,7 +9,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "DigUpAnything";
-static const char* const VERSION = "1.2.4";
+static const char* const VERSION = "1.2.5";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const EXAMPLE_ITEM_KEY = "example_item";
 static const std::string VALID_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/valid_item";
@@ -24,7 +24,7 @@ static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Lo
 static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_screen@TitleMenu@TitleMenu";
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
-static const std::string DISABLED_ITEMS[] = { "animal_cosmetic", "cosmetic", "crafting_scroll", "purse", "recipe_scroll", "unidentified_artifact" };
+static const std::string DISABLED_ITEMS[] = { "animal_cosmetic", "pet_cosmetic", "cosmetic", "crafting_scroll", "purse", "recipe_scroll", "unidentified_artifact" };
 static const std::string DEFAULT_ACTIVATION_BUTTON = "F11";
 static const std::string DEFAULT_EXAMPLE_ITEM = "Tea with Lemon";
 static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
