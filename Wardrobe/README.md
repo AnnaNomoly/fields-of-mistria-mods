@@ -45,14 +45,18 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | back_gear_ancient_witch_broom | Ancient Witch Broom |
 | back_gear_basic_backpack | Basic Backpack |
 | back_gear_basic_cape | Basic Cape |
+| back_gear_butterfly_wings | Butterfly Wings |
 | back_gear_cabbage_backpack | Cabbage Backpack |
 | back_gear_cauliflower_backpack | Cauliflower Backpack |
 | back_gear_cloud_backpack | Cloud Backpack |
 | back_gear_daikon_radish_backpack | Daikon Radish Backpack |
 | back_gear_daisy_backpack | Daisy Backpack |
+| back_gear_dark_regent_cape | Dark Regent Cape |
 | back_gear_dragon_cleric_cape | Dragon Cleric Cape |
+| back_gear_dragonsworn_cloak | Dragonsworn Cloak |
 | back_gear_exalted_cloak | Exalted Cloak |
 | back_gear_fire_cloak | Fire Sage Cloak |
+| back_gear_fish_scale_cape | Fish Scale Cape |
 | back_gear_frost_lily_backpack | Frost Lily Backpack |
 | back_gear_jasmine_backpack | Jasmine Backpack |
 | back_gear_mini_wings | Mini Wings |
@@ -168,19 +172,23 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_circlet_earth | Sage of Earth Gem Circlet |
 | head_clips_angel_wing | Angel Wing Hair Clips |
 | head_clips_bat_wing | Bat Wing Hair Clips |
+| head_clips_fin | Fin Hair Clips |
 | head_clips_heart | Heart Hair Clips |
 | head_clips_moon | Moon Hair Clips |
 | head_clips_star | Star Hair Clips |
 | head_clips_strawberry | Strawberry Hair Clips |
 | head_cloth_helmet | Cloth Helmet |
 | head_copper_helmet | Copper Helmet |
+| head_corrupted_mistril_helmet | Corrupted Mistril Helmet |
 | head_cowboy_hat_basic | Cowboy Hat |
 | head_crown | Crown |
 | head_crown_tide | Crown of the Tide |
 | head_crystal_helmet | Crystal Helmet |
 | head_dancer_flower | Dancer's Flower |
+| head_dark_regent_crown | Dark Regent Crown |
 | head_devil_horns | Devil Horns |
 | head_dragon_cleric_diadem | Dragon Cleric Horned Diadem |
+| head_dragonsworn_helmet | Dragonsworn Helmet |
 | head_enchantern_hat | Mini Lantern Hat |
 | head_essence_bat_hat | Essence Bat Hat |
 | head_exalted_crown | Exalted Crown |
@@ -194,7 +202,9 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_flower_crown | Flower Crown |
 | head_flower_hat | Flower Hat |
 | head_flower_top_hat | Flower Top Hat |
+| head_flying_tome_hat | Flying Tome Hat |
 | head_gold_helmet | Gold Helmet |
+| head_griffin_statue_hat | Living Gryphon Statue Hat |
 | head_halo | Halo |
 | head_headband_basic | Headband |
 | head_hijab | Hijab |
@@ -204,6 +214,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_mimic_hat | Mimic Hat |
 | head_miners_helmet | Miner's Helmet |
 | head_mini_horns | Mini Horns |
+| head_mistril_helmet | Mistril Helmet |
 | head_mushroom_hat | Mushroom Cap Hat |
 | head_noble_hat | Noble Hat |
 | head_oreclod_hat | Oreclod Hat |
@@ -219,6 +230,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_scrap_metal_helmet | Scrap Metal Helmet |
 | head_short_bow | Short Bow |
 | head_silver_helmet | Silver Helmet |
+| head_skull_mask | Skull Mask |
 | head_soup_pot | Soup Pot Hat |
 | head_special_flower_crown | Special Flower Crown |
 | head_sprout_hat | Sprout Hat |
@@ -230,6 +242,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | head_tarnished_gold_helmet | Tarnished Gold Helmet |
 | head_teapot | Teapot Hat |
 | head_verdigris_helmet | Verdigris Helmet |
+| head_void_cat_hat | Void Cat Hat |
 | head_witch_hat | Witch Hat |
 | overalls_basic | Overalls |
 | overalls_farmer | Farmer's Overalls |
@@ -240,16 +253,20 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | pants_beekeeper | Beekeeper's Pants |
 | pants_cloth_armor | Cloth Pants |
 | pants_copper_armor | Copper Legplates |
+| pants_corrupted_mistril | Corrupted Mistril Legplates |
 | pants_crystal_armor | Crystal Tassets |
+| pants_dragonsworn_armor | Dragonsworn Cuisses |
 | pants_exalted | Exalted Pants |
 | pants_explorer | Explorer's Pants |
 | pants_gold_armor | Gold Legplates |
 | pants_iron_armor | Iron Legplates |
+| pants_mistril | Mistril Legplates |
 | pants_rogue | Rogue's Pants |
 | pants_scrap_metal | Scrap Metal Pants |
 | pants_silver_armor | Silver Legplates |
 | pants_tarnished_gold_armor | Tarnished Gold Legplates |
 | pants_verdigris_armor | Verdigris Tassets |
+| robe_dark_regent | Dark Rgent Robe |
 | robe_dragon_cleric | Dragon Cleric Robes |
 | robe_earth | Sage of Earth Robe |
 | robe_fire | Fire Sage Robe |
@@ -261,8 +278,11 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | shoes_boots_caldosian | Caldosian Traveler's High Boots |
 | shoes_boots_cloth_armor | Cloth Shoes |
 | shoes_boots_copper_armor | Copper Greaves |
+| shoes_boots_corrupted_mistril | Corrupted Mistril Greaves |
 | shoes_boots_crystal_armor | Crystal Boots |
+| shoes_boots_dark_regent | Dark Regent Boots |
 | shoes_boots_dragon_cleric | Dragon Cleric Clawed Boots |
+| shoes_boots_dragonsworn_armor | Dragonsworn Greaves |
 | shoes_boots_exalted | Exalted Boots |
 | shoes_boots_explorer | Explorer's Boots |
 | shoes_boots_farmer | Farmer's Boots |
@@ -271,6 +291,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | shoes_boots_gold_armor | Gold Greaves |
 | shoes_boots_iron_armor | Iron Greaves |
 | shoes_boots_miner | Miner's Boots |
+| shoes_boots_mistril | Mistril Greaves |
 | shoes_boots_noble | Noble Boots |
 | shoes_boots_pirate | Pirate Boots |
 | shoes_boots_ranger | Ranger's Boots |
@@ -306,8 +327,10 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | top_cami | Cami |
 | top_cloth_armor | Cloth Chestpiece |
 | top_copper_armor | Copper Armor |
+| top_corrupted_mistril | Corrupted Mistril Armor |
 | top_crystal_armor | Crystal Chestpiece |
-| top_dancer | Dancer's Jacket |
+| top_dancer | Dancer's Top |
+| top_dragonsworn_armor | Dragonsworn Cuirass |
 | top_exalted | Exalted Top |
 | top_explorer | Explorer's Jacket |
 | top_fishing_vest | Fishing Vest |
@@ -319,6 +342,7 @@ The `cute ribbon.json` file in the `outfits` folder will contain the "internal n
 | top_long_sleeve_basic_cropped | Cropped Long Sleeve |
 | top_long_sleeve_beekeeper | Beekeeper's Shirt |
 | top_long_sleeve_striped | Striped Long Sleeve |
+| top_mistril | Mistril Armor |
 | top_noble_jacket | Noble Jacket |
 | top_noble_tunic | Noble Tunic |
 | top_plaid_flannel | Plaid Flannel |
