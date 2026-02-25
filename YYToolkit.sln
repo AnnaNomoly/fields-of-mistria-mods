@@ -85,6 +85,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DynamicObjectSprites", "Dyn
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NoTrespassing", "NoTrespassing\NoTrespassing.vcxproj", "{18511768-8af9-4680-892c-83102b66720c}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SandboxModeCrafting", "SandboxModeCrafting\SandboxModeCrafting.vcxproj", "{45bad65e-8aa7-4e31-996f-9c59408c9278}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -421,6 +423,14 @@ Global
 		{18511768-8AF9-4680-892C-83102B66720C}.Release|x64.Build.0 = Release|x64
 		{18511768-8AF9-4680-892C-83102B66720C}.Release|x86.ActiveCfg = Release|Win32
 		{18511768-8AF9-4680-892C-83102B66720C}.Release|x86.Build.0 = Release|Win32
+		{45BAD65E-8AA7-4E31-996F-9C59408C9278}.Debug|x64.ActiveCfg = Debug|x64
+		{45BAD65E-8AA7-4E31-996F-9C59408C9278}.Debug|x64.Build.0 = Debug|x64
+		{45BAD65E-8AA7-4E31-996F-9C59408C9278}.Debug|x86.ActiveCfg = Debug|Win32
+		{45BAD65E-8AA7-4E31-996F-9C59408C9278}.Debug|x86.Build.0 = Debug|Win32
+		{45BAD65E-8AA7-4E31-996F-9C59408C9278}.Release|x64.ActiveCfg = Release|x64
+		{45BAD65E-8AA7-4E31-996F-9C59408C9278}.Release|x64.Build.0 = Release|x64
+		{45BAD65E-8AA7-4E31-996F-9C59408C9278}.Release|x86.ActiveCfg = Release|Win32
+		{45BAD65E-8AA7-4E31-996F-9C59408C9278}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
