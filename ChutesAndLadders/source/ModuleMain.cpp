@@ -9,7 +9,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "ChutesAndLadders";
-static const char* const VERSION = "1.3.1";
+static const char* const VERSION = "1.4.0";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const RITUAL_CHAMBER_ADDITIONAL_SPAWN_CHANCE_KEY = "ritual_chamber_additional_spawn_chance";
 static const char* const SPAWN_LADDER_AT_PLAYER_POSITION_KEY = "spawn_ladder_at_player_position";
@@ -143,9 +143,32 @@ static const std::map<std::string, std::vector<int>> LADDER_SPAWN_POINTS = { // 
 	{ "rm_mines_lava_shrine2", { 94, 78 }},
 	{ "rm_mines_lava_shrine3", { 46, 66 }},
 	{ "rm_mines_lava_shrine4", { 94, 76 }},
-	{ "rm_mines_ruins_basic1", { 60, 68 }},
-	{ "rm_mines_ruins_85", { 48, 40 }},
-	{ "rm_mines_ruins_90", { 74, 66 }}
+	{ "rm_mines_ruins_basic1", { 60, 68 }}, // 480, 544 in UMT --> divide each by 8
+	{ "rm_mines_ruins_85", { 66, 14 }},
+	{ "rm_mines_ruins_large_switch", { 40, 18 }},
+	{ "rm_mines_ruins_81", { 76, 38 }},
+	{ "rm_mines_ruins_95", { 74, 34 }},
+	{ "rm_mines_ruins_arena1", { 72, 44 }},
+	{ "rm_mines_ruins_basic2", { 66, 50 }},
+	{ "rm_mines_ruins_basic3", { 86, 54 }},
+	{ "rm_mines_ruins_basic4", { 88, 24 }},
+	{ "rm_mines_ruins_basic5", { 36, 50 }},
+	{ "rm_mines_ruins_switch2", { 56, 48 }},
+	{ "rm_mines_ruins_switch3", { 62, 56 }},
+	{ "rm_mines_ruins_switch4", { 62, 46 }},
+	{ "rm_mines_ruins_switch5", { 78, 70 }},
+	{ "rm_mines_ruins_arena2", { 72, 62 }},
+	{ "rm_mines_ruins_whirlpool1", { 64, 32 }},
+	{ "rm_mines_ruins_whirlpool2", { 60, 46 }},
+	{ "rm_mines_ruins_whirlpool3", { 48, 32 }},
+	{ "rm_mines_ruins_whirlpool4", { 86, 34 }},
+	{ "rm_mines_ruins_shrine1", { 104, 64 }},
+	{ "rm_mines_ruins_whirlpool5", { 74, 22 }},
+	{ "rm_mines_ruins_shrine2", { 98, 58 }},
+	{ "rm_mines_ruins_shrine3", { 58, 58 }},
+	{ "rm_mines_ruins_shrine4", { 64, 50 }},
+	{ "rm_mines_ruins_shrine5", { 46, 44 }},
+	{ "rm_mines_ruins_arena3", { 140, 108 }},
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
