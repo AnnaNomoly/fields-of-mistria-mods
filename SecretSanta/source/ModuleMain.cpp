@@ -1,5 +1,6 @@
 #include <random>
 #include <fstream>
+#include <unordered_set>
 #include <nlohmann/json.hpp>
 #include <YYToolkit/YYTK_Shared.hpp> // YYTK v4
 using namespace Aurie;
@@ -7,7 +8,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "SecretSanta";
-static const char* const VERSION = "1.1.2";
+static const char* const VERSION = "1.2.0";
 static const char* const GML_SCRIPT_DAY = "gml_Script_day@Calendar@Calendar";
 static const char* const GML_SCRIPT_SEASON = "gml_Script_season@Calendar@Calendar";
 static const char* const GML_SCRIPT_YEAR = "gml_Script_year@Calendar@Calendar";
@@ -17,6 +18,7 @@ static const char* const GML_SCRIPT_SHOW_ROOM_TITLE = "gml_Script_show_room_titl
 static const char* const GML_SCRIPT_LOAD_GAME = "gml_Script_load_game";
 static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
 static const char* const GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT = "gml_Script_choose_random_artifact@Archaeology@Archaeology";
+static const char* const GML_SCRIPT_T2_READ = "gml_Script_read@T2r@T2r";
 static const char* const YYTK_KEY = "__YYTK";
 static const char* const DIG_UP_ANYTHING_KEY = "DigUpAnything";
 static const char* const SECRET_SANTA_KEY = "SecretSanta";
@@ -27,11 +29,16 @@ static const std::string GIFTS[] = {
 	"berry_bowl", "beet_soup", "fried_rice", "vegetable_pot_pie", "floral_tea",
 	"tulip_cake", "sushi_platter", "lobster_roll", "summer_salad", "vegetable_quiche"
 };
-static const std::string ACTIVE_NPC_NAMES[] = {
-	"adeline", "balor", "celine", "darcy", "dell", "dozy", "eiland",
+static const std::string ACTIVE_NPC_NAMES[] = { // All NPCs that are currently functional in game.
+	"adeline", "balor", "caldarus", "celine", "darcy", "dell", "dozy", "eiland",
 	"elsie", "errol", "hayden", "hemlock", "henrietta", "holt", "josephine",
 	"juniper", "landen", "luc", "louis", "maple", "march", "merri",
-	"olric", "nora", "reina", "ryis", "terithia", "valen", "vera"
+	"olric", "nora", "reina", "ryis", "seridia", "taliferro", "terithia", "valen", "vera", "wheedle"
+	// TODO When Released: Stillwell, Zorel
+};
+static const std::unordered_set<std::string> UNLOCKABLE_NPC_NAMES = { // NPCs that must be unlocked
+	"caldarus", "darcy", "louis", "merri", "seridia", "taliferro", "vera", "wheedle"
+	// TODO When Released: Stillwell, Zorel
 };
 static const std::string MAGICAL_SNOWFLAKE_ITEM_NAME = "magical_snowflake";
 
@@ -43,6 +50,7 @@ static const std::string MAIL_SENT_KEY = "mail_sent";
 // Gif received dialogue.
 static const std::string ADELINE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Adeline/init";
 static const std::string BALOR_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Balor/init";
+static const std::string CALDARUS_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Caldarus/init";
 static const std::string CELINE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Celine/init";
 static const std::string DARCY_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Darcy/init";
 static const std::string DELL_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Dell/init";
@@ -66,9 +74,14 @@ static const std::string OLRIC_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/
 static const std::string NORA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Nora/init";
 static const std::string REINA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Reina/init";
 static const std::string RYIS_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Ryis/init";
+static const std::string SERIDIA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Seridia/init";
+// TODO: Stillwell
+static const std::string TALIFERRO_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Taliferro/init";
 static const std::string TERITHIA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Terithia/init";
 static const std::string VALEN_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Valen/init";
 static const std::string VERA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Vera/init";
+static const std::string WHEEDLE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Wheedle/init";
+// TODO: Zorel
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static RValue __YYTK;
@@ -85,6 +98,110 @@ static std::string secret_santa_recipient = "";
 static json json_object = json::object();
 static RValue custom_dialogue_value;
 static RValue* custom_dialogue_value_ptr = nullptr;
+static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map = {};
+
+bool RValueAsBool(RValue value)
+{
+	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
+		return true;
+	return false;
+}
+
+bool GlobalVariableExists(const char* variable_name)
+{
+	RValue global_variable_exists = g_ModuleInterface->CallBuiltin(
+		"variable_global_exists",
+		{ variable_name }
+	);
+
+	return RValueAsBool(global_variable_exists);
+}
+
+RValue GlobalVariableGet(const char* variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_get",
+		{ variable_name }
+	);
+}
+
+RValue GlobalVariableSet(const char* variable_name, RValue value)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"variable_global_set",
+		{ variable_name, value }
+	);
+}
+
+bool StructVariableExists(RValue the_struct, const char* variable_name)
+{
+	RValue struct_exists = g_ModuleInterface->CallBuiltin(
+		"struct_exists",
+		{ the_struct, variable_name }
+	);
+
+	return RValueAsBool(struct_exists);
+}
+
+RValue StructVariableGet(RValue the_struct, const char* variable_name)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"struct_get",
+		{ the_struct, variable_name }
+	);
+}
+
+RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue value)
+{
+	return g_ModuleInterface->CallBuiltin(
+		"struct_set",
+		{ the_struct, variable_name, value }
+	);
+}
+
+void CreateOrGetGlobalYYTKVariable()
+{
+	if (!GlobalVariableExists(YYTK_KEY))
+	{
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&__YYTK);
+		GlobalVariableSet(YYTK_KEY, __YYTK);
+	}
+	else
+		__YYTK = GlobalVariableGet(YYTK_KEY);
+}
+
+void CreateModInfoInGlobalYYTKVariable()
+{
+	if (!StructVariableExists(__YYTK, SECRET_SANTA_KEY))
+	{
+		RValue SecretSanta;
+		RValue version = VERSION;
+		RValue ignore_next_dig_spot = false;
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&SecretSanta);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&SecretSanta, "version", &version);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&SecretSanta, IGNORE_NEXT_DIG_SPOT_KEY, &ignore_next_dig_spot);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&__YYTK, SECRET_SANTA_KEY, &SecretSanta);
+	}
+}
+
+bool IgnoreNextDigSpot()
+{
+	if (GlobalVariableExists(YYTK_KEY))
+	{
+		RValue __YYTK = GlobalVariableGet(YYTK_KEY);
+		if (StructVariableExists(__YYTK, SECRET_SANTA_KEY))
+		{
+			RValue SecretSanta = StructVariableGet(__YYTK, SECRET_SANTA_KEY);
+			if (StructVariableExists(SecretSanta, IGNORE_NEXT_DIG_SPOT_KEY))
+			{
+				RValue ignore_next_dig_spot = StructVariableGet(SecretSanta, IGNORE_NEXT_DIG_SPOT_KEY);
+				return RValueAsBool(ignore_next_dig_spot);
+			}
+		}
+	}
+
+	return false;
+}
 
 void PrintException(std::exception_ptr eptr)
 {
@@ -283,107 +400,26 @@ void AddHeartPoints(std::string npc_name)
 	}
 }
 
-bool RValueAsBool(RValue value)
+RValue ReadValueFromT2Database(std::string t2_key, CInstance* Self, CInstance* Other)
 {
-	if (value.m_Kind == VALUE_BOOL && value.m_Real == 1)
-		return true;
-	return false;
-}
-
-bool GlobalVariableExists(const char* variable_name)
-{
-	RValue global_variable_exists = g_ModuleInterface->CallBuiltin(
-		"variable_global_exists",
-		{ variable_name }
+	CScript* gml_script = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_T2_READ,
+		(PVOID*)&gml_script
 	);
 
-	return RValueAsBool(global_variable_exists);
-}
-
-RValue GlobalVariableGet(const char* variable_name)
-{
-	return g_ModuleInterface->CallBuiltin(
-		"variable_global_get",
-		{ variable_name }
-	);
-}
-
-RValue GlobalVariableSet(const char* variable_name, RValue value)
-{
-	return g_ModuleInterface->CallBuiltin(
-		"variable_global_set",
-		{ variable_name, value }
-	);
-}
-
-bool StructVariableExists(RValue the_struct, const char* variable_name)
-{
-	RValue struct_exists = g_ModuleInterface->CallBuiltin(
-		"struct_exists",
-		{ the_struct, variable_name }
+	RValue result;
+	RValue input = RValue(t2_key);
+	RValue* input_ptr = &input;
+	gml_script->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &input_ptr }
 	);
 
-	return RValueAsBool(struct_exists);
-}
-
-RValue StructVariableGet(RValue the_struct, const char* variable_name)
-{
-	return g_ModuleInterface->CallBuiltin(
-		"struct_get",
-		{ the_struct, variable_name }
-	);
-}
-
-RValue StructVariableSet(RValue the_struct, const char* variable_name, RValue value)
-{
-	return g_ModuleInterface->CallBuiltin(
-		"struct_set",
-		{ the_struct, variable_name, value }
-	);
-}
-
-void CreateOrGetGlobalYYTKVariable()
-{
-	if (!GlobalVariableExists(YYTK_KEY))
-	{
-		g_ModuleInterface->GetRunnerInterface().StructCreate(&__YYTK);
-		GlobalVariableSet(YYTK_KEY, __YYTK);
-	}
-	else
-		__YYTK = GlobalVariableGet(YYTK_KEY);
-}
-
-void CreateModInfoInGlobalYYTKVariable()
-{
-	if (!StructVariableExists(__YYTK, SECRET_SANTA_KEY))
-	{
-		RValue SecretSanta;
-		RValue version = VERSION;
-		RValue ignore_next_dig_spot = false;
-		g_ModuleInterface->GetRunnerInterface().StructCreate(&SecretSanta);
-		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&SecretSanta, "version", &version);
-		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&SecretSanta, IGNORE_NEXT_DIG_SPOT_KEY, &ignore_next_dig_spot);
-		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&__YYTK, SECRET_SANTA_KEY, &SecretSanta);
-	}
-}
-
-bool IgnoreNextDigSpot()
-{
-	if (GlobalVariableExists(YYTK_KEY))
-	{
-		RValue __YYTK = GlobalVariableGet(YYTK_KEY);
-		if (StructVariableExists(__YYTK, SECRET_SANTA_KEY))
-		{
-			RValue SecretSanta = StructVariableGet(__YYTK, SECRET_SANTA_KEY);
-			if (StructVariableExists(SecretSanta, IGNORE_NEXT_DIG_SPOT_KEY))
-			{
-				RValue ignore_next_dig_spot = StructVariableGet(SecretSanta, IGNORE_NEXT_DIG_SPOT_KEY);
-				return RValueAsBool(ignore_next_dig_spot);
-			}
-		}
-	}
-
-	return false;
+	return result;
 }
 
 int GetItemId(CInstance* self, CInstance* other, std::string item_name)
@@ -408,6 +444,21 @@ int GetItemId(CInstance* self, CInstance* other, std::string item_name)
 	if (result.m_Kind == VALUE_REAL || result.m_Kind == VALUE_INT64 || result.m_Kind == VALUE_INT32)
 		return result.ToInt64();
 	return UNSET_INT;
+}
+
+std::vector<std::string> GetUnlockedNpcs(CInstance* Self, CInstance* Other)
+{
+	std::vector<std::string> unlocked_npcs = {};
+
+	for (std::string npc : ACTIVE_NPC_NAMES)
+	{
+		if (!UNLOCKABLE_NPC_NAMES.contains(npc) || ReadValueFromT2Database(npc + "_has_met", Self, Other).ToBoolean())
+			unlocked_npcs.push_back(npc);
+	}
+
+
+	
+	return unlocked_npcs;
 }
 
 void ResetStaticFields(bool returnedToTitleScreen)
@@ -540,6 +591,15 @@ RValue& GmlScriptPlayTextCallback(
 					{
 						// Override the gift dialog.
 						custom_dialogue_value = RValue(BALOR_GIFT_RECEIVED_DIALOGUE_KEY);
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
+					}
+
+					// Speaker is Caldarus.
+					if (conversation_name.contains("Conversations/Bank/Caldarus"))
+					{
+						// Override the gift dialog.
+						custom_dialogue_value = RValue(CALDARUS_GIFT_RECEIVED_DIALOGUE_KEY);
 						custom_dialogue_value_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
@@ -750,6 +810,26 @@ RValue& GmlScriptPlayTextCallback(
 						Arguments[0] = custom_dialog_ptr;
 					}
 
+					// Speaker is Seridia.
+					if (conversation_name.contains("Conversations/Bank/Seridia"))
+					{
+						// Override the gift dialog.
+						custom_dialogue_value = RValue(SERIDIA_GIFT_RECEIVED_DIALOGUE_KEY);
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
+					}
+
+					// TODO: Stillwell
+
+					// Speaker is Taliferro.
+					if (conversation_name.contains("Conversations/Bank/Taliferro"))
+					{
+						// Override the gift dialog.
+						custom_dialogue_value = RValue(TALIFERRO_GIFT_RECEIVED_DIALOGUE_KEY);
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
+					}
+
 					// Speaker is Terithia.
 					if (conversation_name.contains("Conversations/Bank/Terithia"))
 					{
@@ -776,6 +856,17 @@ RValue& GmlScriptPlayTextCallback(
 						RValue* custom_dialog_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialog_ptr;
 					}
+
+					// Speaker is Wheedle.
+					if (conversation_name.contains("Conversations/Bank/Wheedle"))
+					{
+						// Override the gift dialog.
+						custom_dialogue_value = RValue(WHEEDLE_GIFT_RECEIVED_DIALOGUE_KEY);
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
+					}
+
+					// TODO: Zorel
 
 					// Increase heart points.
 					AddHeartPoints(secret_santa_recipient);
@@ -883,54 +974,55 @@ RValue& GmlScriptShowRoomTitleCallback(
 {
 	if (mod_healthy)
 	{
-		// Formatted date strings.
-		std::string current_year_winter_20_date_string = FormatDateString(20, 4, year);
-		std::string current_year_winter_26_date_string = FormatDateString(26, 4, year);
-		std::string current_year_winter_27_date_string = FormatDateString(27, 4, year);
-		std::string current_year_object_key = "year-" + std::to_string(year);
-
-		// Check if the JSON object doesn't have the current year.
-		if (!json_object.contains(current_year_object_key))
-		{
-			// Randomly determine the secret santa sender and recipient.
-			std::random_device rd;
-			std::mt19937 gen(rd());
-			std::uniform_int_distribution<> distr(0, static_cast<int>(ACTIVE_NPC_NAMES->size() - 1));
-			int random_sender = distr(gen);
-			int random_recipient = distr(gen);
-
-			// Create the current year object.
-			json current_year_object = json::object();
-			current_year_object[SENDER_KEY] = ACTIVE_NPC_NAMES[random_sender];
-			current_year_object[RECIPIENT_KEY] = ACTIVE_NPC_NAMES[random_recipient];
-
-			// Create the date objects.
-			json current_year_winter_20_object = json::object();
-			current_year_winter_20_object[MAIL_SENT_KEY] = false;
-
-			json current_year_winter_26_object = json::object();
-			current_year_winter_26_object[MAIL_SENT_KEY] = false;
-
-			json current_year_winter_27_object = json::object();
-			current_year_winter_27_object[MAIL_SENT_KEY] = false;
-
-			// Add the date objects to the current year object.
-			current_year_object[current_year_winter_20_date_string] = current_year_winter_20_object;
-			current_year_object[current_year_winter_26_date_string] = current_year_winter_26_object;
-			current_year_object[current_year_winter_27_date_string] = current_year_winter_27_object;
-
-			// Update the JSON object.
-			json_object[current_year_object_key] = current_year_object;
-		}
-
-		// Set the static sender and recipient fields using the JSON data.
-		secret_santa_sender = json_object[current_year_object_key][SENDER_KEY];
-		secret_santa_recipient = json_object[current_year_object_key][RECIPIENT_KEY];
-
 		if (season == 4) // winter
 		{
+			const std::string current_year_winter_20_date_string = FormatDateString(20, 4, year);
+			const std::string current_year_winter_26_date_string = FormatDateString(26, 4, year);
+			const std::string current_year_winter_27_date_string = FormatDateString(27, 4, year);
+			const std::string current_year_object_key = "year-" + std::to_string(year);
+
 			if (!MailExists("secret_santa_first_year"))
 				SendMail("secret_santa_first_year");
+
+			if (day >= 20 && !json_object.contains(current_year_object_key))
+			{
+				// Randomly determine the secret santa sender and recipient.
+				std::random_device rd;
+				std::mt19937 gen(rd());
+
+				const std::vector<std::string> unlocked_npcs = GetUnlockedNpcs(script_name_to_reference_map[GML_SCRIPT_T2_READ][0], script_name_to_reference_map[GML_SCRIPT_T2_READ][1]);
+				std::uniform_int_distribution<> distr(0, static_cast<int>(unlocked_npcs.size() - 1));
+
+				int random_sender = distr(gen);
+				int random_recipient = distr(gen);
+
+				// Create the current year object.
+				json current_year_object = json::object();
+				current_year_object[SENDER_KEY] = unlocked_npcs[random_sender];
+				current_year_object[RECIPIENT_KEY] = unlocked_npcs[random_recipient];
+
+				// Create the date objects.
+				json current_year_winter_20_object = json::object();
+				current_year_winter_20_object[MAIL_SENT_KEY] = false;
+
+				json current_year_winter_26_object = json::object();
+				current_year_winter_26_object[MAIL_SENT_KEY] = false;
+
+				json current_year_winter_27_object = json::object();
+				current_year_winter_27_object[MAIL_SENT_KEY] = false;
+
+				// Add the date objects to the current year object.
+				current_year_object[current_year_winter_20_date_string] = current_year_winter_20_object;
+				current_year_object[current_year_winter_26_date_string] = current_year_winter_26_object;
+				current_year_object[current_year_winter_27_date_string] = current_year_winter_27_object;
+
+				// Update the JSON object.
+				json_object[current_year_object_key] = current_year_object;
+			}
+
+			// Set the static sender and recipient fields using the JSON data.
+			secret_santa_sender = json_object[current_year_object_key][SENDER_KEY];
+			secret_santa_recipient = json_object[current_year_object_key][RECIPIENT_KEY];
 
 			if (day == 20)
 			{
@@ -1112,6 +1204,29 @@ RValue& GmlScriptChooseRandomArtifactCallback(
 			StructVariableSet(SecretSanta, "ignore_next_dig_spot", ignore_next_dig_spot);
 		}
 	}
+
+	return Result;
+}
+
+RValue& GmlScriptT2ReadCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_T2_READ))
+		script_name_to_reference_map[GML_SCRIPT_T2_READ] = { Self, Other };
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_T2_READ));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
 
 	return Result;
 }
@@ -1366,6 +1481,34 @@ void CreateHookGmlScriptChooseRandomArtifact(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptT2Read(AurieStatus& status)
+{
+	CScript* gml_script_t2_read = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_T2_READ,
+		(PVOID*)&gml_script_t2_read
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_T2_READ);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_T2_READ,
+		gml_script_t2_read->m_Functions->m_ScriptFunction,
+		GmlScriptT2ReadCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_T2_READ);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path& ModulePath) {
 	UNREFERENCED_PARAMETER(ModulePath);
 
@@ -1438,6 +1581,13 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptChooseRandomArtifact(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptT2Read(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
