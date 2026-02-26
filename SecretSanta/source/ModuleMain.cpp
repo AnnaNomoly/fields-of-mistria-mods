@@ -8,7 +8,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "SecretSanta";
-static const char* const VERSION = "1.1.2";
+static const char* const VERSION = "1.2.0";
 static const char* const GML_SCRIPT_DAY = "gml_Script_day@Calendar@Calendar";
 static const char* const GML_SCRIPT_SEASON = "gml_Script_season@Calendar@Calendar";
 static const char* const GML_SCRIPT_YEAR = "gml_Script_year@Calendar@Calendar";
@@ -18,6 +18,7 @@ static const char* const GML_SCRIPT_SHOW_ROOM_TITLE = "gml_Script_show_room_titl
 static const char* const GML_SCRIPT_LOAD_GAME = "gml_Script_load_game";
 static const char* const GML_SCRIPT_SAVE_GAME = "gml_Script_save_game";
 static const char* const GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT = "gml_Script_choose_random_artifact@Archaeology@Archaeology";
+static const char* const GML_SCRIPT_T2_READ = "gml_Script_read@T2r@T2r";
 static const char* const YYTK_KEY = "__YYTK";
 static const char* const DIG_UP_ANYTHING_KEY = "DigUpAnything";
 static const char* const SECRET_SANTA_KEY = "SecretSanta";
@@ -32,12 +33,12 @@ static const std::string ACTIVE_NPC_NAMES[] = { // All NPCs that are currently f
 	"adeline", "balor", "caldarus", "celine", "darcy", "dell", "dozy", "eiland",
 	"elsie", "errol", "hayden", "hemlock", "henrietta", "holt", "josephine",
 	"juniper", "landen", "luc", "louis", "maple", "march", "merri",
-	"olric", "nora", "reina", "ryis", "taliferro", "terithia", "valen", "vera", "wheedle"
-	// TODO When Released: Stillwell, Zorel, Priestess
+	"olric", "nora", "reina", "ryis", "seridia", "taliferro", "terithia", "valen", "vera", "wheedle"
+	// TODO When Released: Stillwell, Zorel
 };
 static const std::unordered_set<std::string> UNLOCKABLE_NPC_NAMES = { // NPCs that must be unlocked
-	"caldarus", "darcy", "louis", "merri", "taliferro", "vera", "wheedle"
-	// TODO When Released: Stillwell, Zorel, Priestess
+	"caldarus", "darcy", "louis", "merri", "seridia", "taliferro", "vera", "wheedle"
+	// TODO When Released: Stillwell, Zorel
 };
 static const std::string MAGICAL_SNOWFLAKE_ITEM_NAME = "magical_snowflake";
 
@@ -49,7 +50,7 @@ static const std::string MAIL_SENT_KEY = "mail_sent";
 // Gif received dialogue.
 static const std::string ADELINE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Adeline/init";
 static const std::string BALOR_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Balor/init";
-static const std::string CALDARUS_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Caldarus/init"; // TODO
+static const std::string CALDARUS_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Caldarus/init";
 static const std::string CELINE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Celine/init";
 static const std::string DARCY_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Darcy/init";
 static const std::string DELL_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Dell/init";
@@ -73,11 +74,14 @@ static const std::string OLRIC_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/
 static const std::string NORA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Nora/init";
 static const std::string REINA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Reina/init";
 static const std::string RYIS_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Ryis/init";
-static const std::string TALIFERRO_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Taliferro/init"; // TODO
+static const std::string SERIDIA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Seridia/init";
+// TODO: Stillwell
+static const std::string TALIFERRO_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Taliferro/init";
 static const std::string TERITHIA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Terithia/init";
 static const std::string VALEN_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Valen/init";
 static const std::string VERA_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Vera/init";
-static const std::string WHEEDLE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Wheedle/init"; // TODO
+static const std::string WHEEDLE_GIFT_RECEIVED_DIALOGUE_KEY = "Conversations/Mods/Secret Santa/Wheedle/init";
+// TODO: Zorel
 
 static YYTKInterface* g_ModuleInterface = nullptr;
 static RValue __YYTK;
@@ -94,6 +98,7 @@ static std::string secret_santa_recipient = "";
 static json json_object = json::object();
 static RValue custom_dialogue_value;
 static RValue* custom_dialogue_value_ptr = nullptr;
+static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map = {};
 
 bool RValueAsBool(RValue value)
 {
@@ -399,7 +404,7 @@ RValue ReadValueFromT2Database(std::string t2_key, CInstance* Self, CInstance* O
 {
 	CScript* gml_script = nullptr;
 	g_ModuleInterface->GetNamedRoutinePointer(
-		"gml_Script_read@T2r@T2r",
+		GML_SCRIPT_T2_READ,
 		(PVOID*)&gml_script
 	);
 
@@ -446,8 +451,12 @@ std::vector<std::string> GetUnlockedNpcs(CInstance* Self, CInstance* Other)
 	std::vector<std::string> unlocked_npcs = {};
 
 	for (std::string npc : ACTIVE_NPC_NAMES)
+	{
 		if (!UNLOCKABLE_NPC_NAMES.contains(npc) || ReadValueFromT2Database(npc + "_has_met", Self, Other).ToBoolean())
 			unlocked_npcs.push_back(npc);
+	}
+
+
 	
 	return unlocked_npcs;
 }
@@ -586,19 +595,19 @@ RValue& GmlScriptPlayTextCallback(
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
 
-					// Speaker is Celine.
-					if (conversation_name.contains("Conversations/Bank/Celine"))
-					{
-						custom_dialogue_value = RValue(CELINE_GIFT_RECEIVED_DIALOGUE_KEY);
-						custom_dialogue_value_ptr = &custom_dialogue_value;
-						Arguments[0] = custom_dialogue_value_ptr;
-					}
-
 					// Speaker is Caldarus.
 					if (conversation_name.contains("Conversations/Bank/Caldarus"))
 					{
 						// Override the gift dialog.
 						custom_dialogue_value = RValue(CALDARUS_GIFT_RECEIVED_DIALOGUE_KEY);
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
+					}
+
+					// Speaker is Celine.
+					if (conversation_name.contains("Conversations/Bank/Celine"))
+					{
+						custom_dialogue_value = RValue(CELINE_GIFT_RECEIVED_DIALOGUE_KEY);
 						custom_dialogue_value_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
@@ -801,6 +810,17 @@ RValue& GmlScriptPlayTextCallback(
 						Arguments[0] = custom_dialog_ptr;
 					}
 
+					// Speaker is Seridia.
+					if (conversation_name.contains("Conversations/Bank/Seridia"))
+					{
+						// Override the gift dialog.
+						custom_dialogue_value = RValue(SERIDIA_GIFT_RECEIVED_DIALOGUE_KEY);
+						custom_dialogue_value_ptr = &custom_dialogue_value;
+						Arguments[0] = custom_dialogue_value_ptr;
+					}
+
+					// TODO: Stillwell
+
 					// Speaker is Taliferro.
 					if (conversation_name.contains("Conversations/Bank/Taliferro"))
 					{
@@ -845,6 +865,8 @@ RValue& GmlScriptPlayTextCallback(
 						custom_dialogue_value_ptr = &custom_dialogue_value;
 						Arguments[0] = custom_dialogue_value_ptr;
 					}
+
+					// TODO: Zorel
 
 					// Increase heart points.
 					AddHeartPoints(secret_santa_recipient);
@@ -968,7 +990,7 @@ RValue& GmlScriptShowRoomTitleCallback(
 				std::random_device rd;
 				std::mt19937 gen(rd());
 
-				const std::vector<std::string> unlocked_npcs = GetUnlockedNpcs(Self, Other);
+				const std::vector<std::string> unlocked_npcs = GetUnlockedNpcs(script_name_to_reference_map[GML_SCRIPT_T2_READ][0], script_name_to_reference_map[GML_SCRIPT_T2_READ][1]);
 				std::uniform_int_distribution<> distr(0, static_cast<int>(unlocked_npcs.size() - 1));
 
 				int random_sender = distr(gen);
@@ -1182,6 +1204,29 @@ RValue& GmlScriptChooseRandomArtifactCallback(
 			StructVariableSet(SecretSanta, "ignore_next_dig_spot", ignore_next_dig_spot);
 		}
 	}
+
+	return Result;
+}
+
+RValue& GmlScriptT2ReadCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	if (!script_name_to_reference_map.contains(GML_SCRIPT_T2_READ))
+		script_name_to_reference_map[GML_SCRIPT_T2_READ] = { Self, Other };
+
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_T2_READ));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
 
 	return Result;
 }
@@ -1436,6 +1481,34 @@ void CreateHookGmlScriptChooseRandomArtifact(AurieStatus& status)
 	}
 }
 
+void CreateHookGmlScriptT2Read(AurieStatus& status)
+{
+	CScript* gml_script_t2_read = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_T2_READ,
+		(PVOID*)&gml_script_t2_read
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_T2_READ);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_T2_READ,
+		gml_script_t2_read->m_Functions->m_ScriptFunction,
+		GmlScriptT2ReadCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_T2_READ);
+	}
+}
+
 EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path& ModulePath) {
 	UNREFERENCED_PARAMETER(ModulePath);
 
@@ -1508,6 +1581,13 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 	}
 
 	CreateHookGmlScriptChooseRandomArtifact(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptT2Read(status);
 	if (!AurieSuccess(status))
 	{
 		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
