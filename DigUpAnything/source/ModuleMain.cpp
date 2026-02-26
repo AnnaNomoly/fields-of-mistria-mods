@@ -8,16 +8,20 @@ using namespace Aurie;
 using namespace YYTK;
 using json = nlohmann::json;
 
-static const char* const MOD_NAME = "DigUpAnything";
-static const char* const VERSION = "1.2.5";
+static const char* const MOD_NAME = "SpawnAnyItem";
+static const char* const VERSION = "2.0.0";
 static const char* const ACTIVATION_BUTTON_KEY = "activation_button";
 static const char* const EXAMPLE_ITEM_KEY = "example_item";
+static const char* const DIG_SPOT_MODE_KEY = "dig_spot_mode";
 static const std::string VALID_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/valid_item";
 static const std::string DISABLED_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/disabled_item";
 static const std::string UNRECOGNIZED_ITEM_LOCALIZATION_KEY = "mods/DigUpAnything/unrecognized_item";
 static const std::string ITEM_NOT_ACQUIRED_LOCALIZATION_KEY = "mods/DigUpAnything/item_not_acquired";
 static const std::string UNACQUIRED_ITEM_ALREADY_SPAWNED_LOCALIZATION_KEY = "mods/DigUpAnything/unacquired_item_already_spawned";
 static const std::string ITEM_MAX_STACK_IS_ONE_LOCALIZATION_KEY = "mods/DigUpAnything/item_max_stack_is_one";
+static const char* const GML_SCRIPT_DESERIALIZE_LIVE_ITEM = "gml_Script_deserialize_live_item";
+static const char* const GML_SCRIPT_DROP_ITEM = "gml_Script_drop_item";
+static const char* const GML_SCRIPT_CREATE_ITEM_PROTOTYPES = "gml_Script_create_item_prototypes";
 static const char* const GML_SCRIPT_GIVE_ARI_ITEM = "gml_Script_give_item@Ari@Ari";
 static const char* const GML_SCRIPT_CHOOSE_RANDOM_ARTIFACT = "gml_Script_choose_random_artifact@Archaeology@Archaeology";
 static const char* const GML_SCRIPT_GET_LOCALIZER = "gml_Script_get@Localizer@Localizer";
@@ -25,6 +29,7 @@ static const char* const GML_SCRIPT_SETUP_MAIN_SCREEN = "gml_Script_setup_main_s
 static const char* const GML_SCRIPT_ON_DRAW_GUI = "gml_Script_on_draw_gui@Display@Display";
 static const char* const GML_SCRIPT_CREATE_NOTIFICATION = "gml_Script_create_notification";
 static const std::string DISABLED_ITEMS[] = { "animal_cosmetic", "pet_cosmetic", "cosmetic", "crafting_scroll", "purse", "recipe_scroll", "unidentified_artifact" };
+static const bool DEFAULT_DIG_SPOT_MODE = false;
 static const std::string DEFAULT_ACTIVATION_BUTTON = "F11";
 static const std::string DEFAULT_EXAMPLE_ITEM = "Tea with Lemon";
 static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
@@ -37,8 +42,11 @@ static const std::string ALLOWED_ACTIVATION_BUTTONS[] = {
 };
 
 static YYTKInterface* g_ModuleInterface = nullptr;
+static CInstance* global_instance = nullptr;
 static RValue __YYTK;
 static int item_id = 0;
+static double ari_x = -1;
+static double ari_y = -1;
 static bool load_on_start = true;
 static bool localize_items = false;
 static bool override_next_dig_spot = false;
@@ -46,6 +54,7 @@ static bool duplicate_item = false;
 static bool activation_button_is_controller_key = false;
 static int activation_button_int_value = -1;
 static bool processing_user_input = false;
+static bool dig_spot_mode = DEFAULT_DIG_SPOT_MODE;
 static std::string activation_button = DEFAULT_ACTIVATION_BUTTON;
 static std::string example_item = DEFAULT_EXAMPLE_ITEM;
 static std::map<std::string, int> item_name_to_id_map = {};
@@ -54,6 +63,8 @@ static std::map<int, int> item_id_to_max_stack = {}; // Uses the max_stack assig
 static std::map<std::string, std::string> item_name_to_localized_name_map = {};
 static std::map<std::string, std::string> lowercase_localized_name_to_item_name_map = {};
 static std::vector<std::string> unacquired_items_spawned = {};
+static std::map<int, RValue> item_id_to_prototype_map = {};
+static std::map<std::string, std::vector<CInstance*>> script_name_to_reference_map = {};
 
 int RValueAsInt(RValue value)
 {
@@ -141,11 +152,11 @@ void CreateModInfoInGlobalYYTKVariable()
 {
 	if (!StructVariableExists(__YYTK, MOD_NAME))
 	{
-		RValue DigUpAnything;
+		RValue SpawnAnyItem;
 		RValue version = VERSION;
-		g_ModuleInterface->GetRunnerInterface().StructCreate(&DigUpAnything);
-		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&DigUpAnything, "version", &version);
-		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&__YYTK, MOD_NAME, &DigUpAnything);
+		g_ModuleInterface->GetRunnerInterface().StructCreate(&SpawnAnyItem);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&SpawnAnyItem, "version", &version);
+		g_ModuleInterface->GetRunnerInterface().StructAddRValue(&__YYTK, MOD_NAME, &SpawnAnyItem);
 	}
 }
 
@@ -392,9 +403,6 @@ void ConfigureActivationButton()
 
 void LoadItemData()
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
 	RValue __item_data = *global_instance->GetRefMember("__item_data");
 	size_t array_length;
 	g_ModuleInterface->GetArraySize(__item_data, array_length);
@@ -442,7 +450,8 @@ json CreateConfigJson(bool use_defaults)
 {
 	json config_json = {
 		{ ACTIVATION_BUTTON_KEY, use_defaults ? DEFAULT_ACTIVATION_BUTTON : activation_button },
-		{ EXAMPLE_ITEM_KEY, use_defaults ? DEFAULT_EXAMPLE_ITEM : example_item}
+		{ EXAMPLE_ITEM_KEY, use_defaults ? DEFAULT_EXAMPLE_ITEM : example_item},
+		{ DIG_SPOT_MODE_KEY, use_defaults ? DEFAULT_DIG_SPOT_MODE : dig_spot_mode }
 	};
 	return config_json;
 }
@@ -451,9 +460,11 @@ void LogDefaultConfigValues()
 {
 	activation_button = DEFAULT_ACTIVATION_BUTTON;
 	example_item = DEFAULT_EXAMPLE_ITEM;
+	dig_spot_mode = DEFAULT_DIG_SPOT_MODE;
 
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, ACTIVATION_BUTTON_KEY, DEFAULT_ACTIVATION_BUTTON);
 	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_ITEM_KEY, DEFAULT_EXAMPLE_ITEM);
+	g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, DIG_SPOT_MODE_KEY, DEFAULT_DIG_SPOT_MODE ? "true" : "false");
 }
 
 void CreateOrLoadConfigFile()
@@ -471,17 +482,28 @@ void CreateOrLoadConfigFile()
 			std::filesystem::create_directory(mod_data_folder);
 		}
 
-		// Try to find the mod_data/DigUpAnything directory.
-		std::string dig_up_anything_folder = mod_data_folder + "\\DigUpAnything";
-		if (!std::filesystem::exists(dig_up_anything_folder))
+		// Rename the old mod folder if it exists.
+		std::string old_mod_folder = mod_data_folder + "\\DigUpAnything";
+		std::string new_mod_folder = mod_data_folder + "\\SpawnAnyItem";
+		if (std::filesystem::exists(old_mod_folder) && std::filesystem::is_directory(old_mod_folder))
+			std::filesystem::rename(old_mod_folder, new_mod_folder);
+
+		// Rename the old mod file if it exists.
+		std::string old_config_file = new_mod_folder + "\\" + "DigUpAnything.json";
+		std::string new_config_file = new_mod_folder + "\\" + "SpawnAnyItem.json";
+		if (std::filesystem::exists(old_config_file) && std::filesystem::is_regular_file(old_config_file))
+			std::filesystem::rename(old_config_file, new_config_file);
+
+		// Try to find the mod_data/SpawnAnyItem directory.
+		if (!std::filesystem::exists(new_mod_folder))
 		{
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"DigUpAnything\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, dig_up_anything_folder.c_str());
-			std::filesystem::create_directory(dig_up_anything_folder);
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"SpawnAnyItem\" directory was not found. Creating directory: %s", MOD_NAME, VERSION, old_mod_folder.c_str());
+			std::filesystem::create_directory(new_mod_folder);
 		}
 
-		// Try to find the mod_data/DigUpAnything/DigUpAnything.json config file.
+		// Try to find the mod_data/SpawnAnyItem/SpawnAnyItem.json config file.
 		bool update_config_file = false;
-		std::string config_file = dig_up_anything_folder + "\\" + "DigUpAnything.json";
+		std::string config_file = new_config_file;
 		std::ifstream in_stream(config_file);
 		if (in_stream.good())
 		{
@@ -532,6 +554,18 @@ void CreateOrLoadConfigFile()
 						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, EXAMPLE_ITEM_KEY, config_file.c_str());
 						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, EXAMPLE_ITEM_KEY, DEFAULT_EXAMPLE_ITEM.c_str());
 					}
+
+					// Try loading the dig_spot_mode value.
+					if (json_object.contains(DIG_SPOT_MODE_KEY) && json_object.at(DIG_SPOT_MODE_KEY).is_boolean())
+					{
+						dig_spot_mode = json_object[DIG_SPOT_MODE_KEY];
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using CUSTOM \"%s\" value: %s!", MOD_NAME, VERSION, DIG_SPOT_MODE_KEY, dig_spot_mode ? "true" : "false");
+					}
+					else
+					{
+						g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - Missing \"%s\" value in mod configuration file: %s!", MOD_NAME, VERSION, DIG_SPOT_MODE_KEY, config_file.c_str());
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Using DEFAULT \"%s\" value: %s!", MOD_NAME, VERSION, DIG_SPOT_MODE_KEY, DEFAULT_DIG_SPOT_MODE ? "true" : "false");
+					}
 				}
 
 				update_config_file = true;
@@ -552,7 +586,7 @@ void CreateOrLoadConfigFile()
 		{
 			in_stream.close();
 
-			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"DigUpAnything.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
+			g_ModuleInterface->Print(CM_LIGHTYELLOW, "[%s %s] - The \"SpawnAnyItem.json\" file was not found. Creating file: %s", MOD_NAME, VERSION, config_file.c_str());
 
 			json default_config_json = CreateConfigJson(true);
 			std::ofstream out_stream(config_file);
@@ -596,6 +630,8 @@ std::string trim(std::string s) {
 
 void ResetStaticFields()
 {
+	ari_x = -1;
+	ari_y = -1;
 	item_id = 0;
 	override_next_dig_spot = false;
 	duplicate_item = false;
@@ -646,9 +682,6 @@ void DisplayNotification(CInstance* Self, CInstance* Other, std::string localiza
 
 bool ItemHasBeenAcquired(int item_id)
 {
-	CInstance* global_instance = nullptr;
-	g_ModuleInterface->GetGlobalInstance(&global_instance);
-
 	RValue __ari = *global_instance->GetRefMember("__ari");
 	RValue items_acquired = *__ari.GetRefMember("items_acquired");
 	RValue item_acquired = g_ModuleInterface->CallBuiltin("array_get", { items_acquired, item_id });
@@ -675,6 +708,132 @@ bool LiveItemHasId(RValue live_item, int item_id)
 	return value == item_id;
 }
 
+RValue DeserializeLiveItem(CInstance* Self, CInstance* Other)
+{
+	CScript* gml_script_deserialize_live_item = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_DESERIALIZE_LIVE_ITEM,
+		(PVOID*)&gml_script_deserialize_live_item
+	);
+
+	std::map<std::string, RValue> rvalue_map = {
+		{ "cosmetic", RValue() }, // UNDEFINED
+		{ "item_id", RValue("sword_scrap_metal")}, // STRING
+		{ "infusion", RValue() }, // UNDEFINED
+		{ "animal_cosmetic", RValue() }, // UNDEFINED
+		{ "date_photo", RValue() }, // UNDEFINED
+		{ "inner_item", RValue() }, // UNDEFINED
+		{ "gold_to_gain", RValue() }, // UNDEFINED
+		{ "auto_use", false }, // BOOL
+		{ "pet_cosmetic_set_name", RValue() } // UNDEFINED
+	};
+
+	RValue result;
+	RValue input = rvalue_map;
+	RValue* input_ptr = &input;
+	gml_script_deserialize_live_item->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		1,
+		{ &input_ptr }
+	);
+
+	return result;
+}
+
+void DropItem(int item_id, double x_coord, double y_coord, CInstance* Self, CInstance* Other)
+{
+	RValue item = DeserializeLiveItem(Self, Other);
+	*item.GetRefMember("prototype") = item_id_to_prototype_map[item_id];
+	*item.GetRefMember("item_id") = item_id;
+
+	CScript* gml_script_drop_item = nullptr;
+	g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_DROP_ITEM,
+		(PVOID*)&gml_script_drop_item
+	);
+
+	RValue x = x_coord;
+	RValue y = y_coord;
+	RValue undefined;
+
+	RValue* item_ptr = &item;
+	RValue* x_ptr = &x;
+	RValue* y_ptr = &y;
+	RValue* undefined_ptr = &undefined;
+
+	RValue result;
+	RValue* arguments[4] = { item_ptr, x_ptr, y_ptr, undefined_ptr };
+
+	gml_script_drop_item->m_Functions->m_ScriptFunction(
+		Self,
+		Other,
+		result,
+		4,
+		arguments
+	);
+}
+
+void ObjectCallback(
+	IN FWCodeEvent& CodeEvent
+)
+{
+	auto& [self, other, code, argc, argv] = CodeEvent.Arguments();
+
+	if (!self)
+		return;
+
+	if (!self->m_Object)
+		return;
+
+	if (strstr(self->m_Object->m_Name, "obj_ari"))
+	{
+		if (!script_name_to_reference_map.contains("obj_ari"))
+			script_name_to_reference_map["obj_ari"] = { global_instance->GetRefMember("__ari")->ToInstance(), self };
+
+		RValue x;
+		g_ModuleInterface->GetBuiltin("x", self, NULL_INDEX, x);
+		ari_x = x.ToDouble();
+
+		RValue y;
+		g_ModuleInterface->GetBuiltin("y", self, NULL_INDEX, y);
+		ari_y = y.ToDouble();
+	}
+}
+
+RValue& GmlScriptCreateItemPrototypeCallback(
+	IN CInstance* Self,
+	IN CInstance* Other,
+	OUT RValue& Result,
+	IN int ArgumentCount,
+	IN RValue** Arguments
+)
+{
+	const PFUNC_YYGMLScript original = reinterpret_cast<PFUNC_YYGMLScript>(MmGetHookTrampoline(g_ArSelfModule, GML_SCRIPT_CREATE_ITEM_PROTOTYPES));
+	original(
+		Self,
+		Other,
+		Result,
+		ArgumentCount,
+		Arguments
+	);
+
+	size_t array_length;
+	g_ModuleInterface->GetArraySize(Result, array_length);
+
+	// Load all items.
+	for (size_t i = 0; i < array_length; i++)
+	{
+		RValue* array_element;
+		g_ModuleInterface->GetArrayEntry(Result, i, array_element);
+
+		item_id_to_prototype_map[i] = *array_element;
+	}
+
+	return Result;
+}
+
 RValue& GmlScriptGiveItemCallback(
 	IN CInstance* Self,
 	IN CInstance* Other,
@@ -696,7 +855,7 @@ RValue& GmlScriptGiveItemCallback(
 			else
 			{
 				std::string modal_text =
-					"DigUpAnything v" + std::string(VERSION) + "\r\n" +
+					"SpawnAnyItem v" + std::string(VERSION) + "\r\n" +
 					"------------------------------\r\n" +
 					"How many of the item would you like?\r\n"
 					"Input a number between 1 and 999.\r\n";
@@ -815,12 +974,13 @@ RValue& GmlScriptSetupMainScreenCallback(
 {
 	if (load_on_start)
 	{
+		g_ModuleInterface->GetGlobalInstance(&global_instance);
+
 		CreateOrLoadConfigFile();
 		ConfigureActivationButton();
 		CreateOrGetGlobalYYTKVariable();
 		CreateModInfoInGlobalYYTKVariable();
 		LoadItemData();
-
 
 		localize_items = true;
 		load_on_start = false;
@@ -861,7 +1021,7 @@ RValue& GmlScriptOnDrawGuiCallback(
 		if (activate)
 		{
 			std::string modal_text =
-				"DigUpAnything v" + std::string(VERSION) + "\r\n" +
+				"SpawnAnyItem v" + std::string(VERSION) + "\r\n" +
 				"------------------------------\r\n" +
 				"Input the desired item's Display Name or Internal Name.\r\n" +
 				"Case (capitalization) does not matter.\r\n" +
@@ -904,24 +1064,34 @@ RValue& GmlScriptOnDrawGuiCallback(
 				}
 				else
 				{
-					// Indicate to other mods the dig site is being modified by DigUpAnything.
-					if (StructVariableExists(__YYTK, "SecretSanta"))
-					{
-						RValue SecretSanta = StructVariableGet(__YYTK, "SecretSanta");
-						RValue ignore_next_dig_spot = true;
-						StructVariableSet(SecretSanta, "ignore_next_dig_spot", ignore_next_dig_spot);
-					}
-					if (StructVariableExists(__YYTK, "Curator"))
-					{
-						RValue Curator = StructVariableGet(__YYTK, "Curator");
-						RValue ignore_next_dig_spot = true;
-						StructVariableSet(Curator, "ignore_next_dig_spot", ignore_next_dig_spot);
-					}
-
 					item_id = item_name_to_id_map[user_input_str];
-					override_next_dig_spot = true;
-					DisplayNotification(Self, Other, VALID_ITEM_LOCALIZATION_KEY);
-					g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Next artifact spot will be: %s", MOD_NAME, VERSION, user_input_str.c_str());
+
+					if (dig_spot_mode)
+					{
+						// Indicate to other mods the dig site is being modified by DigUpAnything.
+						if (StructVariableExists(__YYTK, "SecretSanta"))
+						{
+							RValue SecretSanta = StructVariableGet(__YYTK, "SecretSanta");
+							RValue ignore_next_dig_spot = true;
+							StructVariableSet(SecretSanta, "ignore_next_dig_spot", ignore_next_dig_spot);
+						}
+						if (StructVariableExists(__YYTK, "Curator"))
+						{
+							RValue Curator = StructVariableGet(__YYTK, "Curator");
+							RValue ignore_next_dig_spot = true;
+							StructVariableSet(Curator, "ignore_next_dig_spot", ignore_next_dig_spot);
+						}
+
+						override_next_dig_spot = true;
+						DisplayNotification(Self, Other, VALID_ITEM_LOCALIZATION_KEY);
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Next artifact spot will be: %s", MOD_NAME, VERSION, user_input_str.c_str());
+					}
+					else
+					{
+						duplicate_item = true;
+						DropItem(item_id, ari_x, ari_y, script_name_to_reference_map["obj_ari"][0], script_name_to_reference_map["obj_ari"][1]);
+						g_ModuleInterface->Print(CM_LIGHTGREEN, "[%s %s] - Spawning item: %s", MOD_NAME, VERSION, user_input_str.c_str());
+					}
 				}
 			}
 			else
@@ -944,6 +1114,49 @@ RValue& GmlScriptOnDrawGuiCallback(
 	);
 
 	return Result;
+}
+
+void CreateObjectCallback(AurieStatus& status)
+{
+	status = g_ModuleInterface->CreateCallback(
+		g_ArSelfModule,
+		EVENT_OBJECT_CALL,
+		ObjectCallback,
+		0
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook (EVENT_OBJECT_CALL)!", MOD_NAME, VERSION);
+	}
+}
+
+void CreateHookGmlScriptCreateItemPrototype(AurieStatus& status)
+{
+	CScript* gml_script_create_item_prototype = nullptr;
+	status = g_ModuleInterface->GetNamedRoutinePointer(
+		GML_SCRIPT_CREATE_ITEM_PROTOTYPES,
+		(PVOID*)&gml_script_create_item_prototype
+	);
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to get script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CREATE_ITEM_PROTOTYPES);
+	}
+
+	status = MmCreateHook(
+		g_ArSelfModule,
+		GML_SCRIPT_CREATE_ITEM_PROTOTYPES,
+		gml_script_create_item_prototype->m_Functions->m_ScriptFunction,
+		GmlScriptCreateItemPrototypeCallback,
+		nullptr
+	);
+
+
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Failed to hook script (%s)!", MOD_NAME, VERSION, GML_SCRIPT_CREATE_ITEM_PROTOTYPES);
+	}
 }
 
 void CreateHookGmlScriptGiveItem(AurieStatus& status)
@@ -1099,6 +1312,20 @@ EXPORTED AurieStatus ModuleInitialize(IN AurieModule* Module, IN const fs::path&
 		return AURIE_MODULE_DEPENDENCY_NOT_RESOLVED;
 
 	g_ModuleInterface->Print(CM_LIGHTAQUA, "[%s %s] - Plugin starting...", MOD_NAME, VERSION);
+
+	CreateObjectCallback(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
+
+	CreateHookGmlScriptCreateItemPrototype(status);
+	if (!AurieSuccess(status))
+	{
+		g_ModuleInterface->Print(CM_LIGHTRED, "[%s %s] - Exiting due to failure on start!", MOD_NAME, VERSION);
+		return status;
+	}
 
 	CreateHookGmlScriptGiveItem(status);
 	if (!AurieSuccess(status))
