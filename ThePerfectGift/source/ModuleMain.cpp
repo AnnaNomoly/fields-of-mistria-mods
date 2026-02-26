@@ -7,7 +7,7 @@ using namespace YYTK;
 using json = nlohmann::json;
 
 static const char* const MOD_NAME = "ThePerfectGift";
-static const char* const VERSION = "1.1.7";
+static const char* const VERSION = "1.2.0";
 static const char* const UNLOCK_ALL_GIFT_PREFERENCES_KEY = "unlock_all_gift_preferences";
 static const char* const SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS_KEY = "show_gift_preferences_on_item_tooltips";
 static const char* const GML_SCRIPT_TRY_ITEM_ID_TO_STRING = "gml_Script_try_item_id_to_string";
@@ -48,9 +48,9 @@ static const std::string MARCH = "march";
 static const std::string MERRI = "merri";
 static const std::string NORA = "nora";
 static const std::string OLRIC = "olric";
-//static const std::string PRIESTESS = "priestess";
 static const std::string REINA = "reina";
 static const std::string RYIS = "ryis";
+static const std::string SERIDIA = "seridia";
 //static const std::string STILLWELL = "stillwell";
 static const std::string TALIFERRO = "taliferro";
 static const std::string TERITHIA = "terithia";
@@ -60,12 +60,12 @@ static const std::string WHEEDLE = "wheedle";
 //static const std::string ZOREL = "zorel";
 static const bool DEFAULT_UNLOCK_ALL_GIFT_PREFERENCES = false;
 static const bool DEFAULT_SHOW_GIFT_PREFERENCES_ON_ITEM_TOOLTIPS = false;
-static const std::vector<std::string> ACTIVE_NPC_LIST = { // As of 0.13.4
+static const std::vector<std::string> ACTIVE_NPC_LIST = { // As of 0.15.1
 	ADELINE, BALOR, CALDARUS, CELINE, DARCY, DELL, DOZY, EILAND, ELSIE, ERROL,
 	HAYDEN, HEMLOCK, HENRIETTA, HOLT, JOSEPHINE, JUNIPER, LANDEN, LOUIS, LUC, MAPLE,
-	MARCH, MERRI, NORA, OLRIC, REINA, RYIS, TERITHIA, VALEN, VERA
+	MARCH, MERRI, NORA, OLRIC, REINA, RYIS, SERIDIA, TALIFERRO, TERITHIA, VALEN, VERA, WHEEDLE
 };
-static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MAP = { // As of 0.14.0
+static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MAP = { // As of 0.15.1
 	// Adeline
 	{ "Cutscenes/Heart Events/Adeline/adeline_eight_hearts/adeline_eight_hearts/3", { ADELINE, "lemon_pie" }},
 	{ "Conversations/Bank/Adeline/Relationship Lines/Relationship/post_8h_lines_romantic/adeline_post_8h_romantic_7/init", { ADELINE, "middlemist" }},
@@ -107,6 +107,9 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Caldarus/Gift Lines/gift_lines/fried_rice/init", { CALDARUS, "fried_rice" }}, // Gift Line
 	{ "Conversations/Bank/Caldarus/Gift Lines/gift_lines/mont_blanc/init", { CALDARUS, "mont_blanc" }}, // Gift Line
 	{ "Conversations/Bank/Caldarus/Gift Lines/gift_lines/sushi_platter/init", { CALDARUS, "sushi_platter" }}, // Gift Line
+	{ "Conversations/Bank/Caldarus/Relationship Lines/post_8h_lines_romantic/caldarus_post_8h_romantic_4/1", { CALDARUS, "mont_blanc" }},
+	{ "Conversations/fetch_quests_follow_ups/request_for_mont_blanc_follow_up_caldarus/init", { CALDARUS, "mont_blanc" }},
+	{ "Conversations/fetch_quests_follow_ups/request_for_pumpkin_pie_follow_up_eiland/1", { CALDARUS, "pumpkin_pie" }},
 	// Celine
 	{ "Conversations/Bank/Celine/Relationship Lines/Relationship/post_8h_lines_best_friend/celine_post_8h_best_friend_7/init", { CELINE, "marigold" }},
 	{ "Conversations/Bank/Celine/Relationship Lines/Relationship/post_8h_lines_best_friend/celine_post_8h_best_friend_6/init", { CELINE, "lilac" }},
@@ -141,6 +144,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Eiland/Banked Lines/pumpkin_pie/pumpkin_pie/init", { EILAND, "pumpkin_pie" }},
 	{ "Conversations/Bank/Eiland/Market Lines/market_darcy_1/market_darcy_1/init", { EILAND, "roasted_rice_tea" }},
 	{ "Conversations/Bank/Eiland/Banked Lines/breakfast/breakfast_2/2", { EILAND, "strawberry_shortcake" }},
+	{ "Conversations/fetch_quests_follow_ups/request_for_pumpkin_pie_follow_up_eiland/1", { EILAND, "pumpkin_pie" }},
 	// Elsie
 	{ "Conversations/Bank/Elsie/Market Lines/market_darcy_1/market_darcy_1/init", { ELSIE, "jasmine_tea" }},
 	{ "Conversations/Bank/Elsie/Market Lines/market_darcy_2/market_darcy_2/init", { ELSIE, "jasmine_tea" }},
@@ -215,6 +219,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Luc/Museum Lines/snowball_beetle/snowball_beetle/init", { LUC, "snowball_beetle" }},
 	{ "Conversations/Bank/Luc/Museum Lines/strobe_firefly/strobe_firefly/init", { LUC, "strobe_firefly" }},
 	{ "Conversations/Bank/Reina/Banked Lines/luc_and_maple_cheese/luc_and_maple_cheese/init", { LUC, "cheese" }},
+	{ "Conversations/Bank/Luc/Museum Lines/bumblebee/bumblebee/init", { LUC, "bumblebee" }},
 	// Louis
 	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/crystal/init", { LOUIS, "crystal" }}, // Gift Line
 	{ "Conversations/Bank/Louis/Gift Lines/gift_lines/lilac/init", { LOUIS, "lilac" }}, // Gift Line
@@ -259,7 +264,6 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/3", { OLRIC, "hard_boiled_egg" }},
 	{ "Conversations/Bank/March/Banked Lines/olric_stone/olric_stone/init", { OLRIC, "ore_stone" }},
 	{ "Conversations/Bank/Olric/Market Lines/market_wheedle_1/market_wheedle_1/init", { OLRIC, "ore_stone" }},
-	// Priestess
 	// Reina
 	{ "Conversations/Bank/Reina/Relationship Lines/Relationship/post_8h_lines_romantic/reina_post_8h_romantic_2/1", { REINA, "cauliflower_curry" }},
 	{ "Conversations/Bank/Reina/Relationship Lines/Relationship/post_8h_lines_romantic/reina_post_8h_romantic_8/1", { REINA, "turnip_and_potato_gratin" }},
@@ -272,6 +276,7 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Cutscenes/Heart Events/Reina/reina_six_hearts/reina_six_hearts/37", { REINA, "grilled_cheese" }},
 	{ "Cutscenes/Heart Events/Reina/reina_two_hearts/reina_two_hearts/1", { REINA, "wildberry_pie" }},
 	{ "Conversations/General Dialogue/ari_birthday/ari_birthday_reina_romantic/1", { REINA, "wildberry_pie" }},
+	{ "Conversations/Bank/Reina/Banked Lines/seridia_follow_up/reina_0_follow_up_reina/1", { REINA, "crystal_berry_pie" }},
 	// Ryis
 	{ "Conversations/Bank/Ryis/Relationship Lines/Relationship/post_8h_lines_romantic/ryis_post_8h_romantic_10/init", { RYIS, "iced_coffee" }},
 	{ "Conversations/Bank/Ryis/Relationship Lines/Relationship/post_8h_lines_best_friend/ryis_post_8h_best_friend_12/4", { RYIS, "golden_horse_hair" }},
@@ -284,6 +289,9 @@ static const std::multimap<std::string, std::vector<std::string>> GIFT_DIALOG_MA
 	{ "Conversations/Bank/Landen/Banked Lines/veggie_sub/veggie_sub/init", { RYIS, "veggie_sub_sandwich" }},
 	{ "Conversations/Bank/Ryis/Banked Lines/shopping_for_landen/shopping_for_landen_2/init", { RYIS, "bread" }},
 	{ "Conversations/Group Conversations/Elsie_March_Olric_Ryis/breakfast/breakfast_3/2", { RYIS, "bread" }},
+	// Seridia
+	{ "Conversations/Group Conversations/Juniper_Seridia/disciple/disciple_5/init", { SERIDIA, "night_queen" }},
+	{ "Conversations/fetch_quests_follow_ups/request_for_monster_mash_follow_up_seridia/init", { SERIDIA, "monster_mash" }},
 	// Stillwell
 	// Taliferro
 	{ "Conversations/Bank/Taliferro/Banked Lines/challenge_completed_lines/incredibly_hot_pot_terithia/init", { TALIFERRO, "incredibly_hot_pot" }},
@@ -874,12 +882,12 @@ void ObjectCallback(
 			UnlockGifts(self, NORA, unlock_all_gift_preferences);
 		if (gifts_to_unlock.contains(OLRIC) && strstr(self->m_Object->m_Name, "obj_olric"))
 			UnlockGifts(self, OLRIC, unlock_all_gift_preferences);
-		//if (gifts_to_unlock.contains(PRIESTESS) && strstr(self->m_Object->m_Name, "obj_priestess"))
-		//	UnlockGifts(self, PRIESTESS, unlock_all_gift_preferences);
 		if (gifts_to_unlock.contains(REINA) && strstr(self->m_Object->m_Name, "obj_reina"))
 			UnlockGifts(self, REINA, unlock_all_gift_preferences);
 		if (gifts_to_unlock.contains(RYIS) && strstr(self->m_Object->m_Name, "obj_ryis"))
 			UnlockGifts(self, RYIS, unlock_all_gift_preferences);
+		if (gifts_to_unlock.contains(SERIDIA) && strstr(self->m_Object->m_Name, "obj_seridia"))
+			UnlockGifts(self, SERIDIA, unlock_all_gift_preferences);
 		//if (gifts_to_unlock.contains(STILLWELL) && strstr(self->m_Object->m_Name, "obj_stillwell"))
 		//	UnlockGifts(self, STILLWELL, unlock_all_gift_preferences);
 		if (gifts_to_unlock.contains(TALIFERRO) && strstr(self->m_Object->m_Name, "obj_taliferro"))
