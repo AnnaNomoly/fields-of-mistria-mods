@@ -14,35 +14,37 @@ The table below will be updated with mod development to indicate the status of a
 | Animal Friends | 1.4.4 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/241 |
 | Bug Radar | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/510 |
 | Charm Spell | 1.0.0 | ❌ | N/A |
-| Chutes and Ladders | 1.3.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/153 |
+| Chutes and Ladders | 1.4.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/153 |
 | Cookbook | 1.1.6 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/162 |
 | Curator | 1.1.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/337 |
 | DataMining | 1.0.1 | 🟡 | N/A |
-| Deep Dungeon | 0.8.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/523 |
-| Dig Up Anything | 1.2.4 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/138 |
+| Deep Dungeon | 0.8.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/523 |
 | Directional Attacks | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/248 |
 | D.I.Y | 1.1.3 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/243 |
 | Dynamic NPC Portraits | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/535 |
 | Dynamic Object Sprites | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/545 |
 | Elegance | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/453 |
+| Faux Sigils | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/527 |
 | Friday Night Reminder | 1.1.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/290 |
 | Infinite Health | 1.0.2 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/83 |
 | Magical Girl Ari | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/516 |
 | Mill Anywhere | 1.1.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/128 |
-| Mistbloom | 1.0.3 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/348 |
+| Mistbloom | 1.0.4 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/348 |
 | Mute Any Sound | 1.0.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/508 |
 | Quake Spell | 1.2.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/155 |
 | Remind Me | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/529 |
+| Sandbox Mode Crafting | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/569 |
 | Save Anywhere | 1.2.3 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/346 |
 | Save Backup | 1.0.0 | ✅ | N/A |
 | Secret Santa | 1.1.2 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/343 |
 | Ship It | 1.1.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/342 |
-| Statue of Boons | 1.1.1 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/368 |
+| Spawn Any Item (Dig Up Anything) | 2.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/138 |
+| Statue of Boons | 1.1.2 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/368 |
 | Stop Time Indoors | 1.0.3 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/507 |
 | Summoning Circle | 1.0.3 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/451 |
 | Telepop | 2.2.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/108 |
 | The Aldarian Economy | 1.0.0 | ❌ | N/A |
-| The Perfect Gift | 1.1.6 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/244 |
+| The Perfect Gift | 1.1.7 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/244 |
 | Utility Sword | 1.0.0 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/517 |
 | Wardrobe | 1.1.2 | ✅ | https://www.nexusmods.com/fieldsofmistria/mods/206 |
 | Work Hard | 1.0.0 | ❌ | N/A |
